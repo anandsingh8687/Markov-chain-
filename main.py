@@ -241,6 +241,16 @@ def add_replant_flow(remain, tiles_of, days_left):
     return out
 
 
+def goose_cap(usable):
+    """Eggs absorb, so unconstrained KKT wants every tile as a goose.
+
+    The real dual is labour and wheat: one feed per head per day. Cloud
+    telemetry on 33abe95: target floated to 40+ and we built 41 empty
+    coops at 2/turn. Cap the herd to what we can house and feed.
+    """
+    return min(14, max(6, int(usable or 0) // 3))
+
+
 def product_contested(st, prod):
     """True when the opponent's visible flow already owns this book."""
     tiles = int((getattr(st, "opp_peak_tiles", None) or st.opp_tiles_of).get(prod, 0) or 0)
@@ -976,7 +986,8 @@ class MPCRevenueEngine:
             else:
                 for animal, produced in ANIMAL_PRODUCT.items():
                     if produced == prod:
-                        p.animal_targets[animal] = tiles
+                        cap = goose_cap(st.usable_tiles) if animal == "GOOSE" else 4
+                        p.animal_targets[animal] = min(tiles, cap)
 
         # Feed wheat: market wheat absorbs and is cheap. Planting 1.25 tiles
         # per animal crowds out geese and land on a 25-tile farm. Plant a
@@ -1006,8 +1017,9 @@ class MPCRevenueEngine:
         # EXPAND must stand up geese even if the water-fill rounded to zero
         # tiles — that is the only unbounded asset on the book.
         if p.phase in ("EXPAND", "COMPOUND") and days_left >= 10:
-            floor_geese = min(12, max(6, st.usable_tiles // 3))
-            p.animal_targets["GOOSE"] = max(p.animal_targets.get("GOOSE", 0), floor_geese)
+            cap_g = goose_cap(st.usable_tiles)
+            p.animal_targets["GOOSE"] = min(
+                max(p.animal_targets.get("GOOSE", 0), min(8, cap_g)), cap_g)
             if "MELON" in eligible and not product_contested(st, "MELON"):
                 p.crop_mix["MELON"] = max(p.crop_mix.get("MELON", 0),
                                          min(10, max(4, st.usable_tiles // 5)))
@@ -1047,8 +1059,9 @@ class MPCRevenueEngine:
                 p.crop_mix = {k: max(0, int(v * scale)) for k, v in p.crop_mix.items()}
                 p.animal_targets = {k: max(0, int(v * scale)) for k, v in p.animal_targets.items()}
             if p.phase in ("EXPAND", "COMPOUND") and days_left >= 10:
-                p.animal_targets["GOOSE"] = max(p.animal_targets.get("GOOSE", 0),
-                                               min(8, st.usable_tiles // 4))
+                cap_g = goose_cap(st.usable_tiles)
+                p.animal_targets["GOOSE"] = min(
+                    max(p.animal_targets.get("GOOSE", 0), min(8, cap_g)), cap_g)
 
         p.action_value = max(2.0, mu / 4.0)
         p.wheat_reserve = max(herd * 2, st.n_animals * 3)
@@ -1357,9 +1370,9 @@ def build_tasks(st, plan):
     # starts at 1 and EOD makes a weed if nobody waters the same turn.
     # Cap on TOTAL structures (empty + occupied). have_c lags while workers
     # walk, so reserving `target - alive` every turn paved 47 empty coops.
-    target_g = int(plan.animal_targets.get("GOOSE", 0) or 0)
-    target_p = int(plan.animal_targets.get("COW", 0) or 0) + int(
-        plan.animal_targets.get("SHEEP", 0) or 0)
+    target_g = min(int(plan.animal_targets.get("GOOSE", 0) or 0), goose_cap(st.usable_tiles))
+    target_p = min(4, int(plan.animal_targets.get("COW", 0) or 0) + int(
+        plan.animal_targets.get("SHEEP", 0) or 0))
     need_coops = max(0, min(target_g - st.animals_alive["GOOSE"], target_g - st.n_coops))
     need_past = max(0, min(target_p - st.animals_alive["COW"] - st.animals_alive["SHEEP"],
                            target_p - st.n_pastures))
@@ -1684,6 +1697,8 @@ class KaggricultureAgent(object):
             need = target - alive - in_shed
             cost = ANIMAL_COST[animal]
             if need <= 0 or days_left <= ANIMALS[animal]["first"] + 2:
+                continue
+            if animal == "GOOSE" and (alive + in_shed) >= goose_cap(st.usable_tiles):
                 continue
             if st.stance == "LOCK" and animal != "GOOSE":
                 continue
