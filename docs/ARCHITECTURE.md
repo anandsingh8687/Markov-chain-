@@ -112,3 +112,14 @@ watches them escape because the planner thought shed wheat was feed.
 - Turn budget 0.55 s inside a 1.0 s `actTimeout`.
 - Cloud gate: syntax, import, 720-turn self-play, overage telemetry, ≥60% vs
   `starter`, ≥50% vs a cloud-only carrot-scaler. No workstation loop.
+
+## 6. Sell-side must not fight the ramp
+
+Premium goods keep the KKT reservation (`mu * tdpu`) so melon/milk/wool are
+not walked to $1. Staples (carrot, wheat, egg) sell at a low fraction of
+base. A high egg floor is how an agent produces the right asset and then
+refuses to convert it to land and more geese. Cloud episodes that scored
+~8k against the starter were that lock: carrot cycles with no expansion.
+
+Buy order is hire → feed wheat → land → geese → seeds, which is the
+capital-velocity order, not the unit-price order.
