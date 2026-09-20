@@ -33,14 +33,41 @@ def fail(msg):
 
 
 def check_syntax(root):
-    print("[1/5] byte-compiling {}".format(root))
+    print("[1/6] byte-compiling {}".format(root))
     if not compileall.compile_dir(root, quiet=1, force=True):
         fail("byte-compilation failed")
     print("      ok")
 
 
+def check_loader(root):
+    """Reproduce exactly how kaggle-environments resolves a file submission.
+
+    `get_last_callable` exec()s the file and returns
+    `[v for v in env.values() if callable(v)][-1]` -- the LAST callable bound
+    in the module namespace, not the one named `agent`. A helper function
+    defined below `agent` therefore becomes the submitted agent, and the
+    failure looks like a bizarre runtime error rather than a loading mistake.
+    This has already cost one rewrite; it is cheap to assert.
+    """
+    print("[2/6] resolving the entrypoint the way the evaluator does")
+    path = os.path.join(root, "main.py")
+    with open(path) as fh:
+        raw = fh.read()
+    env = {}
+    exec(compile(raw, path, "exec"), env)
+    callables = [k for k, v in env.items() if callable(v)]
+    if not callables:
+        fail("main.py binds no callable at module level")
+    last = callables[-1]
+    if last != "agent":
+        fail("the evaluator would load '{}', not 'agent' -- kaggle-environments "
+             "takes the LAST callable in the module namespace. Move '{}' above "
+             "the definition of 'agent'.".format(last, last))
+    print("      ok (last module-level callable is 'agent')")
+
+
 def check_import(root):
-    print("[2/5] importing submission entrypoint")
+    print("[3/6] importing submission entrypoint")
     sys.path.insert(0, root)
     import main  # noqa: E402
     if not callable(getattr(main, "agent", None)):
@@ -83,19 +110,25 @@ def run_episode(agents, seed, debug=False):
 
 
 def check_selfplay(root):
-    print("[3/5] validation episode: agent vs. a copy of itself (720 turns)")
+    print("[4/6] validation episode: agent vs. a copy of itself (720 turns)")
+    # main.py catches its own exceptions and falls back to PASS so a single bad
+    # turn cannot forfeit a ladder episode. That safety net would also hide a
+    # planner bug from this gate, so verification runs with it disabled.
+    os.environ["KG_STRICT"] = "1"
     path = os.path.join(root, "main.py")
     rewards, statuses, wall, env = run_episode([path, path], seed=4242, debug=True)
     for i, s in enumerate(statuses):
         if s != "DONE":
             fail("self-play player {} ended with status {} (rewards={})".format(
                 i, s, rewards))
-    print("      ok  rewards={}  wall={:.1f}s".format(rewards, wall))
+    print("      ok  rewards={}  wall={:.1f}s  (strict mode: no exception "
+          "was swallowed)".format(rewards, wall))
+    os.environ.pop("KG_STRICT", None)
     return env
 
 
 def check_latency(env):
-    print("[4/5] per-turn latency against the 1s actTimeout")
+    print("[5/6] per-turn latency against the 1s actTimeout")
     # remainingOverageTime is a budget that only *decreases* when an agent runs
     # past actTimeout, so the meaningful statistic is its minimum, not its
     # maximum. A material drawdown means some turn went long even though the
@@ -133,7 +166,7 @@ def check_latency(env):
 
 
 def check_strength(root, games, opponent, report_path):
-    print("[5/5] strength gate: {} episodes vs. built-in '{}'".format(games, opponent))
+    print("[6/6] strength gate: {} episodes vs. built-in '{}'".format(games, opponent))
     path = os.path.join(root, "main.py")
     wins = tie = loss = 0
     margins = []
@@ -254,6 +287,7 @@ def main():
 
     if not args.strength_only:
         check_syntax(root)
+        check_loader(root)
         check_import(root)
         env = check_selfplay(root)
         check_latency(env)

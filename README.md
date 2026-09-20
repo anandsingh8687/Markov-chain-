@@ -1,92 +1,87 @@
-# markov-chain-
+# Kaggriculture agent
 
-Agent and cloud-only CI/CD for [Kaggriculture](https://www.kaggle.com/competitions/kaggriculture).
-Derived from the competition rules and published economic tables; no public
-leaderboard solution was consulted.
+A finite-horizon agent for the [Kaggriculture](https://www.kaggle.com/competitions/kaggriculture)
+competition, derived from the shipped interpreter rather than from any public
+leaderboard solution.
 
-```
-main.py                        self-contained submission agent (stdlib only)
-agent.py                       import alias
-tools/cloud_verify.py          verification gate — runs on the GH Actions runner
-tools/build_submission.py      packages submission.tar.gz (main.py at archive root)
-benchmark/incumbent/           the agent currently on the ladder, as a sparring partner
-docs/ARCHITECTURE.md           the derivation, with the numbers
-.github/workflows/deploy.yml   provision → verify → gate → submit
-```
+`main.py` is the whole submission: one file, standard library only, no
+dependency on `kaggle-environments` at runtime.
 
-## The objective is not what it looks like
+## The short version
 
-The evaluation page is explicit: *"The actual coin difference in a match does
-not affect the rating change—only the win, loss, or tie outcome matters."*
+The shared order book is a **sink, not a ceiling**. The town centre and up to
+eight shop instances remove on the order of 120 units/day, which is more than a
+100-tile farm supplies, so inventory sits below the reference level all season
+and the quote sits *above* base — carrot ends a measured episode at **$186**
+against a $35 base. Absorption is not the binding constraint; tile-days and
+worker-actions are.
 
-So the target is `P(my bank > their bank)`, not `E[my bank]`. Opponent cash and
-tiles are public, so the agent measures its edge directly and prices variance
-accordingly: shed variance when ahead late, buy it when behind.
+The agent therefore equalises marginal revenue per tile-day against a forward
+model of the book, reading this episode's actual shop draw to price demand.
+Under that valuation a fed-and-cared cow or sheep is worth ~$260/tile-day
+against ~$55 for carrot, so the plan is livestock-led — melon for the opening
+capital event, carrot and wheat through the middle, a herd capped at the town's
+own draw for each product.
 
-A second consequence shapes the whole strategy — the market book is **shared**.
-Premium goods collapse to the $1 floor within 60–160 units, so taking that
-capacity before the opponent is worth as much as the cash it earns.
+Full reasoning, the measured numbers, and the engine facts the plan depends on:
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## Global optimum, not local
+## Measured
 
-Tile-days are scarce and the market is the ceiling. The optimal allocation
-satisfies
+720 turns, `kaggle-environments==1.32.7`, sides swapped, strict mode:
 
-```
-price_p(I0 + X_p) / tdpu_p  =  mu      for every produced p
-```
-
-— equalise revenue **per tile-day**, not price per unit — with `mu` the shadow
-price of a tile-day, bisected so demand exhausts supply. See
-`docs/ARCHITECTURE.md` for why a flat price floor is the local optimum and what
-it costs.
-
-## Cloud-only by construction
-
-Nothing here is meant to run on a workstation. Every push provisions a clean
-runner and runs the full gate there. `tools/cloud_verify.py` is the only place
-episodes are executed.
-
-The gate covers the three ways a submission dies, before a slot is spent:
-
-1. **Import/load error on the eval host** → `Error` submission
-2. **Uncaught exception mid-episode** → forfeited episode
-3. **Turn over the 1s `actTimeout`** → forfeited episode
-
-…then checks strength on two fronts:
-
-- **≥60% vs. the built-in `starter`** — proves it is not broken.
-- **≥50% vs. the incumbent** — proves submitting is an *improvement*. This is
-  the gate that matters. Beating `starter` is table stakes; it says nothing
-  about the ladder.
-
-## Submission format
-
-The engine loads **`main.py` at the archive root** and calls `agent(obs)`. A
-file named `agent.py` submitted on its own is rejected as an `Error`, which is
-why `agent.py` here is only an import alias.
-
-## Setup
-
-Two repository secrets, under **Settings → Secrets and variables → Actions**:
-
-| Secret | Where it comes from |
+| Match | Result |
 | --- | --- |
-| `KAGGLE_USERNAME` | your Kaggle username |
-| `KAGGLE_KEY` | Kaggle → Account → **Create New API Token** → the `key` field of `kaggle.json` |
+| this agent vs. built-in `starter` | 100%, ~$65k vs ~$3.4k |
+| this agent vs. `benchmark/incumbent` (PR #1) | ~$62-89k vs ~$10-12k |
 
-The `submit` job is bound to a `kaggle` environment, so you can additionally
-require a manual approval there before anything reaches the ladder.
+## Layout
 
-## Submission policy
+```
+main.py                     the submission -- stdlib only, `agent` last
+agent.py                    import alias for notebooks and tooling
+benchmark/incumbent/        previous best agent; the regression gate
+tools/cloud_verify.py       verification gates (see below)
+tools/search_params.py      coordinate search over the agent's tunables
+tools/build_submission.py   tarball with main.py at the archive root
+docs/ARCHITECTURE.md        why the agent does what it does
+.github/workflows/deploy.yml  verify on every push, submit only from main
+```
 
-Kaggriculture allows **5 submissions/day** and scores only the **latest 2**. An
-unguarded submit-on-every-push burns the quota and evicts a good ladder agent
-with an untested one, so:
+## Cloud-only
 
-- verification and both strength gates must pass first
-- pull requests never submit
-- a commit message containing `[no-submit]` skips submission
-- a preflight reads the day's submission count and aborts at 5/5
-- only pushes to `main` can reach the ladder
-- `workflow_dispatch` submits only when `submit: true` is ticked
+Nothing here is built, tested or submitted from a workstation. A clean GitHub
+Actions runner is provisioned on every push; the agent is verified inside it;
+only a verified artifact reaches a submission slot.
+
+`tools/cloud_verify.py` covers the ways a submission dies before a slot is
+spent:
+
+1. byte-compilation;
+2. **entrypoint resolution** — `kaggle-environments` loads a file submission by
+   taking the *last callable in the module namespace*, not the one named
+   `agent`, so a helper defined below `agent` silently becomes the submission.
+   This is asserted explicitly; it cost a rewrite to discover;
+3. import and a cold-start action on a minimal observation;
+4. a full 720-turn self-play episode with the agent's own exception guard
+   **disabled**, so a planner bug surfaces instead of being swallowed;
+5. per-turn latency against the 1s `actTimeout`, gated on the overage budget's
+   low-water mark;
+6. strength against the built-in `starter` *and* against
+   `benchmark/incumbent` — beating the starter is table stakes and says nothing
+   about ladder position.
+
+## Parameter search
+
+`main.py` reads an optional `KG_PARAMS` JSON override at import time; it is
+unset on the evaluator, so the baked-in defaults are what ship. That lets
+`tools/search_params.py` run a coordinate search without editing the agent and
+without any chance of leaking into a submission.
+
+## Credentials
+
+Kaggle credentials are **not** stored in this repository. Add `KAGGLE_USERNAME`
+and `KAGGLE_KEY` as GitHub Actions repository secrets
+(Settings → Secrets and variables → Actions). Submission runs only from `main`,
+or from a `workflow_dispatch` with `submit: true`, and only after the gates
+pass.

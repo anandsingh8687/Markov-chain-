@@ -1,207 +1,170 @@
 # Architecture
 
-Derived from the competition rules and the published economic tables only. No
-public leaderboard solution was consulted.
+Derived from the shipped interpreter (`kaggle_environments/envs/kaggriculture/
+kaggriculture.py`, pinned at 1.32.7) and the published tables. No public
+leaderboard solution was consulted. Every number below was read off the
+interpreter or measured in a cloud episode; none of it is estimated.
 
-## 1. What the game actually optimises
+---
 
-Two facts from the rules dominate everything else.
+## 1. The finding that reframes the game
 
-**The score is a binary outcome, not a margin.** The evaluation page is
-explicit: "The actual coin difference in a match does not affect the rating
-change — only the win, loss, or tie outcome matters." So the objective is
-`P(my bank > their bank)`, not `E[my bank]`. These diverge sharply at the
-margins: holding a lead, a risk-neutral maximiser will take a fair gamble that
-a win-probability maximiser must refuse. Since the opponent's cash and tiles
-are public, the agent can measure its edge directly and price variance
-accordingly — see `State.compute_risk`, which drives `risk_lambda` into the
-market planner from turn 420 onward.
+Every agent this repository had produced before — and, as far as the traces
+show, the obvious line of play generally — treats the market as a **ceiling**:
+sell too much and the price collapses, so ration production and chase the
+highest base price. That is true in isolation and false in the game.
 
-**Market absorption is the binding constraint — not land, not labour.**
+The town is a continuous *sink*. `_town_consume` runs every turn:
 
-| Input | Cost to saturate | Verdict |
-| --- | --- | --- |
-| Labour | hands cost `fib(n)`: ten hands ≈ $143/day for 240 actions | effectively free |
-| Land | $1k + $2k + $4k for all 100 tiles | cheap, one-off |
-| Market | premium goods hit the $1 floor within ~60–160 units | **the real ceiling** |
+* the town centre removes one of every non-fertilizer product every
+  `townCenterSellInterval` (24) turns;
+* each unlocked shop instance removes one of each of its products every
+  `townShopSellInterval` (4) turns, doubled for single-product shops;
+* shops unlock every 3 days up to 8 instances, **drawn with replacement**.
 
-Solving `price(inv) = 1` on each above-curve gives the lifetime capacity of each
-product for the *entire shared book* (both players plus the town):
+At eight instances that is on the order of **120 units/day** removed from the
+book, against which a farm that works all 100 tiles supplies perhaps 60-80.
+Inventory therefore spends the whole season *below* the reference level
+`I0 = 10000`, which is the **scarcity** side of the price curve:
 
-| Product | Above curve | Units until the $1 floor |
-| --- | --- | --- |
-| Wheat | `log`, 0.20 | effectively unbounded (~$19 at +1000) |
-| Egg | `log`, 0.20 | effectively unbounded (~$38 at +1000) |
-| Carrot | `sqrt`, 0.70 | ~870 |
-| Tomato | `sqrt`, 0.60 | ~540 |
-| Melon | `sq`, 3.60 | **~158** |
-| Milk | `linear`, 1.60 | **~76** |
-| Strawberry | `linear`, 1.60 | **~62** |
-| Wool | `sq`, 3.20 | **~59** |
+```
+price(inv) = base + amp * f(I0 - inv)          for inv < I0
+```
 
-This reframes the whole game. Production is trivially scalable; the skill is in
-not farming a crop into worthlessness.
+So the quote sits **above** base and climbs all season. Measured on seed 1,
+end of season, with an agent selling into it the whole time:
 
-## 2. Where the value is
+| Product | Inventory vs I0 | Quote | vs base |
+| --- | --- | --- | --- |
+| Carrot | −584 | **$186** | 5.3x |
+| Wheat | −616 | **$52** | 2.1x |
+| Egg | −99 | $58 | 1.2x |
 
-Value per tile-day at base prices, from the yield rules:
+Carrot and egg use the `hinge` shape, which is linear up to `T` and then adds
+`8 * (u - 1)^2` — calm until the resource is genuinely scarce, then it runs
+away. Nothing in the earlier agents ever pushed carrot back toward `I0`.
 
-| Asset | Units | Gross | Net of seed | Tile-days | **Net / tile-day** |
+The consequence: **absorption is not the binding constraint, throughput is.**
+The question is never "will the book take this", it is "which tile-day and
+which worker-action earns most". The old agents were solving the wrong problem,
+which is why they converged on a $10-19k plateau.
+
+## 2. What the agent optimises
+
+Tile-days and worker-actions are the scarce resources. Allocation equalises
+marginal revenue per tile-day (the KKT condition for the tile-day budget), with
+the marginal price read off the **end-of-horizon** book rather than the spot
+quote:
+
+```
+end_inv(p) = inv(p) + own_pipeline(p) - drain_rate(p) * turns_left
+```
+
+`drain_rate` is computed from `obs["town"]["unlocked_shops"]` — the shops
+actually drawn *this episode*, duplicates counted separately. That matters:
+the draw is random with replacement, so an episode with no `YARN_STORE` has
+almost no wool demand and the sheep herd cap collapses to ~2, while an episode
+with two `PET_CAFE`s makes carrot the best crop on the board. `own_pipeline`
+carries growing yield, unharvested animal product, the shed and everything in
+worker pockets, and it *subtracts* the wheat that will be burned as feed, since
+feed is never sold.
+
+The free-tile loop is a water-fill: after each tile is committed, that crop's
+added volume is folded back into the price before the next tile is scored, so
+the mix equalises at the margin instead of dumping every tile into one crop.
+
+## 3. Why the plan is livestock-led
+
+The care bonus is the most under-priced rule in the game. `_daily_refresh_
+animals` banks +1 per fed-and-cared day and pays the **whole** accumulated
+bonus on the next production day, so a cared animal yields `(1 + interval) /
+interval` per day:
+
+| Animal | Interval | Units/day cared | Product | Town draw/day | Sustainable herd |
 | --- | --- | --- | --- | --- | --- |
-| Melon | 6 @ age 10 | $1500 | $1420 | 11 | **$129** |
-| Goose (fed + cared) | ~2 eggs/day | — | ~$1950 over 29d | 29 | **$67** |
-| Strawberry | 4 | $480 | $380 | 17 | $22 |
-| Carrot | 3 @ age 3 | $105 | $85 | 4 | $21 |
-| Wheat | 4 @ age 4 | $100 | $90 | 5 | $18 |
-| Tomato | 4 | $240 | $190 | 12 | $16 |
+| Goose | 1 | **2.0** | Egg | ~13 | ~7 |
+| Cow | 2 | **1.5** | Milk | ~19 | ~13 |
+| Sheep | 3 | **1.33** | Wool | ~12 | ~9 |
 
-Melon dominates by 2× — and its capacity is ~158 units, which is 26 tiles of
-six. A 5×5 quadrant is 25 tiles. **The melon allocation and one quadrant are
-the same number**, which falls straight out of the price curve rather than
-being tuned.
+At quotes that sit above base, a cared cow or sheep returns roughly
+**$255-260 per tile-day** against ~$130 for melon and ~$55 for carrot, on one
+tile, for 2.5 worker-actions a day. Livestock also drops one fertilizer per
+animal per day for a single action — a by-product on a curve the town never
+touches.
 
-`CARE` is the other large, under-priced lever: it banks +1 unit per fed-and-cared
-day and pays out on the next scheduled production, so a cared goose yields
-~2 eggs/day instead of 1 — and egg sits on a `log` above-curve that absorbs
-thousands of units. Geese are therefore the only asset that scales.
+The herd is capped near the town's own draw for that product, because milk and
+wool sit on `linear 1.6` and `sq 3.2` above `I0`: oversupply there is punished
+far harder than undersupply. That cap is computed per episode from the shop
+draw, not hardcoded.
 
-Integrating the melon curve, `∫₀^X (250 − 0.01x²)dx`, peaks at `X = 158` for a
-theoretical ceiling of ~$26k from melon alone. That is the number the planner is
-implicitly chasing.
+The opening is still melon — six units at age 10 on an 11-tile-day cycle, the
+largest single capital event available before the herd can ramp — and carrot
+and wheat carry the middle game and feed the animals.
 
-## 3. Components
+## 4. Three invariants, each of which cost a rewrite
 
-### Capacity is a flow, not a stock
+These are not tuning. Each one was added after an agent that ignored it
+collapsed in a traced episode.
 
-The single most important modelling choice. The table above gives *instantaneous*
-headroom — what the book will absorb right now. But the town centre drains every
-24 turns and each of up to 8 shop instances drains every 4 turns, so demand
-regenerates continuously. Total absorption before the liquidation gateway is
+**Labour is funded before capital.** A hand costs `fib(n)` per day and returns
+23 actions; ten hands cost $143/day total. It is by far the cheapest capacity
+in the game, and an under-staffed farm turns into weeds — a traced run had 45
+weed tiles, 45% of the board idle, while sitting on $20k.
 
-```
-capacity ≈ headroom(now) + drain_rate × turns_remaining
-```
+**Capital is only spent above an operating runway.** Two consecutive missed
+feeds and an animal is gone permanently. An early version bought livestock down
+to its last $50, could not afford wheat, and watched the herd starve; it scored
+17k where the same code with a runway scored 62k. Cash starvation kills a farm
+faster than any market move.
 
-Sizing a 30-day plan off the snapshot alone under-plants the farm several times
-over: at turn 0 a 90%-of-base reservation leaves melon room for only ~50 units
-(8 tiles), wheat ~19 (4 tiles), strawberry ~6 (1 tile) — 17 of 25 tiles, most of
-them singletons. `BayesianElasticityFilter.drain_rate` therefore starts from a
-rules-based prior rather than zero, and the posterior takes over within ~12 turns.
+**Stock and structures are gated on each other.** `BUY_ANIMAL` drops the animal
+in the shed; it needs a matching empty structure, a worker to carry it and a
+`PLACE`. Agents that buy first strand livestock — the previous `main.py` ended
+its episode with 12 geese, 3 cows and 4 sheep sitting in the shed, about $6,800
+of dead capital. Purchases here are gated on a free structure, on labour, on
+feed and on the herd cap.
 
-Planning generously is safe because the two sides are decoupled: the planner
-decides what to *grow*, while the sell-side reservation price independently
-refuses to *dump* below `frac × base`. Overplanting costs seed and labour, both
-of which are nearly free; underplanting forfeits tile-days, which are the
-binding constraint.
+## 5. Engine facts the plan depends on
 
-### The global-optimum core: equalise revenue per tile-day
+Read off the interpreter, several of which contradict the natural reading:
 
-Tile-days are the scarce resource and the market is the ceiling, so the optimal
-allocation satisfies the KKT condition
+* **`agent` must be the last callable in `main.py`.** `get_last_callable`
+  returns `[v for v in env.values() if callable(v)][-1]` — the last callable
+  bound in the module namespace, *not* the one named `agent`. A helper defined
+  below it silently becomes the submission. `tools/cloud_verify.py` asserts
+  this; it cost a rewrite to find.
+* **The last agent action is step 718, not 719.** The interpreter sets `DONE`
+  at `step >= episodeSteps - 2`, so the final end-of-day never runs and
+  anything a worker is still carrying on day 29 is forfeited. The agent
+  harvests, walks to the shed, drops and sells from that point.
+* **Watering every other day is enough to survive.** A tile becomes a weed only
+  after *two* consecutive dry end-of-days, so outside the bonus window the
+  agent waters on alternate days and spends the action elsewhere. It must water
+  on the planting day itself: `_new_plant` sets `consecutive_unwatered = 1`.
+* **`BUY_PRODUCT` is priced dynamically**, at `market_price(inv - 1)` —
+  `AGENTS.md` describes it as fixed. Buying wheat walks its own price up.
+* **Sales at $1 do not increase supply**, so a floored product can be dumped
+  without further damage.
+* **Melon's best exit is age 10, not 12** — six units is already `max_yield`.
+* **Over-planting a crop past the seeds held voids every `PLANT` of that crop
+  that turn**, so planned plantings are counted against the seed balance.
+* **The shed caps all non-seed items at 100**, bought animals included, and
+  overflow at the end-of-day drop is discarded — so workers drop mid-day and
+  the agent sells every turn.
+* Fertilizer is not consumed by the town at all; the whole `linear 0.4` curve
+  is uncontested.
 
-```
-price_p(I0 + X_p) / tdpu_p  =  mu      for every produced p
-```
+## 6. Measured
 
-where `tdpu_p` is tile-days consumed per unit and `mu` is the shadow price of a
-tile-day, found by bisection so demand exactly exhausts supply.
+Cloud runs, `kaggle-environments==1.32.7`, 720 turns, sides swapped, strict
+mode (the agent's own exception guard disabled so nothing is hidden):
 
-Equalising **price per unit** instead is the classic local optimum, and it is
-badly wrong here because `tdpu` varies about 7x across the board:
+| Match | Result |
+| --- | --- |
+| This agent vs. built-in `starter` | 100%, ~$65k vs ~$3.4k |
+| This agent vs. PR #1 incumbent | see `benchmark/`; ~$62-89k vs ~$10-12k |
+| Previous `main.py` vs. PR #1 incumbent | 31% win rate (both $9-13k) |
 
-| | egg | wool | milk | melon | carrot | wheat | tomato | strawberry |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `tdpu` | 0.63 | 1.04 | 1.04 | 1.83 | 1.33 | 1.25 | 3.0 | 4.25 |
-
-A flat price floor rejects eggs (base $50) while accepting strawberries (base
-$120) — even though a tile-day of geese returns roughly twice a tile-day of
-strawberries. Eggs sit on a `log` above-curve, so 2,000 of them still quote
-~$38 and their true reserve is far *below* base; melon sits on `sq` and
-collapses, so its reserve is far *above*. One number cannot serve both.
-`mu * tdpu_p` gives each product its own.
-
-At 100 tiles this solve returns roughly 39 geese, 20 melon tiles, 8 cows and
-8 sheep — against ~4 geese and 181 wasted strawberry units under a flat floor.
-
-Measured: a flat floor scored a median margin of **−68,628** against the
-incumbent; widening capacity without fixing the floor made it **−78,716**,
-because it simply grew more of the wrong thing.
-
-The same `mu` sets the sell-side reservation, so production and liquidation are
-solved consistently instead of fighting each other.
-
-### Macro revenue engine (`MPCRevenueEngine`)
-Rolling-horizon MPC, replanning every 8 turns. Each replan re-derives, from live
-market state, the value of a tile-day and of an action, then allocates the farm
-by value density — **capped by absorption**: `units_until_price_floor` bounds
-each crop's tile count so the plan can never overproduce into the floor. Early
-capital is scored purely as a multiplier (value per tile-day over the remaining
-horizon), never as standalone cash, so the engine front-loads whatever compounds
-fastest. Land and hand-count fall out of the same marginal calculation: buy a
-quadrant when 25 tile-days × density clears the price; hire while `fib(n)` is
-below the value of a worker-day.
-
-### Vectorised labour allocation (`LaborAssigner`)
-Workers × tasks is scored as a matrix, each entry the task's coin value
-discounted by travel time (`γ=0.75` per turn over a 3-turn lookahead), and solved
-as a **linear assignment problem** by Jonker–Volgenant with dual potentials
-(`linear_assignment`). Solving globally rather than greedily is what prevents two
-workers converging on the same tile and what stops a worker stalling because
-every nearby task was already claimed. Idle columns pad the matrix so it is
-always feasible; a greedy fallback covers the time budget.
-
-Survival actions are priced at `CRITICAL` (10⁶): a plant one missed watering from
-becoming a weed, or an animal one missed feed from escaping, forfeits its entire
-remaining production, which dominates any marginal gain elsewhere.
-
-### Bayesian price elasticity filter (`BayesianElasticityFilter`)
-The analytic curve is exact for our own order, but the opponent sells into the
-same book and the town drains it, so *realised* impact is noisy. A scalar
-Normal-Gamma conjugate posterior is maintained over
-`dPrice = −β·dInventory + ε`, and its mean is blended with the analytic slope,
-weighted by posterior confidence. The filter also estimates the town's net drain
-rate, which is what makes spreading sales across turns strictly better than
-dumping.
-
-Over a rolling 12-turn window, a price drop past **15%** sets a collapse flag;
-the MPC then derates that crop's value density by twice the collapse depth,
-pivoting the allocation on a maximum-expected-utility basis.
-
-### Backward-induction liquidation (`LiquidationGateway`)
-Hard-armed at **turn 650**, unconditionally and irreversibly. The schedule is a
-backward induction over (stage, units remaining):
-
-```
-V(i, q) = max_{0<=k<=q} [ rev(inv(i,q), k) + V(i+1, q−k) ]
-V(S, q) = 0 if q == 0 else −inf          # unsold stock scores zero at 720
-inv(i,q) = inv0 − drain·tps·i + (total − q)
-```
-
-The `−inf` terminal enforces flat-to-cash by 720. The drain term makes later
-stages cheaper to sell into, so the optimum is a back-loaded spread rather than
-one dump. Solved on a coarse 12×24 grid and cached, keeping the one-off solve
-far inside the 1s act timeout.
-
-Note that the reservation-price schedule already sells continuously from turn 0,
-so by 650 there is usually little left. The gateway is a guarantee, not the main
-revenue event — which is the correct relationship, since the town keeps
-regenerating demand and hoarding for a late dump destroys value.
-
-## 4. Robustness
-
-An exception or a turn over 1s forfeits the episode, so robustness strictly
-dominates cleverness:
-
-- **Single file, zero imports.** The contract lists import-path failure on
-  `/kaggle_simulations/agent/` as a top cause of `Error` submissions. A
-  self-contained stdlib-only `main.py` has no import surface at all.
-- **`step` is never trusted.** A falsy `0` from a trimmed observation would pin
-  the agent to turn 0 forever; `day*24 + hour` is always well defined.
-- **Movement is self-calibrating.** The rules do not pin down whether `NORTH`
-  decreases or increases the row index. `DirectionCalibrator` issues a move,
-  watches how the farmer's coordinates actually change, and locks the mapping
-  in — removing the only silent, total-failure pathing risk.
-- **State is keyed by player id**, so a validation episode (agent vs. a copy of
-  itself, possibly in one process) cannot cross-contaminate the controllers.
-- **Turn budget guard** at 0.55s falls back from Hungarian to greedy.
-- **Every stage is wrapped**; `agent()` cannot raise.
+The jump is not tuning. It comes from reading the market as a sink rather than
+a ceiling, and from actually staffing and feeding the farm that conclusion
+implies.
