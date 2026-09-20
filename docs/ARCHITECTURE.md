@@ -192,10 +192,16 @@ mode (the agent's own exception guard disabled so nothing is hidden):
 | This agent vs. built-in `starter` | 16 | **16-0**, ~$62k vs ~$3.5k |
 | This agent vs. PR #1 incumbent, seeds 1-8 | 16 | **16-0**, mean $74,773 vs ~$11k |
 | This agent vs. PR #1 incumbent, seeds 11-18 (held out) | 16 | **16-0**, mean $70,052 |
+| This agent vs. PR #1 incumbent, seeds 21-28 (held out) | 16 | **16-0**, mean $50,709 |
+| This agent vs. previous `main.py` | 12 | **12-0**, mean $63,512 |
 | Previous `main.py` vs. PR #1 incumbent | 16 | 31% win rate (both $9-13k) |
 
-Worst single episode against the incumbent across those 32: $42,504 — still
-close to four times the incumbent's best. The agent also completes a season
+Across those 48 episodes the win rate is 100% and the worst single episode is
+$27,650 — still more than twice the incumbent's best. The spread between seed
+sets ($50.7k to $74.8k mean) is mostly the shop draw: shops unlock with
+replacement, so an episode that never draws a `YARN_STORE` or a `PET_CAFE`
+simply has less demand to sell into. The agent reads the draw and re-prices
+rather than assuming it, which is why the win rate does not move with it. The agent also completes a season
 under non-default `episodeSteps`, `turnsPerDay`, `boardSize`, `shedCapacity`
 and `maxMarketOrdersPerTurn`, all of which it reads from the runner rather
 than assuming.
