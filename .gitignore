@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+submission.tar.gz
+verify_report.json
+benchmark/**/__pycache__/
+incumbent_report.json

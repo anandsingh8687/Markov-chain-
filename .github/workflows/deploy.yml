@@ -1,0 +1,218 @@
+name: deploy
+
+# Cloud-only pipeline. Nothing here is meant to be built, tested or submitted
+# from a workstation: a clean runner is provisioned on every push, the agent is
+# verified inside that runner, and only a verified artifact reaches a
+# submission slot.
+#
+# AGENT_DIR is the only thing to change when this subtree is split out into a
+# standalone repository -- set it to '.' there.
+
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths:
+      - 'main.py'
+      - 'tools/**'
+      - '.github/workflows/deploy.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'main.py'
+      - 'tools/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      submit:
+        description: 'Submit to Kaggle after verification passes'
+        type: boolean
+        default: false
+      games:
+        description: 'Strength-gate episodes vs. the built-in starter'
+        default: '6'
+      min_score_rate:
+        description: 'Minimum score rate required to submit (0-1)'
+        default: '0.60'
+      incumbent:
+        description: 'Incumbent agent to benchmark against, relative to repo root'
+        default: 'benchmark/incumbent/main.py'
+      incumbent_min:
+        description: 'Minimum score rate vs. the incumbent required to submit (0-1)'
+        default: '0.50'
+      message:
+        description: 'Submission message'
+        default: 'Cloud-optimized global-optima agent execution'
+
+env:
+  AGENT_DIR: .
+
+concurrency:
+  group: kaggriculture-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify in cloud runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      score_rate: ${{ steps.gate.outputs.score_rate }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install the competition environment
+        run: |
+          python -m pip install --upgrade pip
+          # Pinned: the agent's economic constants are calibrated against this
+          # build of the engine. Unpinning risks silent rule drift.
+          pip install "kaggle-environments==1.32.7" "kaggle>=1.6.14"
+
+      - name: Run cloud verification gate
+        id: gate
+        working-directory: ${{ env.AGENT_DIR }}
+        run: |
+          python tools/cloud_verify.py \
+            --root . \
+            --games "${{ github.event.inputs.games || '6' }}" \
+            --opponent starter \
+            --min-score-rate "${{ github.event.inputs.min_score_rate || '0.60' }}"
+          echo "score_rate=$(python -c "import json;print(json.load(open('verify_report.json'))['score_rate'])")" >> "$GITHUB_OUTPUT"
+
+      # Beating the built-in starter only proves the agent is not broken. The
+      # question that decides whether submitting is an improvement or a
+      # regression is how it fares against the agent currently on the ladder --
+      # a submission slot spent on something weaker actively costs rating,
+      # because only the latest 2 submissions are scored.
+      # Run from the repo root so the incumbent resolves its own sibling
+      # modules the way it does on the eval host.
+      - name: Benchmark against the incumbent
+        id: incumbent
+        run: |
+          INC="${{ github.event.inputs.incumbent || 'benchmark/incumbent/main.py' }}"
+          if [ ! -f "$INC" ]; then
+            echo "no incumbent at $INC; skipping head-to-head" >> "$GITHUB_STEP_SUMMARY"
+            echo "rate=skipped" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python "$AGENT_DIR/tools/cloud_verify.py" \
+            --root "$AGENT_DIR" \
+            --strength-only \
+            --games 4 \
+            --opponent "$INC" \
+            --report "$AGENT_DIR/incumbent_report.json" \
+            --min-score-rate "${{ github.event.inputs.incumbent_min || '0.50' }}"
+          echo "rate=$(python -c "import json;print(json.load(open('$AGENT_DIR/incumbent_report.json'))['score_rate'])")" >> "$GITHUB_OUTPUT"
+
+      - name: Build submission archive
+        working-directory: ${{ env.AGENT_DIR }}
+        run: python tools/build_submission.py --root . --out submission.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: submission
+          path: |
+            ${{ env.AGENT_DIR }}/submission.tar.gz
+            ${{ env.AGENT_DIR }}/verify_report.json
+            ${{ env.AGENT_DIR }}/incumbent_report.json
+          retention-days: 30
+
+  submit:
+    name: Submit to Kaggle
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Gate 1: only a verified artifact reaches this job (needs: verify).
+    # Gate 2: never submit from a pull request.
+    # Gate 3: only pushes to main submit, and only when the commit does not
+    #         opt out with [no-submit]. Feature branches verify but never
+    #         touch the ladder.
+    # Gate 4: manual runs submit only when explicitly asked to.
+    if: >
+      github.event_name != 'pull_request' &&
+      (
+        (github.event_name == 'push' &&
+         github.ref == 'refs/heads/main' &&
+         !contains(github.event.head_commit.message, '[no-submit]')) ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.submit == 'true')
+      )
+    environment: kaggle
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install --upgrade "kaggle>=1.6.14"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: submission
+
+      - name: Check credentials are present
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          if [ -z "$KAGGLE_USERNAME" ] || [ -z "$KAGGLE_KEY" ]; then
+            echo "::error::KAGGLE_USERNAME / KAGGLE_KEY are not set on this repository."
+            echo "Add them under Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+      - name: Daily quota preflight
+        id: quota
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          # Kaggriculture allows 5 submissions per day and scores only the
+          # latest 2. Burning the quota on an automated push would evict a good
+          # ladder agent, so stop before that happens rather than after.
+          set +e
+          kaggle competitions submissions -c kaggriculture -v > subs.csv 2> subs.err
+          rc=$?
+          set -e
+          if [ $rc -ne 0 ]; then
+            echo "::warning::could not read submission history:"; cat subs.err
+            echo "used=unknown" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          TODAY=$(date -u +%Y-%m-%d)
+          USED=$(grep -c "$TODAY" subs.csv || true)
+          echo "submissions already made today (UTC $TODAY): $USED / 5"
+          echo "used=$USED" >> "$GITHUB_OUTPUT"
+          if [ "$USED" -ge 5 ]; then
+            echo "::error::daily submission quota exhausted ($USED/5). Not submitting."
+            exit 1
+          fi
+
+      - name: Submit
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          MSG="${{ github.event.inputs.message || 'Cloud-optimized global-optima agent execution' }}"
+          MSG="$MSG (${GITHUB_SHA::7}, score rate ${{ needs.verify.outputs.score_rate }})"
+          kaggle competitions submit \
+            -c kaggriculture \
+            -f submission.tar.gz \
+            -m "$MSG"
+
+      - name: Report ladder state
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          sleep 30
+          {
+            echo '### Kaggriculture submissions'
+            echo '```'
+            kaggle competitions submissions -c kaggriculture | head -12 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
