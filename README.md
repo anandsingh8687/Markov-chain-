@@ -34,6 +34,10 @@ premium goods to $1; eggs and wheat absorb. That is the game.
 Labour is a 3-turn linear assignment. `FEED` consumes wheat from the worker's
 inventory (engine fact). Collapse of >15% over 12 turns pivots the mix.
 
+Win probability is dual-NAV: lock a lead (no new premium) or contest a
+deficit (take remaining book). Opponent occupancy is counted from plant
+day 0. Liquidation reserves against their visible dump, not only town drain.
+
 ## Cloud-only
 
 Nothing in this repository is meant to be executed on a workstation. Every

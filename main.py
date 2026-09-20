@@ -106,6 +106,103 @@ TDPU = {
 }
 
 SAFE_ACTION = {"farmer": ["PASS"], "hands": [], "market": []}
+PREMIUM = frozenset(("MELON", "STRAWBERRY", "MILK", "WOOL"))
+STAPLES = frozenset(("WHEAT", "CARROT", "EGG", "FERTILIZER", "TOMATO"))
+
+
+def remaining_plant_units(tile, day, days_left):
+    """Units this public plant will still put on the book before the season ends.
+
+    Counted from plant day 0, not from first_yield-2. A day-0 melon field is
+    6 units of future supply even though it is eight days from harvest.
+    """
+    crop = tile.get("crop")
+    spec = CROPS.get(crop)
+    if spec is None:
+        return 0.0, 0.0
+    age = day - int(tile.get("planted_day", day))
+    held = float(tile.get("yield_units", 0) or 0)
+    if spec["ongoing"]:
+        left = 0.0
+        interval = max(1, spec["interval"])
+        for k in range(spec["max_yield"]):
+            prod_age = spec["first"] + k * interval
+            if prod_age <= age:
+                continue
+            if prod_age > age + days_left:
+                continue
+            left += 1.0
+        imminent = held if held > 0 else (1.0 if 0 <= spec["first"] - age <= 2 else 0.0)
+        return left + held, imminent
+    harvest_age = 10 if crop == "MELON" else spec["max_day"]
+    if harvest_age - age > days_left:
+        return 0.0, 0.0
+    units = held if (held > 0 and age >= spec["first"]) else float(Econ.planned_units(crop))
+    imminent = units if age >= spec["first"] - 2 else 0.0
+    return units, imminent
+
+
+def remaining_animal_units(tile, day, days_left):
+    animal = tile.get("animal")
+    spec = ANIMALS.get(animal)
+    if spec is None:
+        return 0.0, 0.0, None
+    placed = int(tile.get("placed_day", day))
+    held = float(tile.get("yield_units", 0) or 0)
+    interval = max(1, spec["interval"])
+    cycles = 0
+    for d in range(max(0, days_left)):
+        nxt = day + d + 1
+        since = nxt - placed - spec["first"]
+        if since >= 0 and since % interval == 0:
+            cycles += 1
+    # CARE is public as cared_today; assume a competent opponent banks it.
+    per = 1.5 if tile.get("cared_today") or tile.get("fed_today") else 1.2
+    future = cycles * per
+    imminent = held + (per if cycles and days_left <= spec["interval"] + 1 else 0.0)
+    return future + held, imminent, spec["product"]
+
+
+def scan_pipeline(tiles, day):
+    """Remaining and imminent book occupancy of a public farm."""
+    days_left = max(0, DAYS - day)
+    remain = {p: 0.0 for p in PRODUCTS}
+    imminent = {p: 0.0 for p in PRODUCTS}
+    tiles_of = {p: 0 for p in PRODUCTS}
+    if not tiles:
+        return remain, imminent, tiles_of
+    for row in tiles:
+        for t in row:
+            if not isinstance(t, dict):
+                continue
+            if t.get("kind") == "PLANT":
+                crop = t.get("crop")
+                if crop not in CROPS:
+                    continue
+                u, im = remaining_plant_units(t, day, days_left)
+                remain[crop] = remain.get(crop, 0.0) + u
+                imminent[crop] = imminent.get(crop, 0.0) + im
+                tiles_of[crop] = tiles_of.get(crop, 0) + 1
+            elif t.get("animal") in ANIMALS:
+                u, im, prod = remaining_animal_units(t, day, days_left)
+                if prod is None:
+                    continue
+                remain[prod] = remain.get(prod, 0.0) + u
+                imminent[prod] = imminent.get(prod, 0.0) + im
+                tiles_of[prod] = tiles_of.get(prod, 0) + 1
+    return remain, imminent, tiles_of
+
+
+def pipeline_mark(pipe, inventory):
+    """Conservative execution value of a future pipeline against the live book."""
+    total = 0.0
+    for prod, units in pipe.items():
+        if units <= 0 or prod not in MARKET_PARAMS:
+            continue
+        n = int(min(max(units, 1.0), 40))
+        inv = inventory.get(prod, MARKET_I0)
+        total += Econ.marginal_revenue(prod, inv, n) * (units / float(n))
+    return total
 
 
 def _get(obj, key, default=None):
@@ -373,23 +470,38 @@ class LiquidationGateway:
             self.armed = True
         return self.armed
 
-    def units_this_turn(self, product, held, inventory, drain, turn):
+    def units_this_turn(self, product, held, inventory, drain, turn,
+                        opp_remain=0.0, opp_imminent=0.0):
+        """Flatten `held` by 720, reserving against the opponent's visible dump.
+
+        Town drain makes later stages cheaper. Opponent supply does the
+        opposite: it fills the book, so a second-mover premium dump is $1.
+        Imminent opponent units are added to inventory *now*; remaining
+        opponent units arrive as a negative drain (the book fills).
+        """
         turns_left = max(1, HORIZON - turn)
         if held <= 0:
             return 0
         if turns_left <= 4:
             return int(held)
+        # Race an imminent premium dump: sell a third now, do not wait.
+        race = 0
+        if product in PREMIUM and opp_imminent > 0:
+            race = int(math.ceil(held * 0.35))
+        inv0 = float(inventory) + max(0.0, float(opp_imminent))
+        net_drain = float(drain) - max(0.0, float(opp_remain)) / float(turns_left)
         try:
-            plan, tps = self._solve(product, int(held), float(inventory),
-                                    float(drain), int(turns_left))
+            plan, tps = self._solve(product, int(held), inv0, net_drain, int(turns_left))
         except Exception:
-            return int(math.ceil(held / float(turns_left)))
+            return int(min(held, max(race, math.ceil(held / float(turns_left)))))
         if not plan:
-            return int(math.ceil(held / float(turns_left)))
-        return int(min(held, max(1, math.ceil(plan[0] / max(1.0, tps)))))
+            return int(min(held, max(race, math.ceil(held / float(turns_left)))))
+        n = int(min(held, max(1, math.ceil(plan[0] / max(1.0, tps)))))
+        return int(min(held, max(n, race)))
 
     def _solve(self, product, total_units, inv0, drain, turns_left):
-        key = (product, int(total_units), int(inv0 // 25), int(turns_left // 8))
+        key = (product, int(total_units), int(inv0 // 25), int(turns_left // 8),
+               int(drain * 10))
         cached = self._cache.get(key)
         if cached is not None:
             return cached
@@ -397,8 +509,12 @@ class LiquidationGateway:
         tps = turns_left / float(stages)
         bucket = max(1, int(math.ceil(total_units / float(self.BUCKETS))))
         nq = int(math.ceil(total_units / float(bucket)))
-        inv_lo = max(1.0, inv0 - drain * tps * max(0, stages - 1))
-        span = int(inv0 + total_units - inv_lo) + total_units + 2
+        # drain > 0: town empties the book (later stages cheaper).
+        # drain < 0: opponent fills the book (later stages worse).
+        inv_min = inv0 - max(0.0, drain) * tps * max(0, stages - 1)
+        inv_max = inv0 + max(0.0, -drain) * tps * max(0, stages - 1) + total_units
+        inv_lo = max(1.0, inv_min)
+        span = int(inv_max - inv_lo) + total_units + 2
         span = max(2, min(span, 4000))
         C = [0.0] * (span + 1)
         acc = 0.0
@@ -587,12 +703,13 @@ class LaborAssigner:
 
 
 class Plan(object):
-    __slots__ = ("phase", "crop_mix", "animal_targets", "buy_land",
+    __slots__ = ("phase", "stance", "crop_mix", "animal_targets", "buy_land",
                  "target_hands", "price_hint", "capacity", "reserve",
                  "shadow_td", "action_value", "wheat_reserve")
 
     def __init__(self):
         self.phase = "BOOTSTRAP"
+        self.stance = "NEUTRAL"
         self.crop_mix = {}
         self.animal_targets = {}
         self.buy_land = False
@@ -638,8 +755,12 @@ class MPCRevenueEngine:
         return "BOOTSTRAP"
 
     def maybe_replan(self, st):
-        if st.turn - self._last < self.REPLAN_EVERY and self.plan.crop_mix:
-            self.plan.phase = self.phase_of(st.turn)
+        phase = self.phase_of(st.turn)
+        due = (st.turn - self._last >= self.REPLAN_EVERY
+               or not self.plan.crop_mix
+               or phase != self.plan.phase
+               or st.stance != self.plan.stance)
+        if not due:
             return self.plan
         self._last = st.turn
         try:
@@ -647,6 +768,8 @@ class MPCRevenueEngine:
         except Exception:
             if not self.plan.crop_mix:
                 self.plan.crop_mix = {"CARROT": max(1, st.usable_tiles)}
+            self.plan.phase = phase
+            self.plan.stance = st.stance
         return self.plan
 
     def _eligible(self, st, phase, days_left, shops_w):
@@ -669,19 +792,22 @@ class MPCRevenueEngine:
             allow.add("CARROT")
         if days_left >= 5:
             allow.add("WHEAT")
-        if days_left >= 12:
-            allow.add("MELON")
         if days_left >= 8:
             allow.add("EGG")
-        if phase == "COMPOUND" and days_left >= 14:
-            if shops_w.get("MILK", 0) >= 2:
-                allow.add("MILK")
-            if shops_w.get("WOOL", 0) >= 2:
-                allow.add("WOOL")
-            if shops_w.get("TOMATO", 0) >= 3 and days_left >= 13:
-                allow.add("TOMATO")
-            if shops_w.get("STRAWBERRY", 0) >= 3 and days_left >= 18:
-                allow.add("STRAWBERRY")
+        # LOCK: do not plant into a premium book we are already winning.
+        # CONTEST / NEUTRAL: take remaining capacity minus their day-0 pipeline.
+        if st.stance != "LOCK":
+            if days_left >= 12:
+                allow.add("MELON")
+            if phase == "COMPOUND" and days_left >= 14:
+                if shops_w.get("MILK", 0) >= 2:
+                    allow.add("MILK")
+                if shops_w.get("WOOL", 0) >= 2:
+                    allow.add("WOOL")
+                if shops_w.get("TOMATO", 0) >= 3 and days_left >= 13:
+                    allow.add("TOMATO")
+                if shops_w.get("STRAWBERRY", 0) >= 3 and days_left >= 18:
+                    allow.add("STRAWBERRY")
         return allow
 
     def _demand(self, st, mu, eligible, turns_to_gate):
@@ -698,8 +824,12 @@ class MPCRevenueEngine:
                 continue
             headroom = Econ.units_until(prod, inv, floor)
             regen = self.el.drain_rate.get(prod, 0.0) * turns_to_gate
-            opp = st.opp_pipeline.get(prod, 0)
+            opp = (st.opp_pipeline.get(prod, 0.0)
+                   + 0.5 * st.opp_imminent.get(prod, 0.0))
+            # Their standing field occupies the book from plant day 0.
             X = max(0.0, headroom + regen - opp)
+            if st.stance == "CONTEST" and prod in PREMIUM:
+                X *= 1.15
             units[prod] = X
             total += X * cost
         return total, units
@@ -707,6 +837,7 @@ class MPCRevenueEngine:
     def _replan(self, st):
         p = Plan()
         p.phase = self.phase_of(st.turn)
+        p.stance = st.stance
         days_left = max(0, DAYS - st.day)
         turns_to_gate = max(1, LIQUIDATION_TURN - st.turn)
         shops_w = TownDemand.shop_weight(st.shops)
@@ -728,6 +859,7 @@ class MPCRevenueEngine:
             p.target_hands = 6
             p.wheat_reserve = 0
             p.buy_land = False
+            p.stance = "NEUTRAL"
             for prod in PRODUCTS:
                 p.reserve[prod] = 0.55 * MARKET_PARAMS[prod]["base"]
                 p.capacity[prod] = 10 ** 6
@@ -897,10 +1029,19 @@ class State(object):
         self.n_animals = 0
         self.animals_alive = {"GOOSE": 0, "COW": 0, "SHEEP": 0}
         self.empty_structs = []
+        self.my_pipeline = {}
+        self.my_imminent = {}
         self.opp_pipeline = {}
+        self.opp_imminent = {}
+        self.opp_tiles_of = {}
+        self.my_nav = 0.0
+        self.opp_nav = 0.0
+        self.edge = 0.0
+        self.stance = "NEUTRAL"
         self.risk_lambda = 0.0
         self._scan_board()
-        self._opp_pipeline()
+        self._pipelines()
+        self.compute_nav()
 
     def _count_usable(self):
         n = 0
@@ -929,27 +1070,12 @@ class State(object):
                 elif tile.get("kind") in ("COOP", "PASTURE"):
                     self.empty_structs.append(((x, y), tile.get("kind")))
 
-    def _opp_pipeline(self):
-        """Units the opponent is about to drop into the shared book."""
-        pipe = {p: 0.0 for p in PRODUCTS}
-        for row in self.opp_tiles:
-            for t in row:
-                if not isinstance(t, dict):
-                    continue
-                if t.get("kind") == "PLANT":
-                    crop = t.get("crop")
-                    spec = CROPS.get(crop)
-                    if not spec:
-                        continue
-                    age = self.day - int(t.get("planted_day", self.day))
-                    if age >= spec["first"] - 2:
-                        pipe[crop] = pipe.get(crop, 0.0) + Econ.planned_units(crop)
-                elif t.get("animal") in ANIMALS:
-                    a = ANIMALS[t["animal"]]
-                    left = max(0, DAYS - self.day - a["first"])
-                    cycles = left // max(1, a["interval"])
-                    pipe[a["product"]] = pipe.get(a["product"], 0.0) + cycles * 1.5
-        self.opp_pipeline = pipe
+    def _pipelines(self):
+        """Day-0 occupancy of both public farms. Opponent shed is hidden, so
+        their field pipeline is a lower bound on what they will sell."""
+        self.my_pipeline, self.my_imminent, _mine = scan_pipeline(self.tiles, self.day)
+        self.opp_pipeline, self.opp_imminent, self.opp_tiles_of = scan_pipeline(
+            self.opp_tiles, self.day)
 
     def tile_at(self, x, y):
         try:
@@ -967,15 +1093,38 @@ class State(object):
             n += int(inv.get("WHEAT", 0) or 0)
         return n
 
-    def compute_risk(self):
-        if self.turn < 400:
+    def compute_nav(self):
+        """Liquidatable NAV on both sides. Opponent shed is invisible, so
+        their number is a lower bound (cash + public field). That is enough
+        to lock a real lead and to contest a real deficit.
+
+        stance:
+          LOCK    — ahead enough that extra premium variance can flip a win
+          CONTEST — behind; take remaining book before they do
+          NEUTRAL — race the capacity forecast
+        """
+        shed_val = 0.0
+        for p in PRODUCTS:
+            n = int(self.shed.get(p, 0) or 0)
+            if n:
+                shed_val += Econ.marginal_revenue(p, self.inventory.get(p, MARKET_I0), n)
+        my_field = pipeline_mark(self.my_pipeline, self.inventory)
+        opp_field = pipeline_mark(self.opp_pipeline, self.inventory)
+        self.my_nav = self.money + shed_val + my_field
+        self.opp_nav = self.opp_money + opp_field
+        self.edge = self.my_nav - self.opp_nav
+        if self.turn < 240:
+            self.stance = "NEUTRAL"
             self.risk_lambda = 0.0
             return
-        mine = self.money
-        for p in PRODUCTS:
-            mine += self.shed.get(p, 0) * Econ.price(p, self.inventory.get(p, MARKET_I0))
-        edge = mine - self.opp_money
-        self.risk_lambda = max(-0.6, min(0.6, edge / 25000.0))
+        scale = max(8000.0, 0.18 * max(self.opp_nav, self.my_nav, 1.0))
+        if self.edge > scale:
+            self.stance = "LOCK"
+        elif self.edge < -0.70 * scale:
+            self.stance = "CONTEST"
+        else:
+            self.stance = "NEUTRAL"
+        self.risk_lambda = max(-0.6, min(0.6, self.edge / 25000.0))
 
 
 def _age(st, tile):
@@ -1163,7 +1312,6 @@ class KaggricultureAgent(object):
         self.last_turn = st.turn
         self.calib.observe(st.farmer)
         self.el.observe(st.inventory, st.prices, self.last_sales, st.shops)
-        st.compute_risk()
         self.gate.arm(st.turn)
         plan = self.mpc.maybe_replan(st)
 
@@ -1323,27 +1471,33 @@ class KaggricultureAgent(object):
             inv = st.inventory.get(prod, MARKET_I0)
             drain = self.el.drain_rate.get(prod, 0.0)
             if self.gate.armed:
-                n = self.gate.units_this_turn(prod, held, inv, drain, st.turn)
+                n = self.gate.units_this_turn(
+                    prod, held, inv, drain, st.turn,
+                    opp_remain=st.opp_pipeline.get(prod, 0.0),
+                    opp_imminent=st.opp_imminent.get(prod, 0.0))
             else:
                 floor = plan.reserve.get(prod, 1.0)
-                if st.opp_pipeline.get(prod, 0) > 0 and MARKET_PARAMS[prod]["base"] >= 100:
+                if st.opp_pipeline.get(prod, 0) > 0 and prod in PREMIUM:
                     floor *= 0.88
-                if st.risk_lambda > 0.25 and MARKET_PARAMS[prod]["base"] >= 100:
-                    floor *= 1.05
-                if st.risk_lambda < -0.25 and MARKET_PARAMS[prod]["base"] >= 100:
-                    floor *= 0.80
-                if cash_tight and prod in ("CARROT", "EGG", "WHEAT", "TOMATO", "FERTILIZER"):
+                if st.stance == "LOCK" and prod in PREMIUM:
+                    floor *= 1.08
+                elif st.stance == "CONTEST" and prod in PREMIUM:
+                    floor *= 0.78
+                if cash_tight and prod in STAPLES:
                     floor = min(floor, 0.35 * MARKET_PARAMS[prod]["base"])
                 sellable = Econ.units_until(prod, inv, max(1.0, floor))
                 turns_to_gate = max(1, LIQUIDATION_TURN - st.turn)
                 rate = max(drain, held / float(turns_to_gate), 1.0)
-                # Staples: convert inventory to cash every turn. Premium: drip.
-                if prod in ("CARROT", "EGG", "WHEAT", "FERTILIZER"):
+                if prod in STAPLES:
                     n = int(min(held, max(sellable, held if cash_tight else 0), 40))
                     if n == 0:
                         n = int(min(held, sellable))
                 else:
                     n = int(min(held, sellable, math.ceil(rate * 2.0)))
+                    # Beat their harvest onto the book: if they are 0-2 days
+                    # from dumping this premium, sell our lot first.
+                    if st.opp_imminent.get(prod, 0) > 0:
+                        n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
             if n > 0:
@@ -1392,6 +1546,8 @@ class KaggricultureAgent(object):
             need = target - alive - in_shed
             cost = ANIMAL_COST[animal]
             if need <= 0 or days_left <= ANIMALS[animal]["first"] + 2:
+                continue
+            if st.stance == "LOCK" and animal != "GOOSE":
                 continue
             bought = 0
             while need > 0 and bought < (3 if animal == "GOOSE" else 1):

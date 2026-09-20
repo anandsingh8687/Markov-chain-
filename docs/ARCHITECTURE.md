@@ -123,3 +123,25 @@ refuses to convert it to land and more geese. Cloud episodes that scored
 
 Buy order is hire → feed wheat → land → geese → seeds, which is the
 capital-velocity order, not the unit-price order.
+
+## 7. Dual NAV, day-0 occupancy, contested liquidation
+
+Exact Bellman / Nash / 720-turn MILP is infeasible under the 1s
+`actTimeout`. The feasible global policy is the KKT forecast plus three
+state-contingent forecasts that a peer copying the same water-fill must lose
+to:
+
+1. **Both NAVs.** `my_nav = bank + shed execution + my field pipeline`.
+   `opp_nav = their bank + their public field` (shed hidden ⇒ lower bound).
+   `LOCK` when the edge clears ~18% of NAV: stop planting premium.
+   `CONTEST` when behind: take remaining book and front-load premium sales.
+2. **Opponent book occupancy from plant day 0.** A 20-tile melon field
+   planted on day 0 is 120 units of future supply, not "invisible until
+   first_yield − 2". Capacity is `headroom + town drain − that pipeline`.
+3. **Liquidation vs their dump.** Town drain makes later stages cheaper;
+   opponent supply does the opposite. Imminent premium units are added to
+   inventory now; remaining opponent units arrive as negative drain. If they
+   are 0–2 days from harvest we sell first so we are not second into $1.
+
+Phase changes force a replan so a carrot BOOTSTRAP mix cannot linger into
+EXPAND.
