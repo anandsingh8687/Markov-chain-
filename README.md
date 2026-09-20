@@ -32,9 +32,9 @@ Full reasoning, the measured numbers, and the engine facts the plan depends on:
 
 | Match | Episodes | Result |
 | --- | --- | --- |
-| vs. built-in `starter` | 16 | **16-0**, ~$65k vs ~$3.4k |
-| vs. `benchmark/incumbent` (PR #1), seeds 1-8 | 16 | **16-0**, mean $67,527 vs ~$11k |
-| vs. `benchmark/incumbent`, seeds 11-18 (held out) | 16 | **16-0**, mean $61,624 |
+| vs. built-in `starter` | 16 | **16-0**, ~$62k vs ~$3.5k |
+| vs. `benchmark/incumbent` (PR #1), seeds 1-8 | 16 | **16-0**, mean $74,773 vs ~$11k |
+| vs. `benchmark/incumbent`, seeds 11-18 (held out) | 16 | **16-0**, mean $70,052 |
 
 For reference, the previous `main.py` in this repository won 31% against that
 same incumbent, with both sides finishing between $9k and $13k.

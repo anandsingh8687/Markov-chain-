@@ -137,6 +137,14 @@ to its last $50, could not afford wheat, and watched the herd starve; it scored
 17k where the same code with a runway scored 62k. Cash starvation kills a farm
 faster than any market move.
 
+**The herd needs dedicated hands.** Feed, care and harvest are 2.5 actions per
+animal per day, every day, and a missed feed is unrecoverable, so the first
+`ceil(herd / 3.5)` units are reserved for animal duty and pick up wheat on the
+way out of the shed each morning. That ratio is not cosmetic: at one rancher
+per 5.5 animals the herd is serviced late and the mean drops from $74,773 to
+$67,527, the worst episode from $58,063 to $46,708. Confirmed on eight seeds
+the ratio was not tuned on ($70,052 vs $61,624).
+
 **Stock and structures are gated on each other.** `BUY_ANIMAL` drops the animal
 in the shed; it needs a matching empty structure, a worker to carry it and a
 `PLACE`. Agents that buy first strand livestock — the previous `main.py` ended
@@ -181,13 +189,16 @@ mode (the agent's own exception guard disabled so nothing is hidden):
 
 | Match | Episodes | Result |
 | --- | --- | --- |
-| This agent vs. built-in `starter` | 16 | **16-0**, ~$65k vs ~$3.4k |
-| This agent vs. PR #1 incumbent, seeds 1-8 | 16 | **16-0**, mean $67,527 vs ~$11k |
-| This agent vs. PR #1 incumbent, seeds 11-18 (held out) | 16 | **16-0**, mean $61,624 |
+| This agent vs. built-in `starter` | 16 | **16-0**, ~$62k vs ~$3.5k |
+| This agent vs. PR #1 incumbent, seeds 1-8 | 16 | **16-0**, mean $74,773 vs ~$11k |
+| This agent vs. PR #1 incumbent, seeds 11-18 (held out) | 16 | **16-0**, mean $70,052 |
 | Previous `main.py` vs. PR #1 incumbent | 16 | 31% win rate (both $9-13k) |
 
-Worst single episode against the incumbent across those 32: $36,729 — still
-three times the incumbent's best.
+Worst single episode against the incumbent across those 32: $42,504 — still
+close to four times the incumbent's best. The agent also completes a season
+under non-default `episodeSteps`, `turnsPerDay`, `boardSize`, `shedCapacity`
+and `maxMarketOrdersPerTurn`, all of which it reads from the runner rather
+than assuming.
 
 The jump is not tuning. It comes from reading the market as a sink rather than
 a ceiling, and from actually staffing and feeding the farm that conclusion
@@ -211,6 +222,16 @@ sides swapped, against the incumbent.
   *lost* 16% ($48,070 vs $57,556). A search result is conditional on its
   opponent and its seed set; confirm on held-out seeds before changing a
   default.
+* **A short-cycle opening.** The plan commits 23 tiles to melon for ten days
+  with no cash flow, which delays the first livestock; restricting the opening
+  board to crops that turn over in under a week should fund the herd sooner.
+  Measured: $63,173 at four days and $57,182 at eight, against $67,527 for
+  leaving it alone. Melon's opening capital event is larger than the ramp it
+  costs. Kept as `OPEN_FAST`, pinned at 0.
+* **Relaxing the herd cap.** At `OVERSUPPLY = 2.2` the mean falls to $51,123
+  and the worst episode to $29,455 — milk and wool above `I0` sit on
+  `linear 1.6` and `sq 3.2`, and the collapse is as steep as the table says.
+  Tightening it to 1.0 also loses ($66,645), so the cap is close to right.
 * **Trimming the wheat feed buffer and the carry-drop threshold** to relieve
   the 100-item shed cap. All variants landed within ±2% of base — inside the
   noise at this sample size. The shed is near its cap in the late game, but the

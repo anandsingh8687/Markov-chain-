@@ -81,19 +81,26 @@ MP = {
 }
 I0 = 10000
 HINGE_GAIN = 8.0
-LAST_STEP = 718
-SHED_CAP = 100
+SHED_CAP = 100          # defaults; overridden from the runner configuration
 MAXORD = 10
 LAND_PRICES = [1000, 2000, 4000]
 FIBCUM = [0, 1, 2, 4, 7, 12, 20, 33, 54, 88, 143, 232, 376, 609, 986, 1596, 2583]
 
 # ---------------------------------------------------------------- tunables
 _P = {
+    # labour
     "MAX_HANDS": 14, "HIRE_FRAC": 0.16, "HIRE_OFF": 0, "HIRE_WINDOW": 2,
-    "SELL_SLOTS": 9, "MOVE": 1.85, "ACT_CROP": 1.15, "ACT_ANIMAL": 2.9,
-    "PER_RANCHER": 5.5, "CARRY_DROP": 11, "RUNWAY": 4.0, "OVERSUPPLY": 1.35,
-    "BUY_RATE": 4, "LAND_OPEN": 8, "LAND_LABOR": 1.0, "ANIM_MARGIN": 1.0,
-    "WEED_W": 6.0, "PLACE_FIX": 1, "FERT_USE": 1, "WHEAT_BUF": 2.4, "DISC": 0.0,
+    "ACT_CROP": 1.15, "ACT_ANIMAL": 2.9, "MOVE": 1.85, "PER_RANCHER": 3.5,
+    # money
+    "RUNWAY": 4.0, "BUY_RATE": 4, "LAND_OPEN": 8, "LAND_LABOR": 1.0,
+    # allocation
+    "OVERSUPPLY": 1.35, "ANIM_MARGIN": 1.0, "WEED_W": 6.0,
+    # logistics
+    "SELL_SLOTS": 9, "CARRY_DROP": 11, "WHEAT_BUF": 2.4,
+    "PLACE_FIX": 1, "FERT_USE": 1,
+    # measured and rejected; kept so they are not re-tried (docs section 7)
+    "DISC": 0.0,            # discount the allocator to the payoff date
+    "OPEN_FAST": 0, "OPEN_TD": 6,   # short-cycle-only opening
 }
 _STRICT = False
 try:                                # cloud tooling only; both unset on Kaggle
@@ -125,6 +132,17 @@ def price_at(item, inv):
     if inv < I0:
         return max(1.0, base + (bt * base / _shape(bf, T, T)) * _shape(bf, I0 - inv, T))
     return max(1.0, base - (at * base / _shape(af, T, T)) * _shape(af, inv - I0, T))
+
+
+def _cfg(config, key, default):
+    """Read a configuration value from the Struct/dict the runner passes."""
+    if config is None:
+        return default
+    try:
+        v = config[key]
+    except Exception:
+        v = getattr(config, key, None)
+    return default if v is None else v
 
 
 def _d(a, b):
@@ -186,8 +204,19 @@ def drain_rates(shops):
     return r
 
 
-def _decide(obs):
+def _decide(obs, config=None):
     P = _P
+    # Everything dimensional is read from the runner's configuration rather
+    # than assumed, so a non-default horizon, day length, shed or order cap
+    # does not silently mis-arm the liquidation gateway.
+    tpd = max(1, int(_cfg(config, "turnsPerDay", 24)))
+    total = max(2, int(_cfg(config, "episodeSteps", 720)))
+    # The interpreter sets DONE at `step >= episodeSteps - 2`, so this is the
+    # last step on which an action is ever applied -- and the end-of-day after
+    # it never runs, so anything still carried then is forfeited.
+    last_step = total - 2
+    shed_cap = int(_cfg(config, "shedCapacity", SHED_CAP))
+    maxord = max(1, int(_cfg(config, "maxMarketOrdersPerTurn", MAXORD)))
     me = obs["player"]
     farm = obs["farms"][me]
     priv = obs["private"]
@@ -196,10 +225,13 @@ def _decide(obs):
     hf = n // 2
     shed_tiles = [(hf - 1, hf - 1), (hf, hf - 1), (hf - 1, hf), (hf, hf)]
     day, hour = obs["day"], obs["hour"]
-    step = day * 24 + hour
-    left = max(0, LAST_STEP - step)
-    days_left = left / 24.0
-    final_day = left <= 23
+    try:
+        step = int(obs["step"])
+    except Exception:
+        step = day * tpd + hour
+    left = max(0, last_step - step)
+    days_left = left / float(tpd)
+    final_day = left <= tpd - 1
     money = farm["money"]
     shed = dict(priv["shed"])
     mkt = dict(obs["market"]["inventory"])
@@ -273,6 +305,11 @@ def _decide(obs):
         """Marginal revenue per tile-day of committing one more tile to c."""
         first, yld, td = PLAN[c]
         if td + 0.4 > days_left:
+            return None
+        if day < P["OPEN_FAST"] and td > P["OPEN_TD"]:
+            # Optional fast opening: while capital is the binding constraint,
+            # restrict the board to short-cycle crops so livestock can be
+            # funded sooner.
             return None
         px = price_at(c, mkt[c] + pipe[c] + add[c] + yld * 0.5 - drain[c] * left)
         # Discount to the payoff date. Early capital compounds into livestock,
@@ -541,7 +578,7 @@ def _decide(obs):
         sellable.append((q * spot.get(it, 1), it, q))
     sellable.sort(reverse=True)
     for _, it, q in sellable[:P["SELL_SLOTS"]]:
-        if len(orders) < MAXORD:
+        if len(orders) < maxord:
             orders.append(["SELL", it, q])
 
     own_kind = {}
@@ -559,7 +596,7 @@ def _decide(obs):
     done_today = int(farm.get("hires_today", 0) or 0)
     if hour <= P["HIRE_WINDOW"] and not final_day and days_left > 1.2:
         for _ in range(max(0, hire_target - done_today)):
-            if len(orders) < MAXORD:
+            if len(orders) < maxord:
                 orders.append(["HIRE"])
         cash -= max(0.0, FIBCUM[hire_target] - FIBCUM[min(done_today, P["MAX_HANDS"])])
 
@@ -571,17 +608,17 @@ def _decide(obs):
     shed_used = sum(shed.values())
     if not final_day and days_left > 1.5:
         # (1) feed -- never optional
-        if n_animals > 0 and len(orders) < MAXORD:
+        if n_animals > 0 and len(orders) < maxord:
             have = shed.get("WHEAT", 0) + carried.get("WHEAT", 0)
             want = int(n_animals * P["WHEAT_BUF"] + 5) - have
-            buy = min(want, SHED_CAP - shed_used - 4,
+            buy = min(want, shed_cap - shed_used - 4,
                       int(max(0.0, cash - 40) // max(1.0, wheat_buy)), 50)
             if buy > 0:
                 orders.append(["BUY_PRODUCT", "WHEAT", buy])
                 cash -= wheat_buy * buy
                 shed_used += buy
         # (2) seed the free tiles
-        if best_crop and len(orders) < MAXORD:
+        if best_crop and len(orders) < maxord:
             free = len(empties) + len(weeds)
             cst = CROPS[best_crop]["seed"]
             want_n = min(free + 6, 40) - seeds.get(best_crop, 0)
@@ -593,7 +630,7 @@ def _decide(obs):
         # (3) land -- only once the farm is saturated and we can staff the
         #     extra 25 tiles; an idle tile just breeds weeds.
         nx = len(farm["unlocked_quadrants"]) - 1
-        if (nx < 3 and len(orders) < MAXORD and days_left > 6
+        if (nx < 3 and len(orders) < maxord and days_left > 6
                 and open_tiles <= P["LAND_OPEN"]):
             cost = LAND_PRICES[nx]
             staff = FIBCUM[min(P["MAX_HANDS"],
@@ -604,7 +641,7 @@ def _decide(obs):
                 invest -= cost
         # (4) livestock -- gated on a free structure, on labour, on feed and on
         #     the town's own draw for the product.
-        if want_animal and len(orders) < MAXORD:
+        if want_animal and len(orders) < maxord:
             qd = dict((a, shed.get(a, 0) + carried.get(a, 0)) for a in ANIMALS)
             qtot = sum(qd.values())
             cap_labor = int(((nu + max(hire_target, 1)) * 23
@@ -620,14 +657,14 @@ def _decide(obs):
                        len(structs) + len(empties) - qtot)
             cst = ANIMALS[a]["cost"]
             wantn = min(int(invest // cst), max(0, room), P["BUY_RATE"])
-            if wantn > 0 and shed_used + wantn <= SHED_CAP - 6:
+            if wantn > 0 and shed_used + wantn <= shed_cap - 6:
                 orders.append(["BUY_ANIMAL", a, wantn])
                 cash -= cst * wantn
                 shed_used += wantn
 
     return {"farmer": acts[0] if acts else ["PASS"],
             "hands": [a if a else ["PASS"] for a in acts[1:]],
-            "market": orders[:MAXORD]}
+            "market": orders[:maxord]}
 
 
 def _safe_action(obs):
@@ -650,8 +687,8 @@ def agent(obs, config=None):
     # in the module namespace, so a helper defined below here would silently
     # become the submitted agent.
     if _STRICT:                     # verification: never hide a planner bug
-        return _decide(obs)
+        return _decide(obs, config)
     try:
-        return _decide(obs)
+        return _decide(obs, config)
     except Exception:
         return _safe_action(obs)
