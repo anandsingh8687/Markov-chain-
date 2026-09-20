@@ -859,7 +859,11 @@ class MPCRevenueEngine:
             candidates.append("EGG")
         if days_left >= 12:
             candidates.append("MELON")
-        if phase == "COMPOUND" and days_left >= 14:
+        # Milk/wool only after the goose herd is actually placed and fed.
+        # Otherwise KKT opens pastures and the board fills with empty sheds.
+        herd_ready = (st.animals_alive.get("GOOSE", 0) >= 8
+                      and st.n_coops <= st.animals_alive.get("GOOSE", 0) + 2)
+        if phase == "COMPOUND" and days_left >= 14 and herd_ready:
             if shops_w.get("MILK", 0) >= 2:
                 candidates.append("MILK")
             if shops_w.get("WOOL", 0) >= 2:
@@ -1002,7 +1006,7 @@ class MPCRevenueEngine:
         # EXPAND must stand up geese even if the water-fill rounded to zero
         # tiles — that is the only unbounded asset on the book.
         if p.phase in ("EXPAND", "COMPOUND") and days_left >= 10:
-            floor_geese = min(16, max(6, st.usable_tiles // 3))
+            floor_geese = min(12, max(6, st.usable_tiles // 3))
             p.animal_targets["GOOSE"] = max(p.animal_targets.get("GOOSE", 0), floor_geese)
             if "MELON" in eligible and not product_contested(st, "MELON"):
                 p.crop_mix["MELON"] = max(p.crop_mix.get("MELON", 0),
@@ -1125,6 +1129,8 @@ class State(object):
         self.n_animals = 0
         self.animals_alive = {"GOOSE": 0, "COW": 0, "SHEEP": 0}
         self.empty_structs = []
+        self.n_coops = 0
+        self.n_pastures = 0
         self.my_pipeline = {}
         self.my_imminent = {}
         self.opp_pipeline = {}
@@ -1160,13 +1166,19 @@ class State(object):
             for x, tile in enumerate(row):
                 if not isinstance(tile, dict):
                     continue
-                if "animal" in tile:
-                    a = tile.get("animal")
-                    if a in self.animals_alive:
-                        self.animals_alive[a] += 1
-                        self.n_animals += 1
-                elif tile.get("kind") in ("COOP", "PASTURE"):
-                    self.empty_structs.append(((x, y), tile.get("kind")))
+                kind = tile.get("kind")
+                animal = tile.get("animal")
+                if animal in self.animals_alive:
+                    self.animals_alive[animal] += 1
+                    self.n_animals += 1
+                if animal == "GOOSE" or kind == "COOP":
+                    self.n_coops += 1
+                    if animal not in ANIMALS:
+                        self.empty_structs.append(((x, y), "COOP"))
+                elif animal in ("COW", "SHEEP") or kind == "PASTURE":
+                    self.n_pastures += 1
+                    if animal not in ANIMALS:
+                        self.empty_structs.append(((x, y), "PASTURE"))
 
     def _pipelines(self):
         """Day-0 occupancy of both public farms. Opponent shed is hidden, so
@@ -1343,13 +1355,17 @@ def build_tasks(st, plan):
     # dies on a 25-tile board. Reserve empties for missing coops/pastures,
     # then plant the rest. Never plant on hour 22+: consecutive_unwatered
     # starts at 1 and EOD makes a weed if nobody waters the same turn.
-    need_coops = max(0, plan.animal_targets.get("GOOSE", 0) - st.animals_alive["GOOSE"])
-    need_past = max(0, (plan.animal_targets.get("COW", 0) + plan.animal_targets.get("SHEEP", 0)
-                        - st.animals_alive["COW"] - st.animals_alive["SHEEP"]))
-    have_c = sum(1 for _, k in st.empty_structs if k == "COOP")
-    have_p = sum(1 for _, k in st.empty_structs if k == "PASTURE")
-    reserve_n = max(0, need_coops - have_c) + max(0, need_past - have_p)
-    reserve_n = min(reserve_n, len(empties))
+    # Cap on TOTAL structures (empty + occupied). have_c lags while workers
+    # walk, so reserving `target - alive` every turn paved 47 empty coops.
+    target_g = int(plan.animal_targets.get("GOOSE", 0) or 0)
+    target_p = int(plan.animal_targets.get("COW", 0) or 0) + int(
+        plan.animal_targets.get("SHEEP", 0) or 0)
+    need_coops = max(0, min(target_g - st.animals_alive["GOOSE"], target_g - st.n_coops))
+    need_past = max(0, min(target_p - st.animals_alive["COW"] - st.animals_alive["SHEEP"],
+                           target_p - st.n_pastures))
+    need_coops = min(need_coops, 2)
+    need_past = min(need_past, 1)
+    reserve_n = min(need_coops + need_past, len(empties))
     plant_empties = empties[:max(0, len(empties) - reserve_n)]
     build_empties = empties[len(plant_empties):]
 
@@ -1380,11 +1396,11 @@ def build_tasks(st, plan):
                  "value": max(1.0, net)})
 
     bi = 0
-    for _ in range(min(max(0, need_coops - have_c), len(build_empties))):
+    for _ in range(min(max(0, need_coops), len(build_empties))):
         add({"pos": build_empties[bi], "op": ["BUILD_COOP"], "kind": "BUILD",
              "value": 500 + 0.6 * plan.price_hint.get("EGG", 50) * max(1, days_left - 4)})
         bi += 1
-    for _ in range(min(max(0, need_past - have_p), max(0, len(build_empties) - bi))):
+    for _ in range(min(max(0, need_past), max(0, len(build_empties) - bi))):
         add({"pos": build_empties[bi], "op": ["BUILD_PASTURE"], "kind": "BUILD",
              "value": 0.4 * plan.price_hint.get("MILK", 160) * max(1, days_left - 8)})
         bi += 1
@@ -1671,8 +1687,23 @@ class KaggricultureAgent(object):
                 continue
             if st.stance == "LOCK" and animal != "GOOSE":
                 continue
+            if animal != "GOOSE" and (st.animals_alive.get("GOOSE", 0) < 8
+                                      or len(st.quadrants) < 3):
+                continue
+            # Do not buy a head we cannot house or feed this turn.
+            want = ANIMAL_STRUCTURE[animal]
+            housed = st.n_coops if animal == "GOOSE" else st.n_pastures
+            empty_for = sum(1 for _, k in st.empty_structs if k == want)
+            if empty_for <= 0 and housed >= target:
+                continue
+            if st.wheat_held() < 2 * (st.n_animals + in_shed + 1):
+                continue
+            if (st.next_land_cost is not None and alive >= 6
+                    and budget < st.next_land_cost + 400):
+                break
             bought = 0
-            while need > 0 and bought < (3 if animal == "GOOSE" else 1):
+            cap = 1 if st.wheat_held() < 4 * (st.n_animals + 1) else (2 if animal == "GOOSE" else 1)
+            while need > 0 and bought < cap:
                 if budget < cost + 200:
                     break
                 budget = _spend(["BUY_ANIMAL", animal, 1], cost)

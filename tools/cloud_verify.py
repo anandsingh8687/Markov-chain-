@@ -72,31 +72,44 @@ def check_import(root):
     return main
 
 
+def _tile_census(env, player=0):
+    last = env.steps[-1]
+    obs = (last[0] or {}).get("observation") or {}
+    farms = obs.get("farms") or []
+    me = farms[player] if player < len(farms) else {}
+    tiles = me.get("tiles") or []
+    kinds = {}
+    animals = {}
+    locked = empty = 0
+    for row in tiles:
+        for t in row:
+            if t == "LOCKED":
+                locked += 1
+                continue
+            if t is None:
+                empty += 1
+                continue
+            if isinstance(t, dict):
+                if t.get("animal"):
+                    animals[t["animal"]] = animals.get(t["animal"], 0) + 1
+                else:
+                    k = t.get("crop") or t.get("kind") or "?"
+                    kinds[k] = kinds.get(k, 0) + 1
+    return me, kinds, animals, empty, locked
+
+
+def _empty_struct_count(env, player=0):
+    try:
+        _me, kinds, _animals, _empty, _locked = _tile_census(env, player)
+        return int(kinds.get("COOP", 0) or 0) + int(kinds.get("PASTURE", 0) or 0)
+    except Exception:
+        return 0
+
+
 def farm_telemetry(env, label="p0"):
     """End-of-episode public farm snapshot. Cloud-only diagnosis of ramp collapse."""
     try:
-        last = env.steps[-1]
-        obs = (last[0] or {}).get("observation") or {}
-        farms = obs.get("farms") or []
-        me = farms[0] if farms else {}
-        tiles = me.get("tiles") or []
-        kinds = {}
-        animals = {}
-        locked = empty = 0
-        for row in tiles:
-            for t in row:
-                if t == "LOCKED":
-                    locked += 1
-                    continue
-                if t is None:
-                    empty += 1
-                    continue
-                if isinstance(t, dict):
-                    if t.get("animal"):
-                        animals[t["animal"]] = animals.get(t["animal"], 0) + 1
-                    else:
-                        k = t.get("crop") or t.get("kind") or "?"
-                        kinds[k] = kinds.get(k, 0) + 1
+        me, kinds, animals, empty, locked = _tile_census(env, 0)
         print("      telemetry {} money={} quads={} animals={} crops={} empty={} locked={}".format(
             label, me.get("money"), me.get("unlocked_quadrants"),
             animals, kinds, empty, locked))
@@ -279,8 +292,9 @@ def check_strength(root, games, opponent, report_path):
     wins = tie = loss = 0
     margins = []
     # A win at 6.6k is a ramp collapse: we parked on the opponent's book.
-    # Global-optima structure must print a real farm, not a carrot stalemate.
-    min_farm = 8500.0 if opponent == "carrot_scaler" else 8000.0
+    # 38+ empty coops is the next collapse: we built sheds faster than we fed.
+    min_farm = 15000.0 if opponent == "carrot_scaler" else 12000.0
+    max_empty_structs = 16
     for g in range(games):
         seed = 9000 + g * 17
         rewards, statuses, wall, env = run_episode([path, opp], seed=seed)
@@ -303,6 +317,11 @@ def check_strength(root, games, opponent, report_path):
             fail("ramp collapse vs {} seed {}: score {:.0f} < {:.0f}. "
                  "We won or lost with a farm that never left the opponent's book."
                  .format(opponent, seed, mine, min_farm))
+        empty_structs = _empty_struct_count(env)
+        if empty_structs > max_empty_structs:
+            fail("structure explosion vs {} seed {}: {} empty COOP/PASTURE (max {}). "
+                 "Workers reserved every empty tile for sheds while geese starved."
+                 .format(opponent, seed, empty_structs, max_empty_structs))
     rate = (wins + 0.5 * tie) / float(max(1, games))
     med = statistics.median(margins) if margins else 0.0
     print("      score rate vs {}: {:.0%}  (W{} T{} L{})  median margin {:+.0f}".format(

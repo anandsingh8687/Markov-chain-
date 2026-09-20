@@ -161,3 +161,8 @@ against a weak bot:
 - The market cap is 10 orders. A long sell tape must not drop
   hire / feed-wheat / land / goose. Sells still go first so the engine
   has cash; buys keep reserved slots.
+- Structure count is `empty + occupied`, and at most 2 new coops per
+  turn. Reserving `target − alive` every turn while workers walk paved
+  47 empty coops on the first flow-occupancy revision. A goose is not
+  bought unless there is wheat and a house. Milk/wool stay closed
+  until 8 geese are actually on the board.
