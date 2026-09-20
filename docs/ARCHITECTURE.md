@@ -161,9 +161,11 @@ against a weak bot:
 - The market cap is 10 orders. A long sell tape must not drop
   hire / feed-wheat / land / goose. Sells still go first so the engine
   has cash; buys keep reserved slots.
-- Structure count is `empty + occupied`, and at most 2 new coops per
-  turn. Eggs absorb, so unconstrained KKT wants every tile as a goose;
-  the labour/feed dual caps the herd at `min(14, tiles/3)`. Cloud
-  `33abe95` still printed 41 empty coops at 2/turn because the target
-  floated to 40+. A goose is not bought unless there is wheat and a
-  house. Milk/wool stay closed until 8 geese are actually on the board.
+- Structure count is `empty + occupied`, at most 2 new coops per turn.
+  Eggs absorb, so unconstrained KKT wants every tile as a goose. The
+  binding dual is **labour**: `min(10, workers−2, tiles/4)`. Cloud
+  `3a431ff` bought all four quadrants, stood up 14 geese, and printed
+  37 weeds / 4k coins. Land is bought only when hands can walk it
+  (4 / 8 / 10 for NE / SW / SE) and the board is not weedy. New plants
+  are capped at leftover workers and only before hour 14 so they can
+  be watered the same day.
