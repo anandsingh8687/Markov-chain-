@@ -36,9 +36,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 EVAL = os.path.join(HERE, "_eval_params.py")
 
 GRID = [
-    ("PLACE_FIX", [0, 1]),
-    ("FERT_USE", [0, 1]),
-    ("SELL_SLOTS", [4, 6, 9]),
+    ("HIRE_WINDOW", [0, 1, 2, 3]),
+    ("WHEAT_BUF", [1.2, 1.8, 2.4, 3.0]),
+    ("DISC", [0.0, 0.05, 0.10]),
     ("HIRE_FRAC", [0.10, 0.16, 0.22, 0.32]),
     ("MAX_HANDS", [11, 12, 13, 14, 15]),
     ("HIRE_OFF", [0, 1, 2]),
@@ -54,6 +54,9 @@ GRID = [
     ("WEED_W", [3.0, 6.0, 7.5, 11.0]),
     ("ANIM_MARGIN", [0.6, 1.0, 1.5]),
     ("LAND_LABOR", [0.4, 1.0, 2.0]),
+    ("PLACE_FIX", [0, 1]),
+    ("FERT_USE", [0, 1]),
+    ("SELL_SLOTS", [4, 6, 9]),
 ]
 
 

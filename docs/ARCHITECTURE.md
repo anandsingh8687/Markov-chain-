@@ -107,9 +107,29 @@ These are not tuning. Each one was added after an agent that ignored it
 collapsed in a traced episode.
 
 **Labour is funded before capital.** A hand costs `fib(n)` per day and returns
-23 actions; ten hands cost $143/day total. It is by far the cheapest capacity
-in the game, and an under-staffed farm turns into weeds — a traced run had 45
-weed tiles, 45% of the board idle, while sitting on $20k.
+23 actions; ten hands cost $143/day *in total*. It is by far the cheapest
+capacity in the game, and an under-staffed farm turns into weeds — not the
+0.5%/tile/day spawn, but plants dying after two dry end-of-days, which costs
+the seed and the whole cycle.
+
+There is a trap here worth naming, because it hid the problem for several
+iterations. **Only ten market orders clear per turn** (`maxMarketOrdersPerTurn`),
+and `HIRE` is a market order competing with every `SELL`. Issuing the day's
+hires at hour 0 behind eight or nine sell orders silently capped the farm at
+five to eight hands when eleven to fourteen were warranted — the agent was
+*paying* for labour it never received, and the cash test that looked like the
+constraint was never the binding one. `SELL` can wait for any of the day's
+other 23 turns; `HIRE` cannot, because a hand not bought in the morning is 23
+actions gone. Spreading hires across the first three turns of the day:
+
+| | mean | worst episode | mid-game weed tiles |
+| --- | --- | --- | --- |
+| hires at hour 0 only | $57,556 | $31,233 | ~40 |
+| hires over hours 0-2 | **$67,527** | **$46,708** | **1-5** |
+
+Same measurement on eight seeds the change was not tuned on: $56,395 ->
+$61,624. That single ordering fix is worth more than every other parameter in
+the agent combined.
 
 **Capital is only spent above an operating runway.** Two consecutive missed
 feeds and an animal is gone permanently. An early version bought livestock down
@@ -159,12 +179,39 @@ Read off the interpreter, several of which contradict the natural reading:
 Cloud runs, `kaggle-environments==1.32.7`, 720 turns, sides swapped, strict
 mode (the agent's own exception guard disabled so nothing is hidden):
 
-| Match | Result |
-| --- | --- |
-| This agent vs. built-in `starter` | 100%, ~$65k vs ~$3.4k |
-| This agent vs. PR #1 incumbent | see `benchmark/`; ~$62-89k vs ~$10-12k |
-| Previous `main.py` vs. PR #1 incumbent | 31% win rate (both $9-13k) |
+| Match | Episodes | Result |
+| --- | --- | --- |
+| This agent vs. built-in `starter` | 16 | **16-0**, ~$65k vs ~$3.4k |
+| This agent vs. PR #1 incumbent, seeds 1-8 | 16 | **16-0**, mean $67,527 vs ~$11k |
+| This agent vs. PR #1 incumbent, seeds 11-18 (held out) | 16 | **16-0**, mean $61,624 |
+| Previous `main.py` vs. PR #1 incumbent | 16 | 31% win rate (both $9-13k) |
+
+Worst single episode against the incumbent across those 32: $36,729 — still
+three times the incumbent's best.
 
 The jump is not tuning. It comes from reading the market as a sink rather than
 a ceiling, and from actually staffing and feeding the farm that conclusion
 implies.
+
+## 7. Hypotheses that were tested and lost
+
+Recorded so they are not re-tried. All measured the same way: eight seeds,
+sides swapped, against the incumbent.
+
+* **Discounting the allocator to the payoff date.** Early capital compounds
+  into livestock, so a dollar at harvest should be worth less than a dollar
+  now — and the opening commits 23 tiles to melon for ten days with no cash
+  flow, which looks like exactly the mistake a discount would fix. Measured:
+  every positive rate lost, and the best of them (0.10) still cost $3k of mean
+  and $18k of worst case. The melon opening is genuinely worth the wait. The
+  knob survives as `DISC`, pinned at 0.
+* **Forcing a unit holding livestock to go and place it.** A four-seed search
+  against an older agent preferred switching this off by 10%. Re-checked over
+  eight seeds against the incumbent, the ranking reversed and switching it off
+  *lost* 16% ($48,070 vs $57,556). A search result is conditional on its
+  opponent and its seed set; confirm on held-out seeds before changing a
+  default.
+* **Trimming the wheat feed buffer and the carry-drop threshold** to relieve
+  the 100-item shed cap. All variants landed within ±2% of base — inside the
+  noise at this sample size. The shed is near its cap in the late game, but the
+  overflow is not where the money is.

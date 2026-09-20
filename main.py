@@ -89,11 +89,11 @@ FIBCUM = [0, 1, 2, 4, 7, 12, 20, 33, 54, 88, 143, 232, 376, 609, 986, 1596, 2583
 
 # ---------------------------------------------------------------- tunables
 _P = {
-    "MAX_HANDS": 14, "HIRE_FRAC": 0.16, "HIRE_OFF": 1, "HIRE_WINDOW": 0,
+    "MAX_HANDS": 14, "HIRE_FRAC": 0.16, "HIRE_OFF": 0, "HIRE_WINDOW": 2,
     "SELL_SLOTS": 9, "MOVE": 1.85, "ACT_CROP": 1.15, "ACT_ANIMAL": 2.9,
     "PER_RANCHER": 5.5, "CARRY_DROP": 11, "RUNWAY": 4.0, "OVERSUPPLY": 1.35,
     "BUY_RATE": 4, "LAND_OPEN": 8, "LAND_LABOR": 1.0, "ANIM_MARGIN": 1.0,
-    "WEED_W": 6.0, "PLACE_FIX": 1, "FERT_USE": 1,
+    "WEED_W": 6.0, "PLACE_FIX": 1, "FERT_USE": 1, "WHEAT_BUF": 2.4, "DISC": 0.0,
 }
 _STRICT = False
 try:                                # cloud tooling only; both unset on Kaggle
@@ -275,7 +275,10 @@ def _decide(obs):
         if td + 0.4 > days_left:
             return None
         px = price_at(c, mkt[c] + pipe[c] + add[c] + yld * 0.5 - drain[c] * left)
-        return (yld * px - CROPS[c]["seed"]) / float(td)
+        # Discount to the payoff date. Early capital compounds into livestock,
+        # so a dollar at harvest is not a dollar now; with DISC = 0 this is the
+        # undiscounted marginal revenue per tile-day.
+        return ((yld * px - CROPS[c]["seed"]) / float(td)) * math.exp(-P["DISC"] * first)
 
     ranked = []
     for c in CROPS:
@@ -299,7 +302,8 @@ def _decide(obs):
         vol = RATE[a] * work
         px = price_at(pr, mkt[pr] + pipe[pr] + vol * 0.5 - drain[pr] * left)
         gross = vol * px + days_left * marg["FERTILIZER"] * 0.7
-        animal_val[a] = (gross - ad["cost"] - wheat_buy * days_left) / max(1.0, days_left)
+        animal_val[a] = ((gross - ad["cost"] - wheat_buy * days_left)
+                         / max(1.0, days_left)) * math.exp(-P["DISC"] * ad["fyd"])
     best_animal = max(animal_val, key=animal_val.get) if animal_val else None
     animal_best = animal_val.get(best_animal, -1e9) if best_animal else -1e9
     want_animal = (best_animal is not None
@@ -531,7 +535,7 @@ def _decide(obs):
         if q <= 0:
             continue
         if it == "WHEAT" and not final_day:
-            q = max(0, q - int(n_animals * 2.4 + 5))     # keep the feed buffer
+            q = max(0, q - int(n_animals * P["WHEAT_BUF"] + 5))     # keep the feed buffer
             if q <= 0:
                 continue
         sellable.append((q * spot.get(it, 1), it, q))
@@ -569,7 +573,7 @@ def _decide(obs):
         # (1) feed -- never optional
         if n_animals > 0 and len(orders) < MAXORD:
             have = shed.get("WHEAT", 0) + carried.get("WHEAT", 0)
-            want = int(n_animals * 2.4 + 5) - have
+            want = int(n_animals * P["WHEAT_BUF"] + 5) - have
             buy = min(want, SHED_CAP - shed_used - 4,
                       int(max(0.0, cash - 40) // max(1.0, wheat_buy)), 50)
             if buy > 0:

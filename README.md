@@ -30,10 +30,14 @@ Full reasoning, the measured numbers, and the engine facts the plan depends on:
 
 720 turns, `kaggle-environments==1.32.7`, sides swapped, strict mode:
 
-| Match | Result |
-| --- | --- |
-| this agent vs. built-in `starter` | 100%, ~$65k vs ~$3.4k |
-| this agent vs. `benchmark/incumbent` (PR #1) | ~$62-89k vs ~$10-12k |
+| Match | Episodes | Result |
+| --- | --- | --- |
+| vs. built-in `starter` | 16 | **16-0**, ~$65k vs ~$3.4k |
+| vs. `benchmark/incumbent` (PR #1), seeds 1-8 | 16 | **16-0**, mean $67,527 vs ~$11k |
+| vs. `benchmark/incumbent`, seeds 11-18 (held out) | 16 | **16-0**, mean $61,624 |
+
+For reference, the previous `main.py` in this repository won 31% against that
+same incumbent, with both sides finishing between $9k and $13k.
 
 ## Layout
 
