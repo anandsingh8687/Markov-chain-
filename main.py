@@ -244,16 +244,25 @@ def add_replant_flow(remain, tiles_of, days_left):
 def goose_cap(st):
     """Eggs absorb, so unconstrained KKT wants every tile as a goose.
 
-    The binding dual is labour, not tiles. Cloud `3a431ff` bought all four
-    quadrants, stood up 8-14 geese, and printed 34-37 weeds / 4k coins:
-    every worker was walking to feed, so plants died the day they were
-    sown. Keep 2 workers for water/harvest; never more geese than that.
+    The binding dual is labour, not tiles. Keep 2 workers for water.
     """
     usable = int(getattr(st, "usable_tiles", QUADRANT * QUADRANT) or QUADRANT * QUADRANT)
     labor = 1 + len(getattr(st, "hands", []) or [])
     by_labor = max(4, labor - 2)
     by_tiles = max(4, usable // 4)
-    return min(10, by_labor, by_tiles)
+    return min(8, by_labor, by_tiles)
+
+
+def plant_slots(st):
+    """Standing plants a worker can water after the daily feed pass.
+
+    `af12ea7` used leftover-workers as a *per-turn* sow cap, so we planted
+    5 melon an hour for 15 hours and they died overnight. This is a
+    standing-plant cap, not a per-turn cap.
+    """
+    labor = 1 + len(getattr(st, "hands", []) or [])
+    herd = max(int(getattr(st, "n_animals", 0) or 0), goose_cap(st))
+    return max(2, labor * 2 - herd)
 
 
 def product_contested(st, prod):
@@ -874,19 +883,8 @@ class MPCRevenueEngine:
             candidates.append("EGG")
         if days_left >= 12:
             candidates.append("MELON")
-        # Milk/wool only after the goose herd is actually placed and fed.
-        # Otherwise KKT opens pastures and the board fills with empty sheds.
-        herd_ready = (st.animals_alive.get("GOOSE", 0) >= 8
-                      and st.n_coops <= st.animals_alive.get("GOOSE", 0) + 2)
-        if phase == "COMPOUND" and days_left >= 14 and herd_ready:
-            if shops_w.get("MILK", 0) >= 2:
-                candidates.append("MILK")
-            if shops_w.get("WOOL", 0) >= 2:
-                candidates.append("WOOL")
-            if shops_w.get("TOMATO", 0) >= 3 and days_left >= 13:
-                candidates.append("TOMATO")
-            if shops_w.get("STRAWBERRY", 0) >= 3 and days_left >= 18:
-                candidates.append("STRAWBERRY")
+        # Milk/wool/berry are thin books and open pastures we cannot staff.
+        # The feasible global mix is carrot → goose/egg + uncontested melon.
         for prod in candidates:
             if prod in ("WHEAT", "EGG"):
                 allow.add(prod)
@@ -1071,25 +1069,41 @@ class MPCRevenueEngine:
         p.action_value = max(2.0, mu / 4.0)
         p.wheat_reserve = max(herd * 2, st.n_animals * 3)
 
+        # Cap crop mix to plants we can actually water.
+        slots = plant_slots(st)
+        planted_now = int(getattr(st, "n_plants", 0) or 0)
+        used_c = sum(p.crop_mix.values())
+        if used_c > slots:
+            scale = slots / float(used_c)
+            p.crop_mix = {k: max(0, int(v * scale)) for k, v in p.crop_mix.items()}
+            if "WHEAT" in p.crop_mix or (p.animal_targets and days_left >= 5):
+                p.crop_mix["WHEAT"] = max(p.crop_mix.get("WHEAT", 0), min(2, slots))
+
         next_cost = st.next_land_cost
+        bought = max(0, len(st.quadrants) - 1)
         if next_cost is not None and days_left >= 6 and p.phase in ("EXPAND", "COMPOUND"):
-            # Land multiplies only if labour can walk it. 3a431ff bought SE
-            # with 6 hands and harvested weeds.
+            # 50 tiles (NW+NE) is the staffed farm. Hiring then unlocked SW/SE
+            # on af12ea7 and we harvested 33 weeds. Never buy SE. SW only
+            # when 12 hands, a clean board, and COMPOUND.
             hands = len(st.hands)
-            staffed = (
-                (next_cost <= 1000 and hands >= 4)
-                or (next_cost <= 2000 and hands >= 8)
-                or (next_cost <= 4000 and hands >= 10)
-            )
-            buffer = 400 if p.phase == "EXPAND" else 800
-            p.buy_land = (
-                staffed
-                and getattr(st, "n_weeds", 0) <= 6
-                and st.money + 0.5 * sum(
-                    st.shed.get(s, 0) * Econ.price(s, st.inventory.get(s, MARKET_I0))
-                    for s in ("CARROT", "EGG", "WHEAT")
-                ) > next_cost + buffer
-            )
+            if bought >= 2:
+                p.buy_land = False
+            elif bought == 1:
+                p.buy_land = (
+                    p.phase == "COMPOUND"
+                    and hands >= 12
+                    and getattr(st, "n_weeds", 0) <= 2
+                    and st.money > next_cost + 800
+                )
+            else:
+                p.buy_land = (
+                    hands >= 4
+                    and getattr(st, "n_weeds", 0) <= 6
+                    and st.money + 0.5 * sum(
+                        st.shed.get(s, 0) * Econ.price(s, st.inventory.get(s, MARKET_I0))
+                        for s in ("CARROT", "EGG", "WHEAT")
+                    ) > next_cost + 400
+                )
 
         # Hands: one worker-day must cover feed + water on the current board.
         worker_day = 0.50 * p.action_value * TURNS_PER_DAY
@@ -1160,6 +1174,8 @@ class State(object):
         self.n_coops = 0
         self.n_pastures = 0
         self.n_weeds = 0
+        self.n_plants = 0
+        self.n_unwatered = 0
         self.my_pipeline = {}
         self.my_imminent = {}
         self.opp_pipeline = {}
@@ -1199,6 +1215,10 @@ class State(object):
                 animal = tile.get("animal")
                 if kind == "WEED":
                     self.n_weeds += 1
+                if kind == "PLANT":
+                    self.n_plants += 1
+                    if not tile.get("watered_today"):
+                        self.n_unwatered += 1
                 if animal in self.animals_alive:
                     self.animals_alive[animal] += 1
                     self.n_animals += 1
@@ -1402,8 +1422,7 @@ def build_tasks(st, plan):
     build_empties = empties[len(plant_empties):]
     # Do not sow more plants than leftover workers can water today.
     # consecutive_unwatered starts at 1; an unwattered plant is a weed at EOD.
-    n_workers = 1 + len(st.hands)
-    spare = max(0, n_workers - st.n_animals)
+    spare = max(0, plant_slots(st) - st.n_plants - st.n_unwatered)
     plant_empties = plant_empties[:spare]
 
     want = dict(plan.crop_mix)

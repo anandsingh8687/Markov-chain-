@@ -163,9 +163,9 @@ against a weak bot:
   has cash; buys keep reserved slots.
 - Structure count is `empty + occupied`, at most 2 new coops per turn.
   Eggs absorb, so unconstrained KKT wants every tile as a goose. The
-  binding dual is **labour**: `min(10, workers−2, tiles/4)`. Cloud
-  `3a431ff` bought all four quadrants, stood up 14 geese, and printed
-  37 weeds / 4k coins. Land is bought only when hands can walk it
-  (4 / 8 / 10 for NE / SW / SE) and the board is not weedy. New plants
-  are capped at leftover workers and only before hour 14 so they can
-  be watered the same day.
+  binding dual is **labour**: herd `min(8, workers−2, tiles/4)`,
+  standing plants `workers×2 − herd`. Cloud `af12ea7` still bought SE
+  once hiring caught up and sowed 5 melon an hour; seed 9017 ended
+  with 33 weeds / 11k. The staffed farm is 50 tiles (NW+NE). SE is
+  never bought. SW only at 12 hands on a clean COMPOUND board.
+  Milk/wool stay closed — thin books that open unstaffable pastures.

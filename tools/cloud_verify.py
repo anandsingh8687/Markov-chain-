@@ -106,6 +106,14 @@ def _empty_struct_count(env, player=0):
         return 0
 
 
+def _weed_count(env, player=0):
+    try:
+        _me, kinds, _animals, _empty, _locked = _tile_census(env, player)
+        return int(kinds.get("WEED", 0) or 0)
+    except Exception:
+        return 0
+
+
 def farm_telemetry(env, label="p0"):
     """End-of-episode public farm snapshot. Cloud-only diagnosis of ramp collapse."""
     try:
@@ -322,6 +330,11 @@ def check_strength(root, games, opponent, report_path):
             fail("structure explosion vs {} seed {}: {} empty COOP/PASTURE (max {}). "
                  "Workers reserved every empty tile for sheds while geese starved."
                  .format(opponent, seed, empty_structs, max_empty_structs))
+        weeds = _weed_count(env)
+        if weeds > 20:
+            fail("weed farm vs {} seed {}: {} weeds. Plants were sown faster "
+                 "than leftover workers could water them."
+                 .format(opponent, seed, weeds))
     rate = (wins + 0.5 * tie) / float(max(1, games))
     med = statistics.median(margins) if margins else 0.0
     print("      score rate vs {}: {:.0%}  (W{} T{} L{})  median margin {:+.0f}".format(
