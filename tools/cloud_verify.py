@@ -72,6 +72,38 @@ def check_import(root):
     return main
 
 
+def farm_telemetry(env, label="p0"):
+    """End-of-episode public farm snapshot. Cloud-only diagnosis of ramp collapse."""
+    try:
+        last = env.steps[-1]
+        obs = (last[0] or {}).get("observation") or {}
+        farms = obs.get("farms") or []
+        me = farms[0] if farms else {}
+        tiles = me.get("tiles") or []
+        kinds = {}
+        animals = {}
+        locked = empty = 0
+        for row in tiles:
+            for t in row:
+                if t == "LOCKED":
+                    locked += 1
+                    continue
+                if t is None:
+                    empty += 1
+                    continue
+                if isinstance(t, dict):
+                    if t.get("animal"):
+                        animals[t["animal"]] = animals.get(t["animal"], 0) + 1
+                    else:
+                        k = t.get("crop") or t.get("kind") or "?"
+                        kinds[k] = kinds.get(k, 0) + 1
+        print("      telemetry {} money={} quads={} animals={} crops={} empty={} locked={}".format(
+            label, me.get("money"), me.get("unlocked_quadrants"),
+            animals, kinds, empty, locked))
+    except Exception as exc:
+        print("      telemetry unavailable: {}".format(exc))
+
+
 def run_episode(agents, seed, debug=False):
     from kaggle_environments import make
     cfg = {"episodeSteps": HORIZON}
@@ -96,6 +128,7 @@ def check_selfplay(root):
             fail("self-play player {} ended with status {} (rewards={})".format(
                 i, s, rewards))
     print("      ok  rewards={}  wall={:.1f}s".format(rewards, wall))
+    farm_telemetry(env, "self-play-p0")
     return env
 
 
@@ -245,9 +278,12 @@ def check_strength(root, games, opponent, report_path):
         opp = opponent
     wins = tie = loss = 0
     margins = []
+    # A win at 6.6k is a ramp collapse: we parked on the opponent's book.
+    # Global-optima structure must print a real farm, not a carrot stalemate.
+    min_farm = 8500.0 if opponent == "carrot_scaler" else 8000.0
     for g in range(games):
         seed = 9000 + g * 17
-        rewards, statuses, wall, _ = run_episode([path, opp], seed=seed)
+        rewards, statuses, wall, env = run_episode([path, opp], seed=seed)
         if statuses[0] != "DONE":
             fail("episode {} (seed {}) ended with status {}".format(g, seed, statuses[0]))
         mine = rewards[0] if rewards[0] is not None else 0.0
@@ -262,6 +298,11 @@ def check_strength(root, games, opponent, report_path):
         print("      seed {:>5}  ours={:>10.0f}  opp={:>10.0f}  {}".format(
             seed, mine, theirs, "WIN" if mine > theirs else
             ("TIE" if mine == theirs else "LOSS")))
+        farm_telemetry(env, "seed-{}".format(seed))
+        if mine < min_farm:
+            fail("ramp collapse vs {} seed {}: score {:.0f} < {:.0f}. "
+                 "We won or lost with a farm that never left the opponent's book."
+                 .format(opponent, seed, mine, min_farm))
     rate = (wins + 0.5 * tie) / float(max(1, games))
     med = statistics.median(margins) if margins else 0.0
     print("      score rate vs {}: {:.0%}  (W{} T{} L{})  median margin {:+.0f}".format(

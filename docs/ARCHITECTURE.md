@@ -124,24 +124,40 @@ refuses to convert it to land and more geese. Cloud episodes that scored
 Buy order is hire → feed wheat → land → geese → seeds, which is the
 capital-velocity order, not the unit-price order.
 
-## 7. Dual NAV, day-0 occupancy, contested liquidation
+## 7. Dual NAV, flow occupancy, contested liquidation
 
 Exact Bellman / Nash / 720-turn MILP is infeasible under the 1s
-`actTimeout`. The feasible global policy is the KKT forecast plus three
-state-contingent forecasts that a peer copying the same water-fill must lose
-to:
+`actTimeout`. The feasible global policy is the KKT forecast plus the
+state-contingent forecasts a peer copying the same water-fill must lose to.
 
-1. **Both NAVs.** `my_nav = bank + shed execution + my field pipeline`.
-   `opp_nav = their bank + their public field` (shed hidden ⇒ lower bound).
-   `LOCK` when the edge clears ~18% of NAV: stop planting premium.
-   `CONTEST` when behind: take remaining book and front-load premium sales.
-2. **Opponent book occupancy from plant day 0.** A 20-tile melon field
-   planted on day 0 is 120 units of future supply, not "invisible until
-   first_yield − 2". Capacity is `headroom + town drain − that pipeline`.
+1. **Both NAVs, late LOCK.** `my_nav = bank + shed + my field`.
+   `opp_nav = their bank + their public field + replant flow` (shed hidden
+   ⇒ lower bound). Counting only the standing plants overstates the lead
+   vs a 25-tile carrot farm and fires LOCK while we are still on their
+   book. LOCK starts at turn 300. It does **not** mean "stop premium":
+   it means vacate books they already occupy. Eggs absorb; uncontested
+   melon is how a lead is locked in. `CONTEST` takes remaining book.
+2. **Opponent occupancy is a FLOW.** A 25-tile carrot farm is not 75
+   units of current plants. It is `tiles × (units/cycle) × days left`
+   after this cycle. Peak tiles persist across harvest gaps so a brief
+   empty board does not look like a free carrot book. Capacity is
+   `headroom + town drain − that flow`.
 3. **Liquidation vs their dump.** Town drain makes later stages cheaper;
-   opponent supply does the opposite. Imminent premium units are added to
-   inventory now; remaining opponent units arrive as negative drain. If they
-   are 0–2 days from harvest we sell first so we are not second into $1.
+   opponent flow does the opposite. Imminent premium is raced.
 
 Phase changes force a replan so a carrot BOOTSTRAP mix cannot linger into
-EXPAND.
+EXPAND. A carrot-only opponent ends bootstrap at turn 48 (first cash
+print) instead of 72.
+
+## 8. Goose ramp cannot lose to the planter
+
+Three engine-faithful failure modes print a 6k farm that still "wins"
+against a weak bot:
+
+- Planting every empty tile leaves no square for `BUILD_COOP`. Geese
+  sit in the shed. Reserve empties for missing coops **before** plant.
+- `1.25` wheat tiles per animal on a 25-tile farm crowds out the herd.
+  Plant a thin wheat block; buy the rest (wheat absorbs).
+- The market cap is 10 orders. A long sell tape must not drop
+  hire / feed-wheat / land / goose. Sells still go first so the engine
+  has cash; buys keep reserved slots.
