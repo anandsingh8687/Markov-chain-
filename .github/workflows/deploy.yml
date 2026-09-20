@@ -46,9 +46,14 @@ on:
 env:
   AGENT_DIR: .
 
+# Deliberately NOT serialised at workflow level. Verification has no side
+# effects and is safe to supersede, so a newer commit cancels an older
+# in-flight verify rather than queueing behind it -- one wedged run must not
+# block every later push. Submission is the only step that must serialise,
+# so the concurrency group lives on that job alone.
 concurrency:
-  group: kaggriculture-deploy
-  cancel-in-progress: false
+  group: markov-verify-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -57,7 +62,7 @@ jobs:
   verify:
     name: Verify in cloud runner
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
     outputs:
       score_rate: ${{ steps.gate.outputs.score_rate }}
     steps:
@@ -110,6 +115,18 @@ jobs:
             --min-score-rate "${{ github.event.inputs.incumbent_min || '0.50' }}"
           echo "rate=$(python -c "import json;print(json.load(open('$AGENT_DIR/incumbent_report.json'))['score_rate'])")" >> "$GITHUB_OUTPUT"
 
+      # Telemetry, never a gate: runs even when a strength gate has already
+      # failed, because that is exactly when the census is worth reading.
+      - name: Census (diagnostics)
+        if: always()
+        continue-on-error: true
+        run: |
+          INC="${{ github.event.inputs.incumbent || 'benchmark/incumbent/main.py' }}"
+          OPP="starter"; [ -f "$INC" ] && OPP="$INC"
+          python "$AGENT_DIR/tools/cloud_verify.py" \
+            --root "$AGENT_DIR" --diagnose --opponent "$OPP" \
+            2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Build submission archive
         working-directory: ${{ env.AGENT_DIR }}
         run: python tools/build_submission.py --root . --out submission.tar.gz
@@ -128,6 +145,11 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Submissions must never overlap: the daily quota preflight reads a count
+    # that a concurrent run could invalidate between check and submit.
+    concurrency:
+      group: markov-submit
+      cancel-in-progress: false
     # Gate 1: only a verified artifact reaches this job (needs: verify).
     # Gate 2: never submit from a pull request.
     # Gate 3: only pushes to main submit, and only when the commit does not

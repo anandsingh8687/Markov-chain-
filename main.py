@@ -33,6 +33,10 @@ SHED_CAPACITY = 100
 MAX_MARKET_ORDERS = 10
 START_MONEY = 3000
 TURN_BUDGET_S = 0.55                    # actTimeout is 1.0s; leave hard margin
+# Tiles one worker can keep serviced per day. A tile needs roughly a watering
+# plus an amortised share of planting, harvesting and carrying, and the worker
+# has to walk between them, so ~1.5 of its 24 actions go to each tile.
+ACTIONS_PER_TILE_DAY = 16
 
 
 # --------------------------------------------------------------------------
@@ -548,9 +552,34 @@ class LaborAssigner:
 
     GAMMA = 0.75
     LOOKAHEAD = 3
+    # The solver is O(n^2 * m). Once the water-filling solve fills ~75 tiles
+    # with animals, the raw task list runs to several hundred entries and the
+    # assignment alone can blow the 1s actTimeout. A worker can only service
+    # one task per turn, so keeping the best few per worker costs nothing:
+    # anything outside the top slice was never going to be reached this turn.
+    MAX_TASKS_PER_WORKER = 6
+    MAX_TASKS = 72
 
     def __init__(self, calib):
         self.calib = calib
+
+    def _shortlist(self, workers, tasks):
+        cap = min(self.MAX_TASKS, max(len(workers), 1) * self.MAX_TASKS_PER_WORKER)
+        if len(tasks) <= cap:
+            return tasks
+        # Rank by value discounted to the nearest worker, so a merely valuable
+        # task on the far side of the board cannot crowd out reachable work.
+        scored = []
+        for t in tasks:
+            tx, ty = t["pos"]
+            best = None
+            for (wx, wy) in workers:
+                d = abs(tx - wx) + abs(ty - wy)
+                if best is None or d < best:
+                    best = d
+            scored.append((t["value"] * (self.GAMMA ** min(best or 0, 12)), t))
+        scored.sort(key=lambda kv: -kv[0])
+        return [t for _v, t in scored[:cap]]
 
     def assign(self, workers, tasks):
         """workers: [(x, y), ...]; tasks: [task dict, ...] -> [task|None, ...]"""
@@ -559,6 +588,7 @@ class LaborAssigner:
             return []
         if not tasks:
             return [None] * n
+        tasks = self._shortlist(workers, tasks)
         # Pad with idle columns so the assignment is always feasible (n <= m).
         m = max(len(tasks), n)
         big = 1e9
@@ -699,7 +729,55 @@ class MPCRevenueEngine:
             out["FERTILIZER"] = self.FERT_TDPU
         return out
 
-    def _demand(self, st, mu, tdpu, turns_to_gate):
+    def _capital_caps(self, st, tdpu, days_left):
+        """Unit ceilings implied by cash on hand.
+
+        Tile-days are not the only scarce resource: the farm starts on $3000
+        and a goose is $300. An allocation solved on tile-days alone happily
+        orders ~39 geese, builds coops it cannot stock, starves the ones it
+        does, and finishes below the starting balance. Capital is the binding
+        constraint early and stops binding once the crop engine is turning, so
+        the ceiling is recomputed every replan and simply relaxes as cash
+        accumulates -- which is what makes early revenue behave as a
+        multiplier rather than as an end in itself.
+        """
+        caps = {}
+        dl = float(max(1, days_left))
+
+        # Working reserve: feed for the herd plus a seed float. Running the
+        # balance to zero loses animals outright, which is unrecoverable.
+        herd = sum(st.animals_alive.values())
+        feed_reserve = herd * min(days_left, 6) * 25.0
+        spare = max(0.0, st.money - feed_reserve)
+
+        for prod, cost in tdpu.items():
+            if prod == "FERTILIZER":
+                continue
+            if prod in CROP_SPEC:
+                seed = SEED_COST[prod]
+                net, tile_days, actions, units_cycle, age = Econ.crop_plan_value(prod, 1.0)
+                if units_cycle <= 0 or seed <= 0:
+                    continue
+                # Seed spend is per cycle and recycles out of revenue, so
+                # allow a generous multiple of current cash.
+                tiles = (spare * 0.6) / float(seed)
+                cycles = max(1.0, dl / float(max(1, tile_days)))
+                caps[prod] = tiles * units_cycle * cycles
+            else:
+                for animal, produced in ANIMAL_PRODUCT.items():
+                    if produced != prod:
+                        continue
+                    price = ANIMAL_COST[animal]
+                    have = st.animals_alive.get(animal, 0)
+                    # Animals are a sunk, non-recoverable purchase: only ever
+                    # commit a fraction of spare cash to new stock.
+                    buyable = int((spare * 0.5) // price)
+                    total_animals = have + max(0, buyable)
+                    per_animal = dl / cost if cost > 0 else 0.0
+                    caps[prod] = total_animals * per_animal
+        return caps
+
+    def _demand(self, st, mu, tdpu, turns_to_gate, caps):
         """Tile-days demanded at shadow price `mu`, and the unit targets."""
         total = 0.0
         units = {}
@@ -712,6 +790,9 @@ class MPCRevenueEngine:
             headroom = Econ.units_until_price_floor(prod, inv, floor)
             regen = self.el.drain_rate.get(prod, 0.0) * turns_to_gate
             X = headroom + regen
+            cap = caps.get(prod)
+            if cap is not None:
+                X = min(X, cap)            # cannot grow what we cannot finance
             units[prod] = X
             total += X * cost
         return total, units
@@ -724,6 +805,7 @@ class MPCRevenueEngine:
         p.tdpu = tdpu
 
         tile_days = max(1.0, st.usable_tiles * float(days_left))
+        caps = self._capital_caps(st, tdpu, days_left)
 
         # Bisect the shadow price so demand exactly exhausts supply. Demand is
         # monotone decreasing in mu, so this is well posed.
@@ -731,14 +813,14 @@ class MPCRevenueEngine:
         if tdpu:
             for _ in range(self.BISECT_STEPS):
                 mid = 0.5 * (lo + hi)
-                demand, _u = self._demand(st, mid, tdpu, turns_to_gate)
+                demand, _u = self._demand(st, mid, tdpu, turns_to_gate, caps)
                 if demand > tile_days:
                     lo = mid               # too cheap: over-subscribed
                 else:
                     hi = mid
         mu = hi
         p.shadow_td = mu
-        _total, unit_targets = self._demand(st, mu, tdpu, turns_to_gate)
+        _total, unit_targets = self._demand(st, mu, tdpu, turns_to_gate, caps)
 
         for prod in PRODUCTS:
             inv = st.inventory.get(prod, MARKET_PARAMS[prod][1])
@@ -779,16 +861,32 @@ class MPCRevenueEngine:
         # price the solve just produced. At $1k/$2k/$4k this clears easily
         # whenever mu is meaningful, which is the correct aggressive answer --
         # tile-days are the binding constraint.
+        # Land, but only once the crew can actually work what we already own.
+        # Buying a quadrant we cannot tend converts cash -- the thing that
+        # buys labour and animals -- into idle tiles, and the census showed
+        # exactly that: 50 tiles unlocked on day 1, $1 in the bank, and no
+        # hands for the next twelve days.
         next_cost = st.next_land_cost
+        crew = 1 + len(st.hands)
+        workable = crew * ACTIONS_PER_TILE_DAY
         if next_cost is not None and days_left >= 5:
             marginal = mu * (QUADRANT * QUADRANT) * min(days_left, 14) * 0.40
-            p.buy_land = marginal > next_cost and st.money > next_cost * 1.25
+            p.buy_land = (marginal > next_cost
+                          and st.money > next_cost * 2.5
+                          and workable >= st.usable_tiles * 0.8)
 
-        # Hands: hire while fib(n) is below the value of a worker-day.
+        # Hands. Labour is the multiplier on everything else: a tile only
+        # earns if somebody waters and harvests it, and one farmer is 24
+        # actions a day against a board of 25-100 tiles. Hire cost is fib(n),
+        # so the first dozen hands cost a few hundred coins in total -- an
+        # absurd bargain against a shadow tile-day price in the tens.
+        # Size the crew to the board, then clip to what cash allows.
+        active = st.usable_tiles
+        want_workers = int(math.ceil(active / float(ACTIONS_PER_TILE_DAY)))
         worker_day = 0.45 * p.action_value * TURNS_PER_DAY
         target, cum, a, b = 0, 0, 1, 1
-        cash_for_labour = max(0.0, st.money * 0.30)
-        while target < 24:
+        cash_for_labour = max(0.0, st.money * 0.55)
+        while target < min(20, want_workers):
             if a > worker_day or cum + a > cash_for_labour:
                 break
             cum += a
@@ -839,9 +937,11 @@ class MarketPlanner:
                 rate = max(drain, held / float(turns_to_gate), 1.0)
                 n = int(min(held, sellable, math.ceil(rate)))
                 # The shed holds 100 non-seed items and overflow is destroyed
-                # at end of day, so a full shed forces the sale regardless.
-                if st.shed_total > SHED_CAPACITY * 0.85:
-                    n = max(n, min(held, 6))
+                # at end of day. The census had it at 96/100 on day 24, so
+                # relieve pressure well before the cliff -- a unit sold under
+                # its reserve still beats a unit binned at midnight.
+                if st.shed_total > SHED_CAPACITY * 0.55:
+                    n = max(n, min(held, 10))
             if n > 0:
                 orders.append((prod, int(n)))
         orders.sort(key=lambda o: -Econ.price(o[0], st.inventory.get(
@@ -910,6 +1010,7 @@ class State(object):
         self.usable_tiles = self._count_usable()
         self.next_land_cost = self._next_land_cost()
         self.opp_pressure = self._opp_pressure()
+        self.animals_alive, self.empty_structs = self._scan_structures()
         self.risk_lambda = 0.0
 
     def _count_usable(self):
@@ -943,6 +1044,29 @@ class State(object):
                         if prod:
                             pressure[prod] = pressure.get(prod, 0) + 1
         return pressure
+
+    def _scan_structures(self):
+        """Own coops/pastures: what is stocked, and what is standing empty.
+
+        The planner runs before task generation, so it needs its own view of
+        the herd -- otherwise it re-buys animals it already owns and keeps
+        building coops it cannot stock.
+        """
+        alive = {"GOOSE": 0, "COW": 0, "SHEEP": 0}
+        empty = []
+        for y, row in enumerate(self.tiles):
+            for x, t in enumerate(row):
+                if not isinstance(t, dict):
+                    continue
+                kind = t.get("kind")
+                if kind not in ("COOP", "PASTURE"):
+                    continue
+                animal = t.get("animal")
+                if animal:
+                    alive[animal] = alive.get(animal, 0) + 1
+                else:
+                    empty.append(((x, y), kind))
+        return alive, empty
 
     def tile_at(self, x, y):
         try:
@@ -1130,6 +1254,14 @@ def build_tasks(st, plan):
     have_empty_past = sum(1 for _, k in empty_structs if k == "PASTURE")
     build_coops = max(0, need_coops - have_empty_coop)
     build_past = max(0, need_past - have_empty_past)
+    # An empty coop is a dead tile and a wasted action. Only raise housing we
+    # can actually stock -- either the animal is already in the shed, or there
+    # is cash on hand to buy one.
+    if not (st.shed.get("GOOSE", 0) > 0 or st.money >= ANIMAL_COST["GOOSE"] * 1.3):
+        build_coops = 0
+    if not (st.shed.get("COW", 0) > 0 or st.shed.get("SHEEP", 0) > 0
+            or st.money >= ANIMAL_COST["COW"] * 1.3):
+        build_past = 0
     free = [p for p in empties if p not in {t["pos"] for t in tasks if t["kind"] == "PLANT"}]
     bi = 0
     for _ in range(min(build_coops, len(free))):
@@ -1299,7 +1431,7 @@ class KaggricultureAgent(object):
     def _market_queue(self, st, plan, t0):
         """Ordered orders, sells first so proceeds fund the same turn's buys."""
         days_left = max(0, DAYS - st.day)
-        n_animals = sum(getattr(st, "_animals_alive", {}).values())
+        n_animals = sum(st.animals_alive.values())
 
         # Reserve the wheat the herd will eat; feeding is what keeps animals
         # alive, and a starved animal is an unrecoverable write-off.
@@ -1316,7 +1448,10 @@ class KaggricultureAgent(object):
         finally:
             st.shed = true_shed
 
-        budget = float(st.money)
+        # Never spend into the feed reserve: a starved animal is lost
+        # outright and cannot be replaced for its remaining production.
+        working_reserve = n_animals * min(days_left, 5) * 25.0
+        budget = float(st.money) - working_reserve
         for o in orders:
             budget += Econ.marginal_revenue(
                 o[1], st.inventory.get(o[1], MARKET_PARAMS[o[1]][1]), o[2])
@@ -1326,14 +1461,37 @@ class KaggricultureAgent(object):
             return orders[:MAX_MARKET_ORDERS]
 
         buys = []
+        crew = 1 + len(st.hands)
 
-        # Seeds for the planned mix.
+        # LABOUR FIRST. This ordering is the whole game in the opening: hands
+        # cost fib(n) -- the first ten together are ~$143 -- and every other
+        # purchase is worthless without somebody to work it. Spending the
+        # opening balance on land and seeds first leaves nothing to hire with,
+        # and with one farmer against 50 tiles the farm never earns enough to
+        # hire later. That is a trap the tile-day solve cannot see, because it
+        # assumes the labour to work its allocation exists.
+        to_hire = max(0, plan.target_hands - st.hires_today)
+        if to_hire > 0 and st.hour <= 6:
+            a, b = 1, 1
+            for _ in range(st.hires_today):
+                a, b = b, a + b
+            for _ in range(min(to_hire, 8)):
+                if budget < a:
+                    break
+                buys.append(["HIRE"])
+                budget -= a
+                a, b = b, a + b
+
+        # Seeds, capped by what the crew can actually tend. Seed bought for a
+        # tile nobody waters is a plant that becomes a weed.
+        workable = max(1, crew * ACTIONS_PER_TILE_DAY)
+        plantable = max(0, min(st.usable_tiles, workable))
         for crop, want in sorted(plan.crop_mix.items(),
                                  key=lambda kv: -plan.price_hint.get(kv[0], 0)):
             if want <= 0 or CROP_SPEC[crop][2] + 1 > days_left:
                 continue
             have = st.seeds.get(crop, 0)
-            need = max(0, min(want, st.usable_tiles) - have)
+            need = max(0, min(want, plantable) - have)
             if need <= 0:
                 continue
             cost = SEED_COST[crop]
@@ -1352,34 +1510,24 @@ class KaggricultureAgent(object):
                     buys.append(["BUY_PRODUCT", "WHEAT", afford])
                     budget -= afford * price
 
-        # Land: 25 more tiles for the rest of the horizon.
-        if plan.buy_land and st.next_land_cost and budget > st.next_land_cost:
-            buys.append(["BUY_LAND"])
-            budget -= st.next_land_cost
-
-        # Animals, once a structure is standing or queued.
+        # Animals: the only asset that scales, since EGG sits on a log
+        # above-curve. Ahead of land, because a stocked coop earns and a
+        # bought quadrant merely could.
         for animal in ("GOOSE", "COW", "SHEEP"):
             target = plan.animal_targets.get(animal, 0)
-            alive = getattr(st, "_animals_alive", {}).get(animal, 0)
+            alive = st.animals_alive.get(animal, 0)
             in_shed = true_shed.get(animal, 0)
             need = target - alive - in_shed
             cost = ANIMAL_COST[animal]
-            if need > 0 and budget > cost * 1.5 and days_left > ANIMAL_SPEC[animal][0] + 1:
+            if (need > 0 and budget > cost * 2.0
+                    and days_left > ANIMAL_SPEC[animal][0] + 1):
                 buys.append(["BUY_ANIMAL", animal, 1])
                 budget -= cost
 
-        # Hands, hired at the top of the day so they get a full shift.
-        if st.hour <= 2:
-            to_hire = max(0, plan.target_hands - st.hires_today)
-            a, b = 1, 1
-            for _ in range(st.hires_today):
-                a, b = b, a + b
-            for _ in range(min(to_hire, 8)):
-                if budget < a:
-                    break
-                buys.append(["HIRE"])
-                budget -= a
-                a, b = b, a + b
+        # Land last: it is the only purchase that produces nothing by itself.
+        if plan.buy_land and st.next_land_cost and budget > st.next_land_cost:
+            buys.append(["BUY_LAND"])
+            budget -= st.next_land_cost
 
         return (orders + buys)[:MAX_MARKET_ORDERS]
 
