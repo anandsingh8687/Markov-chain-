@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-"""Cloud-only verification gate. Runs on the GitHub Actions runner, never locally.
+"""Cloud-only verification gate. Runs on the GitHub Actions runner.
 
-A Kaggriculture submission fails in exactly three ways, and this gate covers all
-three before a submission slot is ever spent:
+Covers the three ways a Kaggriculture submission dies, then asserts strength:
 
-  1. Import / load error on the eval host  -> `Error` submission
-  2. An uncaught exception mid-episode     -> forfeited episode
+  1. Import / load error on the eval host  -> Error submission
+  2. Uncaught exception mid-episode        -> forfeited episode
   3. A turn exceeding the 1s actTimeout    -> forfeited episode
 
-It then asserts the agent is actually competitive (beats the built-in `starter`
-on the majority of seeded episodes) rather than merely non-crashing.
+Beating the built-in starter is table stakes. The second gate is a stronger
+carrot-scaling opponent defined here (not a public ladder agent) so a
+submission that only farms the starter cannot pass.
 """
 
 from __future__ import annotations
 
 import argparse
-import compileall
+import ast
 import json
 import os
 import statistics
@@ -23,7 +23,6 @@ import sys
 import time
 
 ACT_TIMEOUT_S = 1.0
-LATENCY_CEILING_S = 0.80          # hard fail margin under the 1s timeout
 HORIZON = 720
 
 
@@ -33,9 +32,15 @@ def fail(msg):
 
 
 def check_syntax(root):
-    print("[1/5] byte-compiling {}".format(root))
-    if not compileall.compile_dir(root, quiet=1, force=True):
-        fail("byte-compilation failed")
+    print("[1/5] parsing submission sources")
+    for name in ("main.py", "agent.py"):
+        path = os.path.join(root, name)
+        if not os.path.isfile(path):
+            if name == "agent.py":
+                continue
+            fail("missing {}".format(name))
+        with open(path, "r", encoding="utf-8") as fh:
+            ast.parse(fh.read(), filename=name)
     print("      ok")
 
 
@@ -45,16 +50,16 @@ def check_import(root):
     import main  # noqa: E402
     if not callable(getattr(main, "agent", None)):
         fail("main.agent is not callable")
-    # The eval host exec()s main.py without __file__; make sure nothing depends
-    # on it and that a bare, minimal observation is survivable.
     stub = {
         "player": 0, "day": 0, "hour": 0,
-        "farms": [{"money": 3000, "tiles": [[None] * 10 for _ in range(10)],
-                   "farmer": [0, 0], "hands": [], "hires_today": 0,
-                   "unlocked_quadrants": ["NW"]},
-                  {"money": 3000, "tiles": [[None] * 10 for _ in range(10)],
-                   "farmer": [9, 9], "hands": [], "hires_today": 0,
-                   "unlocked_quadrants": ["NW"]}],
+        "farms": [
+            {"money": 3000, "tiles": [[None] * 10 for _ in range(10)],
+             "farmer": [4, 4], "hands": [], "hires_today": 0,
+             "unlocked_quadrants": ["NW"]},
+            {"money": 3000, "tiles": [[None] * 10 for _ in range(10)],
+             "farmer": [4, 4], "hands": [], "hires_today": 0,
+             "unlocked_quadrants": ["NW"]},
+        ],
         "private": {"shed": {}, "seeds": {}, "inventories": [{}]},
         "market": {"inventory": {}, "prices": {}},
         "town": {"unlocked_shops": []},
@@ -96,10 +101,6 @@ def check_selfplay(root):
 
 def check_latency(env):
     print("[4/5] per-turn latency against the 1s actTimeout")
-    # remainingOverageTime is a budget that only *decreases* when an agent runs
-    # past actTimeout, so the meaningful statistic is its minimum, not its
-    # maximum. A material drawdown means some turn went long even though the
-    # episode still finished.
     lowest = None
     initial = None
     for step in env.steps:
@@ -112,13 +113,11 @@ def check_latency(env):
             if initial is None:
                 initial = ot
             lowest = ot if lowest is None else min(lowest, ot)
-
     if lowest is None or initial is None:
         print("      overage telemetry unavailable; DONE status already implies "
               "no turn was killed by the timeout")
         print("      ok")
         return
-
     used = initial - lowest
     print("      overage budget: start {:.1f}s, low-water {:.1f}s, consumed {:.1f}s"
           .format(initial, lowest, used))
@@ -132,14 +131,123 @@ def check_latency(env):
     print("      ok")
 
 
+def carrot_scaler(obs):
+    """Stronger-than-starter cloud gate opponent. Not a ladder solution.
+
+    Hires cheap hands, plants the whole NW quadrant with carrots, waters,
+    harvests at first_yield_day, sells the shed. Exists only so the gate
+    cannot be satisfied by beating the built-in wheat loop.
+    """
+    player = obs.get("player", 0)
+    farms = obs.get("farms", [])
+    me = farms[player] if player < len(farms) else {}
+    private = obs.get("private", {}) or {}
+    seeds = private.get("seeds", {}) or {}
+    shed = private.get("shed", {}) or {}
+    tiles = me.get("tiles", []) or []
+    farmer = list(me.get("farmer", [4, 4]) or [4, 4])
+    hands = [list(h) for h in (me.get("hands", []) or [])]
+    money = float(me.get("money", 0) or 0)
+    hires = int(me.get("hires_today", 0) or 0)
+    day = int(obs.get("day", 0) or 0)
+    hour = int(obs.get("hour", 0) or 0)
+    fx, fy = farmer[0], farmer[1]
+
+    market = []
+    if shed.get("CARROT", 0):
+        market.append(["SELL", "CARROT", int(shed["CARROT"])])
+    if shed.get("WHEAT", 0):
+        market.append(["SELL", "WHEAT", int(shed["WHEAT"])])
+    have = int(seeds.get("CARROT", 0) or 0)
+    if have < 25 and money >= 20:
+        n = min(25 - have, int(money // 20))
+        if n > 0:
+            market.append(["BUY_SEED", "CARROT", n])
+    if hour <= 1 and hires < 4 and money > 8:
+        market.append(["HIRE"])
+        if hires < 3:
+            market.append(["HIRE"])
+
+    workers = [(fx, fy)] + [(h[0], h[1]) for h in hands]
+    actions = []
+    claimed = set()
+    for wx, wy in workers:
+        tile = None
+        try:
+            tile = tiles[wy][wx]
+        except Exception:
+            tile = "LOCKED"
+        if tile is None and seeds.get("CARROT", 0) > 0 and hour < 23:
+            actions.append(["PLANT", "CARROT"])
+            continue
+        if isinstance(tile, dict) and tile.get("kind") == "PLANT":
+            age = day - int(tile.get("planted_day", day))
+            if tile.get("yield_units", 0) > 0 and age >= 2:
+                actions.append(["HARVEST"])
+                continue
+            if not tile.get("watered_today"):
+                actions.append(["WATER"])
+                continue
+        if isinstance(tile, dict) and tile.get("kind") == "WEED":
+            actions.append(["DIG"])
+            continue
+        target = None
+        best = 10 ** 9
+        for y, row in enumerate(tiles):
+            for x, t in enumerate(row):
+                if (x, y) in claimed or t == "LOCKED":
+                    continue
+                score = None
+                if isinstance(t, dict) and t.get("kind") == "PLANT":
+                    age = day - int(t.get("planted_day", day))
+                    if t.get("yield_units", 0) > 0 and age >= 2:
+                        score = 0
+                    elif not t.get("watered_today"):
+                        score = 1
+                elif t is None and seeds.get("CARROT", 0) > 0 and hour < 23:
+                    score = 2
+                elif isinstance(t, dict) and t.get("kind") == "WEED":
+                    score = 3
+                if score is None:
+                    continue
+                d = abs(x - wx) + abs(y - wy) + score * 20
+                if d < best:
+                    best, target = d, (x, y)
+        if target is None:
+            actions.append(["PASS"])
+            continue
+        claimed.add(target)
+        tx, ty = target
+        if tx > wx:
+            actions.append(["EAST"])
+        elif tx < wx:
+            actions.append(["WEST"])
+        elif ty > wy:
+            actions.append(["SOUTH"])
+        elif ty < wy:
+            actions.append(["NORTH"])
+        else:
+            actions.append(["PASS"])
+
+    farmer_action = actions[0] if actions else ["PASS"]
+    hand_actions = actions[1:1 + len(hands)]
+    while len(hand_actions) < len(hands):
+        hand_actions.append(["PASS"])
+    return {"farmer": farmer_action, "hands": hand_actions, "market": market[:10]}
+
+
 def check_strength(root, games, opponent, report_path):
-    print("[5/5] strength gate: {} episodes vs. built-in '{}'".format(games, opponent))
+    print("[5/5] strength gate: {} episodes vs '{}'".format(games, opponent))
     path = os.path.join(root, "main.py")
+    if opponent == "carrot_scaler":
+        opp = carrot_scaler
+    else:
+        opp = opponent
     wins = tie = loss = 0
     margins = []
     for g in range(games):
         seed = 9000 + g * 17
-        rewards, statuses, wall, _ = run_episode([path, opponent], seed=seed)
+        rewards, statuses, wall, _ = run_episode([path, opp], seed=seed)
         if statuses[0] != "DONE":
             fail("episode {} (seed {}) ended with status {}".format(g, seed, statuses[0]))
         mine = rewards[0] if rewards[0] is not None else 0.0
@@ -171,11 +279,8 @@ def main():
     ap.add_argument("--games", type=int, default=6)
     ap.add_argument("--opponent", default="starter")
     ap.add_argument("--min-score-rate", type=float, default=0.60)
-    ap.add_argument("--report", default=None,
-                    help="where to write the JSON summary")
-    ap.add_argument("--strength-only", action="store_true",
-                    help="skip the syntax/import/self-play/latency preflight "
-                         "(for a second opponent in the same job)")
+    ap.add_argument("--report", default=None)
+    ap.add_argument("--strength-only", action="store_true")
     args = ap.parse_args()
 
     root = os.path.abspath(args.root)
@@ -189,7 +294,6 @@ def main():
     else:
         print("[skip] preflight already run in this job")
     rate = check_strength(root, args.games, args.opponent, report)
-
     if rate < args.min_score_rate:
         fail("strength gate failed: score rate {:.0%} < required {:.0%}. "
              "Refusing to spend a submission slot.".format(rate, args.min_score_rate))

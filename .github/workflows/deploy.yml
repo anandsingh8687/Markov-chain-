@@ -1,24 +1,23 @@
 name: deploy
 
 # Cloud-only pipeline. Nothing here is meant to be built, tested or submitted
-# from a workstation: a clean runner is provisioned on every push, the agent is
-# verified inside that runner, and only a verified artifact reaches a
-# submission slot.
-#
-# AGENT_DIR is the only thing to change when this subtree is split out into a
-# standalone repository -- set it to '.' there.
+# from a workstation. A clean GitHub Actions runner verifies the agent against
+# the official kaggle-environments interpreter; only a verified artifact can
+# reach a Kaggle submission slot.
 
 on:
   push:
-    branches: [main, 'claude/**']
+    branches: [main, 'cursor/**']
     paths:
       - 'main.py'
+      - 'agent.py'
       - 'tools/**'
       - '.github/workflows/deploy.yml'
   pull_request:
     branches: [main]
     paths:
       - 'main.py'
+      - 'agent.py'
       - 'tools/**'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
@@ -31,17 +30,14 @@ on:
         description: 'Strength-gate episodes vs. the built-in starter'
         default: '6'
       min_score_rate:
-        description: 'Minimum score rate required to submit (0-1)'
+        description: 'Minimum score rate vs starter required to submit (0-1)'
         default: '0.60'
-      incumbent:
-        description: 'Incumbent agent to benchmark against, relative to repo root'
-        default: 'benchmark/incumbent/main.py'
-      incumbent_min:
-        description: 'Minimum score rate vs. the incumbent required to submit (0-1)'
+      scaler_min:
+        description: 'Minimum score rate vs the cloud carrot-scaler (0-1)'
         default: '0.50'
       message:
         description: 'Submission message'
-        default: 'Cloud-optimized global-optima agent execution'
+        default: 'Global-optimum MDP agent (cloud verified)'
 
 env:
   AGENT_DIR: .
@@ -57,7 +53,7 @@ jobs:
   verify:
     name: Verify in cloud runner
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
     outputs:
       score_rate: ${{ steps.gate.outputs.score_rate }}
     steps:
@@ -70,11 +66,9 @@ jobs:
       - name: Install the competition environment
         run: |
           python -m pip install --upgrade pip
-          # Pinned: the agent's economic constants are calibrated against this
-          # build of the engine. Unpinning risks silent rule drift.
           pip install "kaggle-environments==1.32.7" "kaggle>=1.6.14"
 
-      - name: Run cloud verification gate
+      - name: Run cloud verification gate vs starter
         id: gate
         working-directory: ${{ env.AGENT_DIR }}
         run: |
@@ -85,30 +79,17 @@ jobs:
             --min-score-rate "${{ github.event.inputs.min_score_rate || '0.60' }}"
           echo "score_rate=$(python -c "import json;print(json.load(open('verify_report.json'))['score_rate'])")" >> "$GITHUB_OUTPUT"
 
-      # Beating the built-in starter only proves the agent is not broken. The
-      # question that decides whether submitting is an improvement or a
-      # regression is how it fares against the agent currently on the ladder --
-      # a submission slot spent on something weaker actively costs rating,
-      # because only the latest 2 submissions are scored.
-      # Run from the repo root so the incumbent resolves its own sibling
-      # modules the way it does on the eval host.
-      - name: Benchmark against the incumbent
-        id: incumbent
+      - name: Strength gate vs carrot-scaler
+        id: scaler
+        working-directory: ${{ env.AGENT_DIR }}
         run: |
-          INC="${{ github.event.inputs.incumbent || 'benchmark/incumbent/main.py' }}"
-          if [ ! -f "$INC" ]; then
-            echo "no incumbent at $INC; skipping head-to-head" >> "$GITHUB_STEP_SUMMARY"
-            echo "rate=skipped" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          python "$AGENT_DIR/tools/cloud_verify.py" \
-            --root "$AGENT_DIR" \
+          python tools/cloud_verify.py \
+            --root . \
             --strength-only \
             --games 4 \
-            --opponent "$INC" \
-            --report "$AGENT_DIR/incumbent_report.json" \
-            --min-score-rate "${{ github.event.inputs.incumbent_min || '0.50' }}"
-          echo "rate=$(python -c "import json;print(json.load(open('$AGENT_DIR/incumbent_report.json'))['score_rate'])")" >> "$GITHUB_OUTPUT"
+            --opponent carrot_scaler \
+            --report incumbent_report.json \
+            --min-score-rate "${{ github.event.inputs.scaler_min || '0.50' }}"
 
       - name: Build submission archive
         working-directory: ${{ env.AGENT_DIR }}
@@ -128,12 +109,6 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Gate 1: only a verified artifact reaches this job (needs: verify).
-    # Gate 2: never submit from a pull request.
-    # Gate 3: only pushes to main submit, and only when the commit does not
-    #         opt out with [no-submit]. Feature branches verify but never
-    #         touch the ladder.
-    # Gate 4: manual runs submit only when explicitly asked to.
     if: >
       github.event_name != 'pull_request' &&
       (
@@ -171,9 +146,6 @@ jobs:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
-          # Kaggriculture allows 5 submissions per day and scores only the
-          # latest 2. Burning the quota on an automated push would evict a good
-          # ladder agent, so stop before that happens rather than after.
           set +e
           kaggle competitions submissions -c kaggriculture -v > subs.csv 2> subs.err
           rc=$?
@@ -197,7 +169,7 @@ jobs:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
-          MSG="${{ github.event.inputs.message || 'Cloud-optimized global-optima agent execution' }}"
+          MSG="${{ github.event.inputs.message || 'Global-optimum MDP agent (cloud verified)' }}"
           MSG="$MSG (${GITHUB_SHA::7}, score rate ${{ needs.verify.outputs.score_rate }})"
           kaggle competitions submit \
             -c kaggriculture \

@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Bundle the submission tarball. Runs on the GitHub Actions runner.
-
-Kaggriculture expects `main.py` at the *archive root* -- not nested in a folder.
-Anything else produces an `Error` submission, so the layout is asserted here.
-"""
+"""Bundle submission.tar.gz with main.py at the archive root. Cloud runner only."""
 
 from __future__ import annotations
 
@@ -19,13 +15,11 @@ def build(root, out):
     missing = [f for f in PAYLOAD if not os.path.isfile(os.path.join(root, f))]
     if missing:
         raise SystemExit("::error::missing payload files: {}".format(missing))
-
     if os.path.exists(out):
         os.remove(out)
     with tarfile.open(out, "w:gz") as tar:
         for name in PAYLOAD:
             tar.add(os.path.join(root, name), arcname=name)
-
     with tarfile.open(out, "r:gz") as tar:
         names = tar.getnames()
     if "main.py" not in names:
