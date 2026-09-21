@@ -392,29 +392,19 @@ def live_buy_land(st, plan=None):
 
     After NE lands, REPLAN_EVERY leaves plan.buy_land True and the market
     spends $2000 on SW into 22 empty tiles ($49k). $64k is a full 50-tile
-    NE. Buy SW/SE only when that current board is actually full.
+    NE. Occupancy-gated SW still bought the hour NE filled, then sat 25
+    tiles empty all season. Do not buy SW until leftover mix fills it.
     """
     cost = getattr(st, "next_land_cost", None)
     if cost is None:
         return False
-    empty = int(getattr(st, "n_empty", 99) or 0)
     weeds = int(getattr(st, "n_weeds", 0) or 0)
     hands = len(getattr(st, "hands", []) or [])
-    animals = int(getattr(st, "n_animals", 0) or 0)
-    usable = int(getattr(st, "usable_tiles", 0) or 0)
     money = float(getattr(st, "money", 0) or 0)
     if cost <= 1000:
         flagged = True if plan is None else bool(getattr(plan, "buy_land", False))
         return flagged and hands >= 4 and weeds <= 10 and money > cost + 400
-    if cost <= 2000:
-        return (
-            usable >= 50 and empty <= 4 and weeds <= 8
-            and hands >= 8 and animals >= 12 and money > cost + 400
-        )
-    return (
-        usable >= 75 and empty <= 4 and weeds <= 8
-        and hands >= 12 and animals >= 16 and money > cost + 400
-    )
+    return False
 
 
 def _get(obj, key, default=None):
@@ -1381,33 +1371,20 @@ class MPCRevenueEngine:
             # board. Hour 0 arrived-hands is zero after the EOD wipe — use the
             # crew we are about to hire.
             hands = max(len(st.hands), intended_crew(st) - 1) if st.hour <= 3 else len(st.hands)
-            empty = int(getattr(st, "n_empty", 99) or 0)
             cashish = st.money + 0.5 * sum(
                 st.shed.get(s, 0) * Econ.price(s, st.inventory.get(s, MARKET_I0))
                 for s in ("CARROT", "EGG", "WHEAT")
             )
-            # Cached plan.buy_land after NE landed is how SW still bought
-            # on seeds 9000/9051. Gate SW/SE on a full current board.
+            # Live next_land_cost, not a cached plan.buy_land. SW is off
+            # until leftover mix fills the extra 25 tiles.
             if next_cost <= 1000:
                 p.buy_land = (
                     hands >= 4
                     and getattr(st, "n_weeds", 0) <= 10
                     and cashish > next_cost + 400
                 )
-            elif next_cost <= 2000:
-                p.buy_land = (
-                    st.usable_tiles >= 50 and empty <= 4
-                    and hands >= 8 and st.n_animals >= 12
-                    and getattr(st, "n_weeds", 0) <= 8
-                    and cashish > next_cost + 400
-                )
             else:
-                p.buy_land = (
-                    st.usable_tiles >= 75 and empty <= 4
-                    and hands >= 12 and st.n_animals >= 16
-                    and getattr(st, "n_weeds", 0) <= 8
-                    and cashish > next_cost + 400
-                )
+                p.buy_land = False
 
         # Hands are wiped at EOD (engine fact). Fib resets with them.
         # 12 hires/day costs fib(0..11) ≈ 376. 18/day costs ≈ 6765.
@@ -2087,7 +2064,11 @@ class KaggricultureAgent(object):
         # Re-hire every morning. Fib(0..11) ≈ 376/day.
         need_hands = max(0, plan.target_hands - len(st.hands))
         n = st.hires_today
-        staffed_now = len(st.hands) + st.hires_today >= 8
+        living = len(st.hands)
+        # hires_today already arrived as hands. 4 living + 4 earlier HIREs
+        # looking like a staffed crew is how scaler seed 9000 kept 4 workers:
+        # the $400 float then blocked the rest.
+        staffed_now = living >= 8
         reserved = 1  # wheat
         land_now = live_buy_land(st, plan)
         if staffed_now and land_now:
@@ -2104,18 +2085,21 @@ class KaggricultureAgent(object):
             for a in ("COW", "SHEEP")
         )
         # Seed 9051 printed $0 and 4 hands: 3 HIREs then cows spent the till.
-        # Four HIREs until 8 are queued; cows wait. Fib(0..7) ≈ $54.
+        # Four HIREs until 8 are living or landing this pack; cows wait.
+        # Fib(0..7) ≈ $54.
         per_turn = min(need_hands, hire_slots, 4 if not staffed_now else (3 if need_pasture_buy else 4))
         float_cash = 400.0
+        queued = 0
         for _ in range(per_turn):
             c = fib(n)
-            if budget < c + float_cash and (len(st.hands) + n) >= 8:
-                break
             if budget < c:
+                break
+            if living + queued >= 8 and budget < c + float_cash:
                 break
             budget = _spend(hires, ["HIRE"], c)
             n += 1
-        staff_first = (len(st.hands) + n) < 8
+            queued += 1
+        staff_first = (living + queued) < 8
 
         short = reserve_wheat - st.wheat_held()
         # Feed the living herd plus the next few buys, not the 24-head target.
