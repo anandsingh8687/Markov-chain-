@@ -72,12 +72,8 @@ def check_import(root):
     return main
 
 
-def _tile_census(env, player=0):
-    last = env.steps[-1]
-    obs = (last[0] or {}).get("observation") or {}
-    farms = obs.get("farms") or []
-    me = farms[player] if player < len(farms) else {}
-    tiles = me.get("tiles") or []
+def _census_farm(me):
+    tiles = (me or {}).get("tiles") or []
     kinds = {}
     animals = {}
     locked = empty = 0
@@ -95,7 +91,15 @@ def _tile_census(env, player=0):
                 else:
                     k = t.get("crop") or t.get("kind") or "?"
                     kinds[k] = kinds.get(k, 0) + 1
-    return me, kinds, animals, empty, locked
+    return me or {}, kinds, animals, empty, locked
+
+
+def _tile_census(env, player=0, step=-1):
+    last = env.steps[step]
+    obs = (last[0] or {}).get("observation") or {}
+    farms = obs.get("farms") or []
+    me = farms[player] if player < len(farms) else {}
+    return _census_farm(me)
 
 
 def _empty_struct_count(env, player=0):
@@ -114,13 +118,48 @@ def _weed_count(env, player=0):
         return 0
 
 
-def farm_telemetry(env, label="p0"):
-    """End-of-episode public farm snapshot. Cloud-only diagnosis of ramp collapse."""
+def _productive(kinds, animals):
+    n = sum(int(v or 0) for v in animals.values())
+    for k, v in kinds.items():
+        if k in ("COOP", "PASTURE", "WEED", "?"):
+            continue
+        n += int(v or 0)
+    return n
+
+
+def _midgame_staff(env, at=480):
+    """Day-20 snapshot. End-of-episode empty is harvest, not utilisation."""
     try:
-        me, kinds, animals, empty, locked = _tile_census(env, 0)
-        print("      telemetry {} money={} quads={} animals={} crops={} empty={} locked={}".format(
-            label, me.get("money"), me.get("unlocked_quadrants"),
-            animals, kinds, empty, locked))
+        idx = at if at < len(env.steps) else -1
+        me, kinds, animals, empty, locked = _tile_census(env, 0, idx)
+        hands = len(me.get("hands") or [])
+        unlocked = max(1, 100 - locked)
+        prod = _productive(kinds, animals)
+        util = prod / float(unlocked)
+        if hands < 8:
+            return False, ("under-staffed midgame: {} hands (need 8). "
+                           "HIREs were dropped by the 10-order cap or fib-exploded."
+                           .format(hands))
+        if unlocked >= 40 and util < 0.35:
+            return False, ("under-utilized midgame: {:.0%} of {} tiles (need 35%). "
+                           "Weeds were under-staffing; shrinking the board froze idle land."
+                           .format(util, unlocked))
+        return True, ""
+    except Exception:
+        return True, ""
+
+
+def farm_telemetry(env, label="p0", step=-1):
+    """Farm snapshot. Mid-horizon (step 480) is utilisation; T=720 is after harvest."""
+    try:
+        me, kinds, animals, empty, locked = _tile_census(env, 0, step)
+        hands = len(me.get("hands") or [])
+        unlocked = max(1, 100 - locked)
+        prod = _productive(kinds, animals)
+        print("      telemetry {} money={} hands={} quads={} animals={} crops={} "
+              "empty={} locked={} util={:.0%}".format(
+                  label, me.get("money"), hands, me.get("unlocked_quadrants"),
+                  animals, kinds, empty, locked, prod / float(unlocked)))
     except Exception as exc:
         print("      telemetry unavailable: {}".format(exc))
 
@@ -149,7 +188,8 @@ def check_selfplay(root):
             fail("self-play player {} ended with status {} (rewards={})".format(
                 i, s, rewards))
     print("      ok  rewards={}  wall={:.1f}s".format(rewards, wall))
-    farm_telemetry(env, "self-play-p0")
+    farm_telemetry(env, "self-play-p0-end", -1)
+    farm_telemetry(env, "self-play-p0-mid", 480)
     return env
 
 
@@ -320,7 +360,8 @@ def check_strength(root, games, opponent, report_path):
         print("      seed {:>5}  ours={:>10.0f}  opp={:>10.0f}  {}".format(
             seed, mine, theirs, "WIN" if mine > theirs else
             ("TIE" if mine == theirs else "LOSS")))
-        farm_telemetry(env, "seed-{}".format(seed))
+        farm_telemetry(env, "seed-{}-end".format(seed), -1)
+        farm_telemetry(env, "seed-{}-mid".format(seed), 480)
         if mine < min_farm:
             fail("ramp collapse vs {} seed {}: score {:.0f} < {:.0f}. "
                  "We won or lost with a farm that never left the opponent's book."
@@ -335,6 +376,9 @@ def check_strength(root, games, opponent, report_path):
             fail("weed farm vs {} seed {}: {} weeds. Plants were sown faster "
                  "than leftover workers could water them."
                  .format(opponent, seed, weeds))
+        ok, reason = _midgame_staff(env)
+        if not ok:
+            fail("{} vs {} seed {}".format(reason, opponent, seed))
     rate = (wins + 0.5 * tie) / float(max(1, games))
     med = statistics.median(margins) if margins else 0.0
     print("      score rate vs {}: {:.0%}  (W{} T{} L{})  median margin {:+.0f}".format(

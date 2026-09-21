@@ -126,9 +126,10 @@ capital-velocity order, not the unit-price order.
 
 ## 7. Dual NAV, flow occupancy, contested liquidation
 
-Exact Bellman / Nash / 720-turn MILP is infeasible under the 1s
-`actTimeout`. The feasible global policy is the KKT forecast plus the
-state-contingent forecasts a peer copying the same water-fill must lose to.
+Exact Bellman / Nash / 720-turn MILP is not the 1s timeout (that claim
+was unmeasured). The infeasible object is the **action space**: 720
+turns × workers × tiles × market. The feasible global policy is the
+KKT forecast plus the state-contingent forecasts below.
 
 1. **Both NAVs, late LOCK.** `my_nav = bank + shed + my field`.
    `opp_nav = their bank + their public field + replant flow` (shed hidden
@@ -162,10 +163,11 @@ against a weak bot:
   hire / feed-wheat / land / goose. Sells still go first so the engine
   has cash; buys keep reserved slots.
 - Structure count is `empty + occupied`, at most 2 new coops per turn.
-  Eggs absorb, so unconstrained KKT wants every tile as a goose. The
-  binding dual is **labour**: herd `min(8, workers−2, tiles/4)`,
-  standing plants `workers×2 − herd`. Cloud `af12ea7` still bought SE
-  once hiring caught up and sowed 5 melon an hour; seed 9017 ended
-  with 33 weeds / 11k. The staffed farm is 50 tiles (NW+NE). SE is
-  never bought. SW only at 12 hands on a clean COMPOUND board.
-  Milk/wool stay closed — thin books that open unstaffable pastures.
+  Weeds are **under-staffing**, not over-expansion. The 10-order cap
+  plus `target − hires_today` (re-hire the crew every morning, explode
+  fib) plus a 50-tile ceiling froze a 17% board. Fib resets daily: 4
+  cheap HIREs/day reach 18 hands in a week. Pack 2 cash sells then
+  HIRE so those orders land. Plants scale as `workers×4`. Land is
+  NE/SW/SE at 4/8/12 hands. Milk/wool reopen; glut (inv > I0) is
+  derated so eggs do not print into a crash while carrot is scarce.
+  Vacate a book only when its quote is already dying.

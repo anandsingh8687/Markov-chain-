@@ -244,37 +244,47 @@ def add_replant_flow(remain, tiles_of, days_left):
 def goose_cap(st):
     """Eggs absorb, so unconstrained KKT wants every tile as a goose.
 
-    The binding dual is labour, not tiles. Keep 2 workers for water.
+    Weeds were under-staffing (dropped HIREs), not over-expansion.
+    Cap the herd at labour that has actually arrived, not at a shrunk board.
     """
     usable = int(getattr(st, "usable_tiles", QUADRANT * QUADRANT) or QUADRANT * QUADRANT)
     labor = 1 + len(getattr(st, "hands", []) or [])
-    by_labor = max(4, labor - 2)
-    by_tiles = max(4, usable // 4)
-    return min(8, by_labor, by_tiles)
+    return min(16, max(4, labor - 2), max(4, usable // 3))
 
 
 def plant_slots(st):
-    """Standing plants a worker can water after the daily feed pass.
+    """Standing plants the arrived labour can water.
 
-    `af12ea7` used leftover-workers as a *per-turn* sow cap, so we planted
-    5 melon an hour for 15 hours and they died overnight. This is a
-    standing-plant cap, not a per-turn cap.
+    Per-turn sow caps and a 50-tile ceiling were the wrong dual: they
+    froze a 17% board. Scale plants with workers that *landed*.
     """
     labor = 1 + len(getattr(st, "hands", []) or [])
-    herd = max(int(getattr(st, "n_animals", 0) or 0), goose_cap(st))
-    return max(2, labor * 2 - herd)
+    herd = int(getattr(st, "n_animals", 0) or 0)
+    usable = int(getattr(st, "usable_tiles", QUADRANT * QUADRANT) or QUADRANT * QUADRANT)
+    return max(4, min(usable - herd, labor * 4))
 
 
 def product_contested(st, prod):
-    """True when the opponent's visible flow already owns this book."""
+    """True when their flow would crash a book that is already weak.
+
+    Vacating a healthy book (price still near base) is how we parked on
+    eggs above I0 while carrot sat 244 units scarce. Subtract their flow
+    from demand either way; only leave the crop when the quote is dying.
+    """
+    params = MARKET_PARAMS.get(prod)
+    if not params:
+        return False
+    inv = st.inventory.get(prod, MARKET_I0)
+    price = float(st.prices.get(prod) or Econ.price(prod, inv))
+    if price >= 0.90 * params["base"]:
+        return False
     tiles = int((getattr(st, "opp_peak_tiles", None) or st.opp_tiles_of).get(prod, 0) or 0)
     if tiles >= 10:
         return True
     flow = float(st.opp_flow.get(prod, 0.0) or 0.0)
-    if flow <= 0 or prod not in MARKET_PARAMS:
+    if flow <= 0:
         return False
-    inv = st.inventory.get(prod, MARKET_I0)
-    head = Econ.units_until(prod, inv, max(1.0, 0.45 * MARKET_PARAMS[prod]["base"]))
+    head = Econ.units_until(prod, inv, max(1.0, 0.45 * params["base"]))
     return flow > 0.40 * max(float(head), 1.0)
 
 
@@ -883,8 +893,16 @@ class MPCRevenueEngine:
             candidates.append("EGG")
         if days_left >= 12:
             candidates.append("MELON")
-        # Milk/wool/berry are thin books and open pastures we cannot staff.
-        # The feasible global mix is carrot → goose/egg + uncontested melon.
+        if phase == "COMPOUND" and days_left >= 14:
+            # Milk/wool are the highest revenue per tile-day while the quote
+            # holds. Closing them froze the farm on eight geese. KKT capacity
+            # (and the glut derate below) is what stops a crush to $1.
+            if shops_w.get("MILK", 0) >= 1:
+                candidates.append("MILK")
+            if shops_w.get("WOOL", 0) >= 1:
+                candidates.append("WOOL")
+            if shops_w.get("TOMATO", 0) >= 2 and days_left >= 13:
+                candidates.append("TOMATO")
         for prod in candidates:
             if prod in ("WHEAT", "EGG"):
                 allow.add(prod)
@@ -902,6 +920,10 @@ class MPCRevenueEngine:
             if self.el.collapsed.get(prod) and prod not in ("WHEAT", "EGG"):
                 cost *= 1.0 + 2.0 * max(0.0, self.el.collapse_depth.get(prod, 0.0))
             inv = st.inventory.get(prod, MARKET_I0)
+            # Glut derate: eggs absorb so KKT keeps printing them above I0
+            # while carrot sits scarce. Scarce books must win the water-fill.
+            if inv > MARKET_I0:
+                cost *= 1.0 + (inv - MARKET_I0) / 150.0
             floor = max(1.0, mu * cost)
             if Econ.price(prod, inv) < floor:
                 units[prod] = 0
@@ -989,7 +1011,7 @@ class MPCRevenueEngine:
             else:
                 for animal, produced in ANIMAL_PRODUCT.items():
                     if produced == prod:
-                        cap = goose_cap(st) if animal == "GOOSE" else 4
+                        cap = goose_cap(st) if animal == "GOOSE" else 8
                         p.animal_targets[animal] = min(tiles, cap)
 
         # Feed wheat: market wheat absorbs and is cheap. Planting 1.25 tiles
@@ -1080,46 +1102,29 @@ class MPCRevenueEngine:
                 p.crop_mix["WHEAT"] = max(p.crop_mix.get("WHEAT", 0), min(2, slots))
 
         next_cost = st.next_land_cost
-        bought = max(0, len(st.quadrants) - 1)
         if next_cost is not None and days_left >= 6 and p.phase in ("EXPAND", "COMPOUND"):
-            # 50 tiles (NW+NE) is the staffed farm. Hiring then unlocked SW/SE
-            # on af12ea7 and we harvested 33 weeds. Never buy SE. SW only
-            # when 12 hands, a clean board, and COMPOUND.
+            # Hire first, then expand. Weeds were dropped HIREs, not a 75-tile
+            # board. Staff NE/SW/SE at 4/8/12 hands.
             hands = len(st.hands)
-            if bought >= 2:
-                p.buy_land = False
-            elif bought == 1:
-                p.buy_land = (
-                    p.phase == "COMPOUND"
-                    and hands >= 12
-                    and getattr(st, "n_weeds", 0) <= 2
-                    and st.money > next_cost + 800
-                )
-            else:
-                p.buy_land = (
-                    hands >= 4
-                    and getattr(st, "n_weeds", 0) <= 6
-                    and st.money + 0.5 * sum(
-                        st.shed.get(s, 0) * Econ.price(s, st.inventory.get(s, MARKET_I0))
-                        for s in ("CARROT", "EGG", "WHEAT")
-                    ) > next_cost + 400
-                )
+            staffed = (
+                (next_cost <= 1000 and hands >= 4)
+                or (next_cost <= 2000 and hands >= 8)
+                or (next_cost <= 4000 and hands >= 12)
+            )
+            p.buy_land = (
+                staffed
+                and getattr(st, "n_weeds", 0) <= 10
+                and st.money + 0.5 * sum(
+                    st.shed.get(s, 0) * Econ.price(s, st.inventory.get(s, MARKET_I0))
+                    for s in ("CARROT", "EGG", "WHEAT")
+                ) > next_cost + 400
+            )
 
-        # Hands: one worker-day must cover feed + water on the current board.
-        worker_day = 0.50 * p.action_value * TURNS_PER_DAY
-        need = int(math.ceil((st.usable_tiles + st.n_animals * 4.0) / 12.0))
-        target, cum, n = 0, 0, 0
-        cash = max(0.0, st.money * 0.28)
-        while target < 18:
-            c = fib(n)
-            if c > worker_day and target >= max(4, need):
-                break
-            if cum + c > cash and target >= max(4, need):
-                break
-            cum += c
-            target += 1
-            n += 1
-        p.target_hands = max(4, min(18, max(target, need)))
+        # Hands: fill the unlocked board. Fib resets each day, so 4 cheap
+        # hires/day reach 18 in a week. Do not budget 28% of cash as if
+        # the whole crew were hired this morning.
+        need = min(18, max(8, (st.usable_tiles + 12) // 4, st.n_animals + 6))
+        p.target_hands = need
         return p
 
 
@@ -1410,13 +1415,13 @@ def build_tasks(st, plan):
     # Cap on TOTAL structures (empty + occupied). have_c lags while workers
     # walk, so reserving `target - alive` every turn paved 47 empty coops.
     target_g = min(int(plan.animal_targets.get("GOOSE", 0) or 0), goose_cap(st))
-    target_p = min(4, int(plan.animal_targets.get("COW", 0) or 0) + int(
+    target_p = min(8, int(plan.animal_targets.get("COW", 0) or 0) + int(
         plan.animal_targets.get("SHEEP", 0) or 0))
     need_coops = max(0, min(target_g - st.animals_alive["GOOSE"], target_g - st.n_coops))
     need_past = max(0, min(target_p - st.animals_alive["COW"] - st.animals_alive["SHEEP"],
                            target_p - st.n_pastures))
     need_coops = min(need_coops, 2)
-    need_past = min(need_past, 1)
+    need_past = min(need_past, 2)
     reserve_n = min(need_coops + need_past, len(empties))
     plant_empties = empties[:max(0, len(empties) - reserve_n)]
     build_empties = empties[len(plant_empties):]
@@ -1427,7 +1432,7 @@ def build_tasks(st, plan):
 
     want = dict(plan.crop_mix)
     planted = {c: 0 for c in CROPS}
-    if st.hour <= 14 and days_left >= 3:
+    if st.hour <= 16 and days_left >= 3:
         for pos in plant_empties:
             crop = None
             for c in sorted(want, key=lambda k: -plan.price_hint.get(k, 0)):
@@ -1705,33 +1710,37 @@ class KaggricultureAgent(object):
         for o in orders:
             budget += Econ.marginal_revenue(o[1], st.inventory.get(o[1], MARKET_I0), o[2])
 
-        buys = []
+        # Capital-velocity: cash sell, HIRE (must land), wheat, land, animals, rest.
+        hires = []
+        core = []
+        seeds = []
 
-        def _spend(order, cost):
-            buys.append(order)
+        def _spend(dest, order, cost):
+            dest.append(order)
             return budget - cost
 
-        # Capital-velocity order: hire, feed, land, geese, then seeds.
-        hire_until = 8 if st.hour <= 6 or len(st.hands) == 0 else 0
-        if hire_until:
-            to_hire = max(0, plan.target_hands - st.hires_today)
-            n = st.hires_today
-            for _ in range(min(to_hire, hire_until)):
-                c = fib(n)
-                if budget < c:
-                    break
-                budget = _spend(["HIRE"], c)
-                n += 1
+        # Fib resets daily. At most 4 hires/day (cheap), 2 this turn, every
+        # hour until len(hands) hits target. `target - hires_today` re-hired
+        # the whole crew every morning and exploded the fib.
+        need_hands = max(0, plan.target_hands - len(st.hands))
+        left_today = max(0, 4 - st.hires_today)
+        n = st.hires_today
+        for _ in range(min(need_hands, left_today, 2)):
+            c = fib(n)
+            if budget < c:
+                break
+            budget = _spend(hires, ["HIRE"], c)
+            n += 1
 
         short = reserve_wheat - st.wheat_held()
         if short > 0 and (herd > 0 or plan.animal_targets.get("GOOSE", 0) > 0):
             price = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
             afford = int(min(max(short, 1), budget // max(1.0, price), 24))
             if afford > 0:
-                budget = _spend(["BUY_PRODUCT", "WHEAT", afford], afford * price)
+                budget = _spend(core, ["BUY_PRODUCT", "WHEAT", afford], afford * price)
 
         if plan.buy_land and st.next_land_cost and budget >= st.next_land_cost + 150:
-            budget = _spend(["BUY_LAND"], st.next_land_cost)
+            budget = _spend(core, ["BUY_LAND"], st.next_land_cost)
 
         for animal in ("GOOSE", "COW", "SHEEP"):
             target = plan.animal_targets.get(animal, 0)
@@ -1745,18 +1754,16 @@ class KaggricultureAgent(object):
                 continue
             if st.stance == "LOCK" and animal != "GOOSE":
                 continue
-            if animal != "GOOSE" and (st.animals_alive.get("GOOSE", 0) < 8
-                                      or len(st.quadrants) < 3):
+            if animal != "GOOSE" and st.animals_alive.get("GOOSE", 0) < 4:
                 continue
-            # Do not buy a head we cannot house or feed this turn.
             want = ANIMAL_STRUCTURE[animal]
             housed = st.n_coops if animal == "GOOSE" else st.n_pastures
             empty_for = sum(1 for _, k in st.empty_structs if k == want)
-            if empty_for <= 0 and housed >= target:
+            if empty_for <= 0 and housed >= max(target, 1):
                 continue
             if st.wheat_held() < 2 * (st.n_animals + in_shed + 1):
                 continue
-            if (st.next_land_cost is not None and alive >= 6
+            if (st.next_land_cost is not None and alive >= 8
                     and budget < st.next_land_cost + 400):
                 break
             bought = 0
@@ -1764,7 +1771,7 @@ class KaggricultureAgent(object):
             while need > 0 and bought < cap:
                 if budget < cost + 200:
                     break
-                budget = _spend(["BUY_ANIMAL", animal, 1], cost)
+                budget = _spend(core, ["BUY_ANIMAL", animal, 1], cost)
                 need -= 1
                 bought += 1
 
@@ -1783,13 +1790,13 @@ class KaggricultureAgent(object):
             keep = 250 if crop == "MELON" else 80
             afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
             if afford > 0:
-                budget = _spend(["BUY_SEED", crop, afford], afford * cost)
+                budget = _spend(seeds, ["BUY_SEED", crop, afford], afford * cost)
 
-        # 10-order cap: a long sell tape must not drop land/geese/hire/wheat.
-        # Sells still go first so the engine has cash for the buys.
-        buy_keep = min(len(buys), 6 if plan.phase in ("EXPAND", "COMPOUND") else 4)
-        sell_keep = max(0, MAX_MARKET_ORDERS - buy_keep)
-        return (orders[:sell_keep] + buys[:buy_keep])[:MAX_MARKET_ORDERS]
+        # Must-land HIREs: 2 cash sells, then hires, then land/wheat/animals.
+        cash_sells = orders[:2]
+        rest_sells = orders[2:]
+        packed = cash_sells + hires + core + rest_sells + seeds
+        return packed[:MAX_MARKET_ORDERS]
 
 
 _AGENTS = {}
