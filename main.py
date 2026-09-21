@@ -1236,6 +1236,7 @@ class State(object):
         self.n_weeds = 0
         self.n_plants = 0
         self.n_unwatered = 0
+        self.crops_alive = {c: 0 for c in CROPS}
         self.my_pipeline = {}
         self.my_imminent = {}
         self.opp_pipeline = {}
@@ -1277,6 +1278,9 @@ class State(object):
                     self.n_weeds += 1
                 if kind == "PLANT":
                     self.n_plants += 1
+                    crop = tile.get("crop")
+                    if crop in self.crops_alive:
+                        self.crops_alive[crop] += 1
                     if not tile.get("watered_today"):
                         self.n_unwatered += 1
                 if animal in self.animals_alive:
@@ -1380,6 +1384,7 @@ def build_tasks(st, plan):
     days_left = max(0, DAYS - st.day)
     empties = []
     animals_unfed = 0
+    on_board = {c: 0 for c in CROPS}
 
     for y, row in enumerate(st.tiles):
         for x, tile in enumerate(row):
@@ -1404,6 +1409,8 @@ def build_tasks(st, plan):
                 spec = CROPS.get(crop)
                 if spec is None:
                     continue
+                if crop in on_board:
+                    on_board[crop] += 1
                 age = _age(st, tile)
                 price = plan.price_hint.get(crop, MARKET_PARAMS[crop]["base"])
                 units_now = int(tile.get("yield_units", 0) or 0)
@@ -1503,9 +1510,15 @@ def build_tasks(st, plan):
     sow_this_hour = max(0, labor // 2) if st.hour <= 16 else 0
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
+    if plan.phase in ("HARVEST", "LIQUIDATE"):
+        # Late sow is how 36 melon became 26 weeds after harvest on seed 9051.
+        spare = 0
     plant_empties = plant_empties[:spare]
 
-    want = dict(plan.crop_mix)
+    # crop_mix is a standing target, not a per-turn quota. Replanting the
+    # whole mix every hour stacked 12 melon/day into 36 and crashed the book.
+    want = {c: max(0, int(plan.crop_mix.get(c, 0) or 0) - on_board.get(c, 0))
+            for c in CROPS}
     planted = {c: 0 for c in CROPS}
     if st.hour <= 16 and days_left >= 3:
         for pos in plant_empties:
@@ -1900,7 +1913,8 @@ class KaggricultureAgent(object):
             if want <= 0 or need_days > days_left:
                 continue
             have = int(st.seeds.get(crop, 0) or 0)
-            need = max(0, min(int(want), st.usable_tiles) - have)
+            standing = int(st.crops_alive.get(crop, 0) or 0)
+            need = max(0, min(int(want), st.usable_tiles) - have - standing)
             if need <= 0:
                 continue
             cost = SEED_COST[crop]
