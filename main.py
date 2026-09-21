@@ -1425,7 +1425,9 @@ class MPCRevenueEngine:
 
         # Hands are wiped at EOD (engine fact). Fib resets with them.
         # 12 hires/day costs fib(0..11) ≈ 376. 18/day costs ≈ 6765.
-        p.target_hands = intended_crew(st) - 1
+        # intended-1 left 11 hands; the //4 wheat cap then dropped 9085
+        # $8k (field stood, not watered/fed). Hire the full intended crew.
+        p.target_hands = intended_crew(st)
         return p
 
 
