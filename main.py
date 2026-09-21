@@ -339,7 +339,9 @@ def pasture_cap(st, product):
     n = int((head + regen - opp) / max(1.0, rate * float(days)))
     labor = effective_labor(st)
     hard = 12 if product == "MILK" else 10
-    return min(hard, max(0, n), max(0, labor - 2))
+    # labor-2 capped the $64k farm at 10 cows while milk sat −484 at $351.
+    # 12 workers can FEED a 12-cow / 4-sheep / 8-goose herd.
+    return min(hard, max(0, n), max(0, labor))
 
 
 def plant_slots(st):
@@ -383,6 +385,36 @@ def product_contested(st, prod):
         return False
     head = Econ.units_until(prod, inv, max(1.0, 0.45 * params["base"]))
     return flow > 0.40 * max(float(head), 1.0)
+
+
+def live_buy_land(st, plan=None):
+    """Issue BUY_LAND from the live board, not an 8-turn cached plan.
+
+    After NE lands, REPLAN_EVERY leaves plan.buy_land True and the market
+    spends $2000 on SW into 22 empty tiles ($49k). $64k is a full 50-tile
+    NE. Buy SW/SE only when that current board is actually full.
+    """
+    cost = getattr(st, "next_land_cost", None)
+    if cost is None:
+        return False
+    empty = int(getattr(st, "n_empty", 99) or 0)
+    weeds = int(getattr(st, "n_weeds", 0) or 0)
+    hands = len(getattr(st, "hands", []) or [])
+    animals = int(getattr(st, "n_animals", 0) or 0)
+    usable = int(getattr(st, "usable_tiles", 0) or 0)
+    money = float(getattr(st, "money", 0) or 0)
+    if cost <= 1000:
+        flagged = True if plan is None else bool(getattr(plan, "buy_land", False))
+        return flagged and hands >= 4 and weeds <= 10 and money > cost + 400
+    if cost <= 2000:
+        return (
+            usable >= 50 and empty <= 4 and weeds <= 8
+            and hands >= 8 and animals >= 12 and money > cost + 400
+        )
+    return (
+        usable >= 75 and empty <= 4 and weeds <= 8
+        and hands >= 12 and animals >= 16 and money > cost + 400
+    )
 
 
 def _get(obj, key, default=None):
@@ -948,11 +980,13 @@ class MPCRevenueEngine:
                or phase != self.plan.phase
                or st.stance != self.plan.stance
                or st.hour == 0
-               or len(st.hands) != getattr(self, "_hands", -1))
+               or len(st.hands) != getattr(self, "_hands", -1)
+               or st.usable_tiles != getattr(self, "_usable", -1))
         if not due:
             return self.plan
         self._last = st.turn
         self._hands = len(st.hands)
+        self._usable = st.usable_tiles
         try:
             self.plan = self._replan(st)
         except Exception:
@@ -1146,7 +1180,10 @@ class MPCRevenueEngine:
         def _feed_tiles(h):
             if not h or days_left < 5:
                 return 0
-            return min(max(2, int(math.ceil(h * 0.55))), max(2, st.usable_tiles // 5))
+            # Wheat tiles feed the herd. A 14–20 tile field on a 50-tile
+            # NE is feed, not a market fill: the book stays −500 to −1000
+            # because animals eat it. Steal those tiles for strawberry.
+            return min(max(2, int(math.ceil(h * 0.40))), max(2, st.usable_tiles // 6))
         ft = _feed_tiles(herd)
         if ft:
             p.crop_mix["WHEAT"] = max(p.crop_mix.get("WHEAT", 0), ft)
@@ -1181,7 +1218,7 @@ class MPCRevenueEngine:
                 and not product_contested(st, "WOOL")
             )
             if milk_ok:
-                cow_floor = min(8, cap_c, max(4, st.usable_tiles // 5))
+                cow_floor = min(12, cap_c, max(4, st.usable_tiles // 4))
                 p.animal_targets["COW"] = min(
                     max(int(p.animal_targets.get("COW", 0) or 0), cow_floor), cap_c)
             elif cap_c <= 0:
@@ -1215,11 +1252,11 @@ class MPCRevenueEngine:
             elif p.crop_mix.get("MELON", 0):
                 p.crop_mix.pop("MELON", None)
             quote_s = Econ.price("STRAWBERRY", st.inventory.get("STRAWBERRY", MARKET_I0))
-            cap_s = min(10, book_tiles(st, "STRAWBERRY", 0.55))
+            cap_s = min(16, book_tiles(st, "STRAWBERRY", 0.55))
             if (cap_s > 0 and days_left >= 14 and quote_s >= 0.85 * MARKET_PARAMS["STRAWBERRY"]["base"]
                     and not product_contested(st, "STRAWBERRY")):
                 p.crop_mix["STRAWBERRY"] = max(
-                    int(p.crop_mix.get("STRAWBERRY", 0) or 0), min(6, cap_s))
+                    int(p.crop_mix.get("STRAWBERRY", 0) or 0), min(8, cap_s))
             elif p.crop_mix.get("STRAWBERRY", 0):
                 if cap_s <= 0:
                     p.crop_mix.pop("STRAWBERRY", None)
@@ -1228,15 +1265,8 @@ class MPCRevenueEngine:
             herd = (p.animal_targets.get("GOOSE", 0) + p.animal_targets.get("COW", 0)
                     + p.animal_targets.get("SHEEP", 0) + st.n_animals)
             ft = _feed_tiles(herd)
-            quote_wh = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
-            cap_wh = book_tiles(st, "WHEAT", 0.50)
-            wheat_n = ft
-            # Wheat absorbs (log) but a $51-56 quote with −700 to −950 on
-            # the book is a field, not a feed buy. Size off land, cap 24.
-            if quote_wh >= 1.40 * MARKET_PARAMS["WHEAT"]["base"] and cap_wh > 0:
-                wheat_n = max(ft, min(24, cap_wh, max(8, st.usable_tiles // 3)))
-            if wheat_n:
-                p.crop_mix["WHEAT"] = max(int(p.crop_mix.get("WHEAT", 0) or 0), wheat_n)
+            if ft:
+                p.crop_mix["WHEAT"] = max(int(p.crop_mix.get("WHEAT", 0) or 0), ft)
             used_now = sum(p.crop_mix.values()) + sum(p.animal_targets.values())
             left = max(0, min(
                 st.usable_tiles - used_now,
@@ -1248,9 +1278,14 @@ class MPCRevenueEngine:
                 if extra:
                     p.crop_mix["STRAWBERRY"] = have_s + extra
                     left -= extra
-            if left > 0 and quote_wh >= 1.40 * MARKET_PARAMS["WHEAT"]["base"]:
+            if left > 0 and days_left >= 4 and not product_contested(st, "CARROT"):
+                have_c = int(p.crop_mix.get("CARROT", 0) or 0)
+                extra = left
+                p.crop_mix["CARROT"] = have_c + extra
+                left = 0
+            if left > 0 and days_left >= 5:
                 have_w = int(p.crop_mix.get("WHEAT", 0) or 0)
-                extra = min(left, max(0, 24 - have_w))
+                extra = min(left, max(0, ft + 4 - have_w))
                 if extra:
                     p.crop_mix["WHEAT"] = have_w + extra
 
@@ -1266,10 +1301,10 @@ class MPCRevenueEngine:
             overflow = used - st.usable_tiles
             feed_keep = min(
                 int(p.crop_mix.get("WHEAT", 0) or 0),
-                max(8, st.usable_tiles // 4),
+                max(4, st.usable_tiles // 8),
             )
             melon_keep = min(int(p.crop_mix.get("MELON", 0) or 0), min(4, book_tiles(st, "MELON", 0.55)))
-            straw_keep = min(int(p.crop_mix.get("STRAWBERRY", 0) or 0), min(4, book_tiles(st, "STRAWBERRY", 0.55)))
+            straw_keep = min(int(p.crop_mix.get("STRAWBERRY", 0) or 0), min(8, book_tiles(st, "STRAWBERRY", 0.55)))
             for crop in ("CARROT", "TOMATO", "WHEAT", "STRAWBERRY", "MELON"):
                 if overflow <= 0:
                     break
@@ -1340,23 +1375,39 @@ class MPCRevenueEngine:
                 p.crop_mix["WHEAT"] = max(p.crop_mix.get("WHEAT", 0), min(2, slots))
 
         next_cost = st.next_land_cost
+        p.buy_land = False
         if next_cost is not None and days_left >= 6 and p.phase in ("EXPAND", "COMPOUND"):
             # Hire first, then expand. Weeds were dropped HIREs, not a 75-tile
-            # board. Staff NE/SW/SE at 4/8/12 hands. Hour 0 arrived-hands is
-            # zero after the EOD wipe — use the crew we are about to hire.
+            # board. Hour 0 arrived-hands is zero after the EOD wipe — use the
+            # crew we are about to hire.
             hands = max(len(st.hands), intended_crew(st) - 1) if st.hour <= 3 else len(st.hands)
-            # $49k seeds bought SW and left 25-33 empty. $64k seed 9085
-            # stayed on a full 50-tile NE. Do not buy SW/SE until that
-            # board is the default, not a 75-tile pasture.
-            staffed = next_cost <= 1000 and hands >= 4
-            p.buy_land = (
-                staffed
-                and getattr(st, "n_weeds", 0) <= 10
-                and st.money + 0.5 * sum(
-                    st.shed.get(s, 0) * Econ.price(s, st.inventory.get(s, MARKET_I0))
-                    for s in ("CARROT", "EGG", "WHEAT")
-                ) > next_cost + 400
+            empty = int(getattr(st, "n_empty", 99) or 0)
+            cashish = st.money + 0.5 * sum(
+                st.shed.get(s, 0) * Econ.price(s, st.inventory.get(s, MARKET_I0))
+                for s in ("CARROT", "EGG", "WHEAT")
             )
+            # Cached plan.buy_land after NE landed is how SW still bought
+            # on seeds 9000/9051. Gate SW/SE on a full current board.
+            if next_cost <= 1000:
+                p.buy_land = (
+                    hands >= 4
+                    and getattr(st, "n_weeds", 0) <= 10
+                    and cashish > next_cost + 400
+                )
+            elif next_cost <= 2000:
+                p.buy_land = (
+                    st.usable_tiles >= 50 and empty <= 4
+                    and hands >= 8 and st.n_animals >= 12
+                    and getattr(st, "n_weeds", 0) <= 8
+                    and cashish > next_cost + 400
+                )
+            else:
+                p.buy_land = (
+                    st.usable_tiles >= 75 and empty <= 4
+                    and hands >= 12 and st.n_animals >= 16
+                    and getattr(st, "n_weeds", 0) <= 8
+                    and cashish > next_cost + 400
+                )
 
         # Hands are wiped at EOD (engine fact). Fib resets with them.
         # 12 hires/day costs fib(0..11) ≈ 376. 18/day costs ≈ 6765.
@@ -1407,6 +1458,7 @@ class State(object):
         self.quadrants = set(_get(self.me, "unlocked_quadrants", ["NW"]) or ["NW"])
 
         self.shed_total = sum(int(v or 0) for v in self.shed.values())
+        self.n_empty = 0
         self.usable_tiles = self._count_usable()
         self.next_land_cost = self._next_land_cost()
         self.n_animals = 0
@@ -1436,17 +1488,28 @@ class State(object):
 
     def _count_usable(self):
         n = 0
+        empty = 0
         for row in self.tiles:
             for t in row:
-                if t != "LOCKED":
-                    n += 1
+                if t == "LOCKED":
+                    continue
+                n += 1
+                if t is None:
+                    empty += 1
+        self.n_empty = empty
         return n if n else QUADRANT * QUADRANT
 
     def _next_land_cost(self):
-        bought = max(0, len(self.quadrants) - 1)
-        if bought >= len(LAND_PRICES):
-            return None
-        return LAND_PRICES[bought]
+        # Count unlocked area, not the observation list: a stale quadrants
+        # set after BUY_LAND is how the next price stayed $1000 and SW landed.
+        u = int(self.usable_tiles or 0)
+        if u < 50:
+            return LAND_PRICES[0]
+        if u < 75:
+            return LAND_PRICES[1]
+        if u < 100:
+            return LAND_PRICES[2]
+        return None
 
     def _scan_board(self):
         for y, row in enumerate(self.tiles):
@@ -1700,6 +1763,8 @@ def build_tasks(st, plan):
     labor = effective_labor(st)
     hours_left = max(0, 22 - st.hour)
     sow_this_hour = max(0, labor // 2) if st.hour <= 16 else 0
+    if st.hour <= 12 and len(empties) >= 8:
+        sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
     if plan.phase in ("HARVEST", "LIQUIDATE"):
@@ -2024,7 +2089,8 @@ class KaggricultureAgent(object):
         n = st.hires_today
         staffed_now = len(st.hands) + st.hires_today >= 8
         reserved = 1  # wheat
-        if staffed_now and plan.buy_land:
+        land_now = live_buy_land(st, plan)
+        if staffed_now and land_now:
             reserved += 1
         if staffed_now and any(int(v or 0) > 0 for v in (plan.animal_targets or {}).values()):
             reserved += 2
@@ -2053,10 +2119,10 @@ class KaggricultureAgent(object):
 
         short = reserve_wheat - st.wheat_held()
         # Feed the living herd plus the next few buys, not the 24-head target.
-        short = max(short, 2 * (herd + 4) - st.wheat_held())
+        short = max(short, 3 * (herd + 2) - st.wheat_held())
         if short > 0 and (herd > 0 or plan.animal_targets.get("GOOSE", 0) > 0):
             price = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
-            afford = int(min(max(short, 1), max(0.0, budget - 400) // max(1.0, price), 12))
+            afford = int(min(max(short, 1), max(0.0, budget - 400) // max(1.0, price), 16))
             if afford > 0:
                 budget = _spend(core, ["BUY_PRODUCT", "WHEAT", afford], afford * price)
                 pending_wheat = afford
@@ -2075,7 +2141,7 @@ class KaggricultureAgent(object):
                     continue
                 have = int(st.seeds.get(crop, 0) or 0)
                 standing = int(st.crops_alive.get(crop, 0) or 0)
-                need = max(0, min(want, 6) - have - standing)
+                need = max(0, min(want, 10) - have - standing)
                 cost = SEED_COST[crop]
                 keep = 400
                 afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
@@ -2100,12 +2166,13 @@ class KaggricultureAgent(object):
                 int(plan.animal_targets.get("SHEEP", 0) or 0)
                 > st.animals_alive.get("SHEEP", 0) + int(st.shed.get("SHEEP", 0) or 0)
             )
+            land_now = live_buy_land(st, plan)
             land_after_geese = bool(
-                plan.buy_land and st.next_land_cost and st.next_land_cost >= 2000 and geese_alive < 8)
+                land_now and st.next_land_cost and st.next_land_cost >= 2000 and geese_alive < 8)
             land_after_pasture = bool(
-                plan.buy_land and st.next_land_cost and st.next_land_cost >= 2000
+                land_now and st.next_land_cost and st.next_land_cost >= 2000
                 and (cows_needed or sheep_needed))
-            if (plan.buy_land and st.next_land_cost
+            if (land_now and st.next_land_cost
                     and not land_after_geese and not land_after_pasture
                     and budget >= st.next_land_cost + 400):
                 budget = _spend(core, ["BUY_LAND"], st.next_land_cost)
@@ -2147,16 +2214,19 @@ class KaggricultureAgent(object):
                         wheat_next += afford
                     if wheat_next < 2:
                         continue
-                if (animal == "GOOSE" and plan.buy_land and st.next_land_cost is not None
+                if (animal == "GOOSE" and land_now and st.next_land_cost is not None
                         and alive >= 8 and (cows_needed or sheep_needed)
                         and budget < st.next_land_cost + 400):
                     continue
                 bought = 0
                 pasture_wanted = cows_needed or sheep_needed
-                cap = 2 if (
-                    animal == "GOOSE" and not pasture_wanted
-                    and wheat_next >= 4 * (st.n_animals + 1)
-                ) else 1
+                if animal == "COW":
+                    cap = 2
+                elif (animal == "GOOSE" and not pasture_wanted
+                      and wheat_next >= 4 * (st.n_animals + 1)):
+                    cap = 2
+                else:
+                    cap = 1
                 while need > 0 and bought < cap:
                     if budget < cost + 400:
                         break
@@ -2165,12 +2235,12 @@ class KaggricultureAgent(object):
                     bought += 1
                     wheat_next = max(0, wheat_next - 2)
 
-            if (plan.buy_land and st.next_land_cost
+            if (land_now and st.next_land_cost
                     and (land_after_geese or land_after_pasture)
                     and budget >= st.next_land_cost + 400):
                 budget = _spend(core, ["BUY_LAND"], st.next_land_cost)
 
-            seed_order = ("WHEAT", "CARROT", "MELON", "TOMATO", "STRAWBERRY")
+            seed_order = ("STRAWBERRY", "MELON", "WHEAT", "CARROT", "TOMATO")
             for crop in seed_order:
                 want = plan.crop_mix.get(crop, 0)
                 spec = CROPS[crop]
@@ -2190,7 +2260,7 @@ class KaggricultureAgent(object):
                 elif crop == "STRAWBERRY":
                     # 34 strawberry seeds at $100 left seed 9051 with $9 and 7 hands.
                     keep = 400
-                    need = min(need, 10)
+                    need = min(need, 12)
                 afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
                 if afford > 0:
                     budget = _spend(seeds, ["BUY_SEED", crop, afford], afford * cost)
