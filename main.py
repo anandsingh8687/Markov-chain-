@@ -2051,6 +2051,12 @@ class KaggricultureAgent(object):
         herd = st.n_animals
         reserve_wheat = plan.wheat_reserve if not self.gate.armed else 0
         reserve_wheat = max(reserve_wheat, herd * (1 if self.gate.armed else 2))
+        # 9051 floor $51.8k: wheat book −1028 and milk −42/$216 with
+        # 14 cows. Selling the feed block starves the dairy. Hold a
+        # multi-day ration once ten cows are up.
+        if (not self.gate.armed
+                and int(st.animals_alive.get("COW", 0) or 0) >= 10):
+            reserve_wheat = max(reserve_wheat, herd * 5, 40)
 
         cash_tight = st.money < 1400 or (
             st.next_land_cost is not None and st.money < st.next_land_cost + 300)
