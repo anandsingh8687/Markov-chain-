@@ -1806,7 +1806,7 @@ def build_tasks(st, plan):
     # morning thin-wheat (0879e63) both stole FEED. Two wheat only,
     # hour 17–18, after the herd is fed. hours_left is 4–5 so another
     # worker can water (the planter cannot).
-    if (16 < st.hour <= 18 and standing_w < 8 and animals_unfed <= 2
+    if (16 < st.hour <= 18 and standing_w < 8 and animals_unfed <= 6
             and plan.phase not in ("HARVEST", "LIQUIDATE")):
         sow_this_hour = max(sow_this_hour, min(2, 8 - standing_w))
     water_left = max(0, labor * hours_left - st.n_unwatered)
