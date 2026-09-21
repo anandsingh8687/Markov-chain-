@@ -93,6 +93,7 @@ _P = {
     "ACT_CROP": 1.15, "ACT_ANIMAL": 2.9, "MOVE": 1.85, "PER_RANCHER": 3.5,
     # money
     "RUNWAY": 4.0, "BUY_RATE": 4, "LAND_OPEN": 8, "LAND_LABOR": 1.0,
+    "FEED_DAYS": 30.0,
     # allocation
     "OVERSUPPLY": 1.35, "ANIM_MARGIN": 1.0, "WEED_W": 6.0,
     # logistics
@@ -716,7 +717,11 @@ def _decide(obs, config=None):
             cap_labor = int(((nu + max(hire_target, 1)) * 23
                              - len(plants) * P["ACT_CROP"] * P["MOVE"])
                             / (P["ACT_ANIMAL"] * P["MOVE"]))
-            cap_feed = int(max(0.0, invest) / max(1.0, wheat_buy * max(1.0, days_left)))
+            # Feed does not have to be pre-funded for the whole remaining
+            # season: an animal covers its own wheat inside a day, so the
+            # requirement is a funding window, not the full horizon.
+            fund_days = max(1.0, min(days_left, P["FEED_DAYS"]))
+            cap_feed = int(max(0.0, invest) / max(1.0, wheat_buy * fund_days))
             cap_feed += int(sum(PLAN["WHEAT"][1] / float(PLAN["WHEAT"][2])
                                 for _, t in plants if t["crop"] == "WHEAT"))
             a = best_animal

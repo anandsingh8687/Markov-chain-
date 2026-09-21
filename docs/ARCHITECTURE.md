@@ -310,6 +310,17 @@ sides swapped, against the incumbent.
   for the same book — it **lost 7-9**. Section 3b is why: yielding ground in a
   market that still clears above base just moves production to a worse crop.
   Kept as `OPP_PIPE`, pinned at 0.
+* **Shortening the feed funding window.** Livestock purchases require enough
+  cash to feed the herd for the whole remaining season, which is plainly
+  conservative — an animal covers its own wheat inside a day — and the herd
+  does stall around 15 head while the town's draw would support more. Funding
+  only three days ahead scored **+12% on seeds 1-8** ($81,849 vs $73,058).
+  On 32 episodes of held-out and fresh seeds it was dead level on mean
+  ($74,415 vs $74,789) and clearly worse on the worst episode ($35,027 vs
+  $42,585): the gain was seed noise, and what it really bought was a herd
+  that occasionally outruns its cash. Kept as `FEED_DAYS`, pinned at 30.
+  The stalled herd is a real observation and still the most promising place
+  to look; this particular lever is not the answer.
 * **Trimming the wheat feed buffer and the carry-drop threshold** to relieve
   the 100-item shed cap. All variants landed within ±2% of base — inside the
   noise at this sample size. The shed is near its cap in the late game, but the

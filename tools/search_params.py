@@ -13,12 +13,19 @@ from the same order book: an absolute score is only interpretable relative to
 who was on the other side of it, and the margin is far lower variance than the
 binary outcome at these sample sizes.
 
-A warning worth heeding, because this search has already produced it: results
-here are conditional on the opponent and the seed set. A four-seed run against
-an older agent preferred `PLACE_FIX=0` by 10%; re-checked over eight seeds
-against the incumbent, the same change LOST 16% and the ranking reversed. Treat
-any result as a hypothesis and confirm it against the incumbent on a seed set
-the search did not use before changing a default in `main.py`.
+A warning worth heeding, because this search has produced it twice. Results
+here are conditional on the opponent AND the seed set:
+
+  * a four-seed run against an older agent preferred `PLACE_FIX=0` by 10%;
+    re-checked over eight seeds against the incumbent, the same change LOST
+    16% and the ranking reversed;
+  * `FEED_DAYS=3` scored +12% over eight seeds; over 32 held-out and fresh
+    episodes it was dead level on mean and 18% worse on the worst episode.
+
+At sixteen episodes the standard error on the mean is several thousand, so a
+difference under roughly 8% is not a result. Treat every output of this script
+as a hypothesis, confirm it on seeds the search did not use, and look at the
+worst episode as well as the mean before changing a default in `main.py`.
 
     python tools/search_params.py --agent main.py \
         --opponent benchmark/incumbent/main.py --seeds 1,2,3,4 --rounds 2
