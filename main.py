@@ -1129,13 +1129,14 @@ class MPCRevenueEngine:
             cap_g = goose_cap(st)
             p.animal_targets["GOOSE"] = min(
                 max(p.animal_targets.get("GOOSE", 0), min(12, cap_g)), cap_g)
-            # Do not floor melon. 12 tiles × a shop-less book is $7.
-            if p.crop_mix.get("MELON", 0):
-                cap_m = min(4, book_tiles(st, "MELON", 0.55))
-                if cap_m <= 0:
-                    p.crop_mix.pop("MELON", None)
-                else:
-                    p.crop_mix["MELON"] = min(int(p.crop_mix["MELON"]), cap_m)
+            # Melon is shop-less. 12 tiles finish at $7; 0 tiles drop the
+            # score to 13k. Floor at remaining headroom, at most 4, and
+            # drop it the moment the quote is dying.
+            cap_m = min(4, book_tiles(st, "MELON", 0.55))
+            if cap_m > 0 and not product_contested(st, "MELON"):
+                p.crop_mix["MELON"] = max(int(p.crop_mix.get("MELON", 0) or 0), cap_m)
+            elif p.crop_mix.get("MELON", 0):
+                p.crop_mix.pop("MELON", None)
             herd = (p.animal_targets.get("GOOSE", 0) + p.animal_targets.get("COW", 0)
                     + p.animal_targets.get("SHEEP", 0) + st.n_animals)
             ft = _feed_tiles(herd)
