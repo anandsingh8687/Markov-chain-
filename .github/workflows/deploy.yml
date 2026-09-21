@@ -12,6 +12,7 @@ on:
       - 'main.py'
       - 'agent.py'
       - 'tools/**'
+      - 'benchmark/**'
       - '.github/workflows/deploy.yml'
   pull_request:
     branches: [main]
@@ -19,6 +20,7 @@ on:
       - 'main.py'
       - 'agent.py'
       - 'tools/**'
+      - 'benchmark/**'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
     inputs:
@@ -53,7 +55,7 @@ jobs:
   verify:
     name: Verify in cloud runner
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 70
     outputs:
       score_rate: ${{ steps.gate.outputs.score_rate }}
     steps:
@@ -91,6 +93,18 @@ jobs:
             --report incumbent_report.json \
             --min-score-rate "${{ github.event.inputs.scaler_min || '0.50' }}"
 
+      - name: Strength gate vs frozen PR #1 rival
+        id: rival
+        working-directory: ${{ env.AGENT_DIR }}
+        run: |
+          python tools/cloud_verify.py \
+            --root . \
+            --strength-only \
+            --games 2 \
+            --opponent pr1_rival \
+            --report rival_report.json \
+            --min-score-rate "1.00"
+
       - name: Build submission archive
         working-directory: ${{ env.AGENT_DIR }}
         run: python tools/build_submission.py --root . --out submission.tar.gz
@@ -102,6 +116,7 @@ jobs:
             ${{ env.AGENT_DIR }}/submission.tar.gz
             ${{ env.AGENT_DIR }}/verify_report.json
             ${{ env.AGENT_DIR }}/incumbent_report.json
+            ${{ env.AGENT_DIR }}/rival_report.json
           retention-days: 30
 
   submit:

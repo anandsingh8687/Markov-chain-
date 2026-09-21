@@ -8,5 +8,6 @@ access_token
 submission.tar.gz
 verify_report.json
 incumbent_report.json
+rival_report.json
 *.egg-info/
 .pytest_cache/

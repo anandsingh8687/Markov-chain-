@@ -167,7 +167,15 @@ against a weak bot:
 - Structure count is `empty + occupied`, at most 2 new coops per turn.
   Weeds are **under-staffing**, not over-expansion. Hands are wiped
   at EOD — a 4-hire/day cap left four workers all season. Re-hire
-  8–12 every morning (fib(0..11) ≈ $376/day). Pack HIREs first at
-  hour 0. Plants scale as `workers×4`. Land is NE/SW/SE at 4/8/12
-  hands. Milk/wool reopen; glut (inv > I0) is derated. Vacate a book
-  only when its quote is already dying. Midgame snapshot is hour 20.
+  8–12 every morning (fib(0..11) ≈ $376/day). **Do not plan hour 0
+  against the wiped crew**: `effective_labor` is the 8–12 hands about
+  to land, otherwise goose_cap and plant_slots collapse to 4 every
+  dawn and overnight cash buys nothing. Pack **at most 4 HIREs per
+  turn** so wheat / land / geese still fit in the 10-order cap (8
+  HIREs at dawn was the reverse of the old dropped-HIRE bug). Plants
+  scale as `workers×8 − herd`. Land is NE/SW/SE at 4/8/12 intended
+  hands. Milk/wool reopen against remaining headroom, not a flat 8.
+  Glut (inv > I0) is derated; a scarce book is cheaper in the
+  water-fill. Vacate a book only when its quote is already dying.
+  Midgame snapshot is hour 20. Frozen PR #1 lives in `benchmark/rival/`
+  as a third cloud gate.

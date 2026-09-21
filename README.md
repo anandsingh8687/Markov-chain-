@@ -51,8 +51,9 @@ Gates, in order:
 
 1. Parse / import / cold-start action shape
 2. 720-turn self-play (catches exceptions and the 1s `actTimeout`)
-3. ≥60% vs the built-in `starter`
-4. ≥50% vs a cloud-only carrot-scaler (starter-beating is not rank-1)
+3. ≥60% vs the built-in `starter` (score floor $18k)
+4. ≥50% vs a cloud-only carrot-scaler (score floor $20k)
+5. 2–0 vs the frozen PR #1 agent in `benchmark/rival/` (score floor $16k)
 
 ## Submission
 

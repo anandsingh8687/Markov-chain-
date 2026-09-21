@@ -9,7 +9,9 @@ Covers the three ways a Kaggriculture submission dies, then asserts strength:
 
 Beating the built-in starter is table stakes. The second gate is a stronger
 carrot-scaling opponent defined here (not a public ladder agent) so a
-submission that only farms the starter cannot pass.
+submission that only farms the starter cannot pass. The third gate is the
+frozen PR #1 agent in benchmark/rival/ — the strongest prior agent in this
+tree — so a 17%-utilisation farm cannot read as green.
 """
 
 from __future__ import annotations
@@ -136,6 +138,7 @@ def _midgame_staff(env, at=500):
         unlocked = max(1, 100 - locked)
         prod = _productive(kinds, animals)
         util = prod / float(unlocked)
+        n_animals = sum(int(v or 0) for v in animals.values())
         if hands < 8:
             return False, ("under-staffed midgame: {} hands (need 8). "
                            "HIREs were dropped by the 10-order cap or fib-exploded."
@@ -144,6 +147,10 @@ def _midgame_staff(env, at=500):
             return False, ("under-utilized midgame: {:.0%} of {} tiles (need 35%). "
                            "Weeds were under-staffing; shrinking the board froze idle land."
                            .format(util, unlocked))
+        if unlocked >= 50 and n_animals < 6:
+            return False, ("herd stall midgame: {} animals on {} tiles (need 6). "
+                           "Hour-0 wipe reset goose_cap to the farmer and dropped the ramp."
+                           .format(n_animals, unlocked))
         return True, ""
     except Exception:
         return True, ""
@@ -330,18 +337,39 @@ def carrot_scaler(obs):
     return {"farmer": farmer_action, "hands": hand_actions, "market": market[:10]}
 
 
+def load_callable_agent(path):
+    """Load a frozen rival's agent(obs) without shadowing the submission."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("kaggriculture_rival", path)
+    if spec is None or spec.loader is None:
+        fail("could not load rival agent from {}".format(path))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    fn = getattr(mod, "agent", None)
+    if not callable(fn):
+        fail("rival at {} has no callable agent()".format(path))
+    return fn
+
+
 def check_strength(root, games, opponent, report_path):
     print("[5/5] strength gate: {} episodes vs '{}'".format(games, opponent))
     path = os.path.join(root, "main.py")
     if opponent == "carrot_scaler":
         opp = carrot_scaler
+    elif opponent in ("pr1_rival", "rival"):
+        opp = load_callable_agent(os.path.join(root, "benchmark", "rival", "agent.py"))
     else:
         opp = opponent
     wins = tie = loss = 0
     margins = []
     # A win at 6.6k is a ramp collapse: we parked on the opponent's book.
     # 38+ empty coops is the next collapse: we built sheds faster than we fed.
-    min_farm = 15000.0 if opponent == "carrot_scaler" else 12000.0
+    if opponent in ("pr1_rival", "rival"):
+        min_farm = 16000.0
+    elif opponent == "carrot_scaler":
+        min_farm = 20000.0
+    else:
+        min_farm = 18000.0
     max_empty_structs = 16
     for g in range(games):
         seed = 9000 + g * 17
