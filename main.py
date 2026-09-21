@@ -1649,24 +1649,6 @@ def build_tasks(st, plan):
     empties = []
     animals_unfed = 0
     on_board = {c: 0 for c in CROPS}
-    # Boost-only gate was a no-op: peak melon lands on turns that are
-    # still unwatered, so 2*price*3 was already off. Default CARE
-    # (0.95*price) is what still beats distant melon after GAMMA^d.
-    # Skip every CARE while a peak melon is standing. Do not raise
-    # harvest value (cedbdb5 stole FEED).
-    peak_melon = 0
-    melon_spec = CROPS.get("MELON") or {}
-    melon_first = int(melon_spec.get("first", 10) or 10)
-    for _y, _row in enumerate(st.tiles):
-        for _x, _tile in enumerate(_row):
-            if not isinstance(_tile, dict) or _tile.get("kind") != "PLANT":
-                continue
-            if _tile.get("crop") != "MELON":
-                continue
-            _age_m = _age(st, _tile)
-            _units = int(_tile.get("yield_units", 0) or 0)
-            if _units > 0 and _age_m >= melon_first and (_units >= 6 or _age_m >= 10):
-                peak_melon += 1
 
     for y, row in enumerate(st.tiles):
         for x, tile in enumerate(row):
@@ -1749,7 +1731,7 @@ def build_tasks(st, plan):
                     val = (CRITICAL + future) if unfed >= 1 else (price / float(spec["interval"])) * 2.0
                     add({"pos": pos, "op": ["FEED"], "kind": "FEED",
                          "value": val, "need": "WHEAT"})
-                if fed and not cared and days_left > spec["interval"] and peak_melon == 0:
+                if fed and not cared and days_left > spec["interval"]:
                     # Blanket 2*price*3 stole WATER: 9051 wheat 13→6,
                     # weeds 1→7, floor $59.1k→$53.3k. 9085 jumped +$7k.
                     # Raise CARE only after today's plants are watered.
@@ -1994,7 +1976,11 @@ class KaggricultureAgent(object):
                 abs(workers[k][0] - s[0]) + abs(workers[k][1] - s[1]) for s in shed_tiles))
             wpos = workers[i]
             dst, _ = self._nearest(wpos, shed_tiles)
-            n = int(min(8, need_wheat, st.shed.get("WHEAT", 0)))
+            # Skip-all-CARE on peak melon cut 9000 $66.8k→$57.4k
+            # (wheat 12→7, weeds 3→7). One walker, 12 wheat: feed the
+            # 14-cow herd in one trip without a second pickup stealing
+            # WATER. Do not add mouths or cut sow.
+            n = int(min(12, need_wheat, st.shed.get("WHEAT", 0)))
             actions[i] = self._goto_or(wpos, dst, ["PICKUP", "WHEAT", n])
             free_idx = [k for k in free_idx if k != i]
 
