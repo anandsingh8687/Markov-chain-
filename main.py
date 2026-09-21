@@ -1649,10 +1649,11 @@ def build_tasks(st, plan):
     empties = []
     animals_unfed = 0
     on_board = {c: 0 for c in CROPS}
-    # Nearby boosted CARE (2*price*3) beats distant melon HARVEST after
-    # GAMMA^d. Raising harvest 2.2× stole FEED (cedbdb5). Wheat-first
-    # fertilize stole melon (9051 $60.1k→$52.0k). Drop the CARE boost
-    # only while a peak melon is standing; default CARE stays.
+    # Boost-only gate was a no-op: peak melon lands on turns that are
+    # still unwatered, so 2*price*3 was already off. Default CARE
+    # (0.95*price) is what still beats distant melon after GAMMA^d.
+    # Skip every CARE while a peak melon is standing. Do not raise
+    # harvest value (cedbdb5 stole FEED).
     peak_melon = 0
     melon_spec = CROPS.get("MELON") or {}
     melon_first = int(melon_spec.get("first", 10) or 10)
@@ -1748,12 +1749,11 @@ def build_tasks(st, plan):
                     val = (CRITICAL + future) if unfed >= 1 else (price / float(spec["interval"])) * 2.0
                     add({"pos": pos, "op": ["FEED"], "kind": "FEED",
                          "value": val, "need": "WHEAT"})
-                if fed and not cared and days_left > spec["interval"]:
+                if fed and not cared and days_left > spec["interval"] and peak_melon == 0:
                     # Blanket 2*price*3 stole WATER: 9051 wheat 13→6,
                     # weeds 1→7, floor $59.1k→$53.3k. 9085 jumped +$7k.
-                    # Raise CARE only after today's plants are watered,
-                    # and not while a peak melon would lose the assignment.
-                    if animal == "COW" and st.n_unwatered == 0 and peak_melon == 0:
+                    # Raise CARE only after today's plants are watered.
+                    if animal == "COW" and st.n_unwatered == 0:
                         care_val = 2.0 * price * 3.0
                     else:
                         care_val = price * 0.95
