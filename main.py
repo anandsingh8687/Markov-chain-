@@ -1722,11 +1722,10 @@ def build_tasks(st, plan):
             for c in CROPS}
     planted = {c: 0 for c in CROPS}
     if st.hour <= 16 and days_left >= 3:
-        sow_order = ("STRAWBERRY", "MELON", "WHEAT", "CARROT", "TOMATO")
         for pos in plant_empties:
             crop = None
-            for c in sow_order:
-                if want.get(c, 0) <= 0:
+            for c in sorted(want, key=lambda k: -plan.price_hint.get(k, 0)):
+                if want[c] <= 0:
                     continue
                 spec = CROPS[c]
                 need_days = 11 if c == "MELON" else (spec["max_day"] + 1 if not spec["ongoing"]
