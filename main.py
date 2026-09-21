@@ -416,6 +416,17 @@ def live_buy_land(st, plan=None):
     return False
 
 
+def carried_item(st, item):
+    """Units of `item` already in worker hands (in-flight PLACE / FEED)."""
+    n = 0
+    for inv in getattr(st, "inventories", []) or []:
+        try:
+            n += int((inv or {}).get(item, 0) or 0)
+        except (TypeError, ValueError):
+            continue
+    return n
+
+
 def _get(obj, key, default=None):
     try:
         if obj is None:
@@ -1685,6 +1696,19 @@ def build_tasks(st, plan):
                         at_peak = (crop == "MELON" and (units_now >= 6 or age >= 10)) or (
                             crop != "MELON" and age >= spec["max_day"])
                         if at_peak or age > spec["max_day"] or days_left <= 1 or plan.phase == "LIQUIDATE":
+                            # Late wheat harvest left 4–6 standing tiles and
+                            # 6–9 empties at mid on the $56k seeds; the $71k
+                            # farm still had 10 wheat. Sow stops after hour
+                            # 16, so afternoon empties sit until morning.
+                            # Keep the feed block standing when shed/hands
+                            # already cover the herd; harvest in the morning
+                            # sow window. Do not re-enable HARVEST sow.
+                            if (crop == "WHEAT"
+                                    and st.hour > 14
+                                    and days_left > 2
+                                    and plan.phase != "LIQUIDATE"
+                                    and st.wheat_held() >= max(6, int(st.n_animals or 0))):
+                                continue
                             urg = 1.7 if age > spec["max_day"] else 1.0
                             add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                                  "value": units_now * price * urg})
@@ -2181,11 +2205,15 @@ class KaggricultureAgent(object):
             geese_alive = st.animals_alive.get("GOOSE", 0)
             cows_needed = (
                 int(plan.animal_targets.get("COW", 0) or 0)
-                > st.animals_alive.get("COW", 0) + int(st.shed.get("COW", 0) or 0)
+                > st.animals_alive.get("COW", 0)
+                + int(st.shed.get("COW", 0) or 0)
+                + carried_item(st, "COW")
             )
             sheep_needed = (
                 int(plan.animal_targets.get("SHEEP", 0) or 0)
-                > st.animals_alive.get("SHEEP", 0) + int(st.shed.get("SHEEP", 0) or 0)
+                > st.animals_alive.get("SHEEP", 0)
+                + int(st.shed.get("SHEEP", 0) or 0)
+                + carried_item(st, "SHEEP")
             )
             land_now = live_buy_land(st, plan)
             land_after_geese = bool(
@@ -2204,7 +2232,8 @@ class KaggricultureAgent(object):
                 target = plan.animal_targets.get(animal, 0)
                 alive = st.animals_alive.get(animal, 0)
                 in_shed = int(st.shed.get(animal, 0) or 0)
-                need = target - alive - in_shed
+                in_hands = carried_item(st, animal)
+                need = target - alive - in_shed - in_hands
                 cost = ANIMAL_COST[animal]
                 if need <= 0 or days_left <= ANIMALS[animal]["first"] + 2:
                     continue
@@ -2212,7 +2241,7 @@ class KaggricultureAgent(object):
                     continue
                 if animal != "GOOSE":
                     prod = ANIMAL_PRODUCT[animal]
-                    if (alive + in_shed) >= max(1, pasture_cap(st, prod)):
+                    if (alive + in_shed + in_hands) >= max(1, pasture_cap(st, prod)):
                         continue
                     # LOCK vacates a dying book, not a healthy $300 milk quote.
                     if st.stance == "LOCK":
@@ -2243,12 +2272,12 @@ class KaggricultureAgent(object):
                 pasture_wanted = cows_needed or sheep_needed
                 if animal == "COW":
                     quote_m = Econ.price("MILK", st.inventory.get("MILK", MARKET_I0))
-                    need = min(need, max(0, 14 - alive - in_shed))
+                    need = min(need, max(0, 14 - alive - in_shed - in_hands))
                     if need <= 0:
                         continue
-                    if quote_m < 1.05 * MARKET_PARAMS["MILK"]["base"] and (alive + in_shed) >= 10:
+                    if quote_m < 1.05 * MARKET_PARAMS["MILK"]["base"] and (alive + in_shed + in_hands) >= 10:
                         continue
-                    cap = 1 if (alive + in_shed) >= 12 else 2
+                    cap = 1 if (alive + in_shed + in_hands) >= 12 else 2
                 elif (animal == "GOOSE" and not pasture_wanted
                       and wheat_next >= 4 * (st.n_animals + 1)):
                     cap = 2
@@ -2267,7 +2296,7 @@ class KaggricultureAgent(object):
                     and budget >= st.next_land_cost + 400):
                 budget = _spend(core, ["BUY_LAND"], st.next_land_cost)
 
-            seed_order = ("STRAWBERRY", "MELON", "WHEAT", "CARROT", "TOMATO")
+            seed_order = ("WHEAT", "STRAWBERRY", "MELON", "CARROT", "TOMATO")
             for crop in seed_order:
                 want = plan.crop_mix.get(crop, 0)
                 spec = CROPS[crop]
