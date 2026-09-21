@@ -24,8 +24,12 @@ import statistics
 import sys
 import time
 
-ACT_TIMEOUT_S = 1.0
-HORIZON = 720
+CRUSH_BASE = {
+    "CARROT": 35, "TOMATO": 60, "STRAWBERRY": 120, "MELON": 250,
+    "MILK": 160, "WOOL": 200,
+}
+ANIMAL_PRODUCT = {"GOOSE": "EGG", "COW": "MILK", "SHEEP": "WOOL"}
+MARKET_I0 = 10000
 
 
 def fail(msg):
@@ -154,6 +158,69 @@ def _midgame_staff(env, at=500):
         return True, ""
     except Exception:
         return True, ""
+
+
+def _farmed_products(kinds, animals):
+    farmed = set()
+    for k in kinds or {}:
+        if k in CRUSH_BASE or k in ("WHEAT", "EGG"):
+            farmed.add(k)
+    for a, n in (animals or {}).items():
+        if n and a in ANIMAL_PRODUCT:
+            farmed.add(ANIMAL_PRODUCT[a])
+    return farmed
+
+
+def _book_crush(env, player=0):
+    """Fail if a farmed premium/staple (not wheat/egg) finished oversupplied
+    below a quarter of base. That is the melon-at-$7 inversion: 12 tiles of
+    the only crop with no shop, while strawberry sat at 2.2× base unfarmed.
+    """
+    try:
+        last = env.steps[-1]
+        obs = (last[0] or {}).get("observation") or {}
+        market = obs.get("market") or {}
+        inv = market.get("inventory") or {}
+        prices = market.get("prices") or {}
+        _me, kinds, animals, _empty, _locked = _tile_census(env, player, 500)
+        farmed = _farmed_products(kinds, animals)
+        crushed = []
+        for prod in farmed:
+            if prod in ("WHEAT", "EGG", "FERTILIZER"):
+                continue
+            base = CRUSH_BASE.get(prod)
+            if not base:
+                continue
+            inventory = float(inv.get(prod, MARKET_I0) or MARKET_I0)
+            price = float(prices.get(prod, base) or base)
+            if inventory > MARKET_I0 and price < 0.25 * base:
+                crushed.append("{} inv={:.0f} quote=${:.0f} (base ${})".format(
+                    prod, inventory, price, base))
+        if crushed:
+            return False, ("book crush: {}. Staffing filled tiles; the mix "
+                           "walked a shop-less book to the floor.".format(
+                               "; ".join(crushed)))
+        return True, ""
+    except Exception:
+        return True, ""
+
+
+def book_telemetry(env, label="p0"):
+    try:
+        last = env.steps[-1]
+        obs = (last[0] or {}).get("observation") or {}
+        market = obs.get("market") or {}
+        inv = market.get("inventory") or {}
+        prices = market.get("prices") or {}
+        bits = []
+        for prod in ("MELON", "STRAWBERRY", "WHEAT", "MILK", "WOOL", "EGG"):
+            bits.append("{}={:.0f}/${:.0f}".format(
+                prod.lower()[:6],
+                float(inv.get(prod, MARKET_I0) or MARKET_I0) - MARKET_I0,
+                float(prices.get(prod, 0) or 0)))
+        print("      book {} {}".format(label, " ".join(bits)))
+    except Exception as exc:
+        print("      book telemetry unavailable: {}".format(exc))
 
 
 def farm_telemetry(env, label="p0", step=-1):
@@ -390,6 +457,7 @@ def check_strength(root, games, opponent, report_path):
             ("TIE" if mine == theirs else "LOSS")))
         farm_telemetry(env, "seed-{}-end".format(seed), -1)
         farm_telemetry(env, "seed-{}-mid".format(seed), 500)
+        book_telemetry(env, "seed-{}".format(seed))
         if mine < min_farm:
             fail("ramp collapse vs {} seed {}: score {:.0f} < {:.0f}. "
                  "We won or lost with a farm that never left the opponent's book."
@@ -405,6 +473,9 @@ def check_strength(root, games, opponent, report_path):
                  "than leftover workers could water them."
                  .format(opponent, seed, weeds))
         ok, reason = _midgame_staff(env)
+        if not ok:
+            fail("{} vs {} seed {}".format(reason, opponent, seed))
+        ok, reason = _book_crush(env)
         if not ok:
             fail("{} vs {} seed {}".format(reason, opponent, seed))
     rate = (wins + 0.5 * tie) / float(max(1, games))

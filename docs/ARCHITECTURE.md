@@ -65,7 +65,11 @@ Equalising **price per unit** is the local optimum and it is wrong: `tdpu`
 varies about 7× (egg 0.5, melon 1.83, strawberry 4.25). A flat floor rejects
 eggs (base $50, log glut curve) and accepts strawberries (base $120, linear
 crash). A cared goose is the only asset that scales; melon is the highest
-density **capacity-capped** crop.
+density **capacity-capped** crop, and it is the only crop **no shop
+ever buys** (town-centre drain is 1/day). Flooring 12 melon tiles
+walks the quote to $7 while strawberry (four of eight shops) sits
+unfarmed at 2.2× base. Size melon from remaining headroom, not base
+price. Strawberry/milk/wool enter the mix when their shops unlock.
 
 Capacity is a flow:
 

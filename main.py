@@ -278,6 +278,26 @@ def goose_cap(st):
     return min(28, by_labor, by_land)
 
 
+def book_tiles(st, prod, frac=0.50):
+    """How many tiles the live book can still take at `frac * base`.
+
+    Melon has no shop. Town-centre drain is 1/day, so a 12-tile melon
+    block walks the quote to $7. Size the field from remaining headroom,
+    not from base price.
+    """
+    params = MARKET_PARAMS.get(prod)
+    if not params:
+        return 0
+    inv = (getattr(st, "inventory", None) or {}).get(prod, MARKET_I0)
+    floor = max(1.0, float(frac) * params["base"])
+    if Econ.price(prod, inv) < floor:
+        return 0
+    head = Econ.units_until(prod, inv, floor)
+    days = max(1, DAYS - int(getattr(st, "day", 0) or 0))
+    rate = FLOW_PER_TILE_DAY.get(prod, 1.0)
+    return max(0, int(math.floor(head / max(1.0, rate * float(days)))))
+
+
 def pasture_cap(st, product):
     """Milk and wool crash. Size cows/sheep to remaining headroom, not a flat 8."""
     params = MARKET_PARAMS.get(product)
@@ -939,16 +959,22 @@ class MPCRevenueEngine:
             candidates.append("WHEAT")
         if days_left >= 8:
             candidates.append("EGG")
+        # Melon has no shop — only town-centre drain. Do not floor it; KKT
+        # plus book_tiles is the cap. A 12-tile melon block finishes at $7.
         if days_left >= 12:
-            candidates.append("MELON")
+            inv_m = st.inventory.get("MELON", MARKET_I0)
+            if Econ.price("MELON", inv_m) >= 0.55 * MARKET_PARAMS["MELON"]["base"]:
+                candidates.append("MELON")
         if phase in ("EXPAND", "COMPOUND") and days_left >= 14:
-            # Milk/wool are the highest revenue per tile-day while the quote
-            # holds. Closing them froze the farm on eight geese. KKT capacity
-            # (and the glut derate below) is what stops a crush to $1.
+            # Milk/wool/strawberry have shop drain. Melon does not.
+            # Closing milk/wool froze the farm on geese; never listing
+            # strawberry left it 318 units short at 2.2× base.
             if shops_w.get("MILK", 0) >= 1:
                 candidates.append("MILK")
             if shops_w.get("WOOL", 0) >= 1:
                 candidates.append("WOOL")
+            if shops_w.get("STRAWBERRY", 0) >= 1:
+                candidates.append("STRAWBERRY")
             if phase == "COMPOUND" and shops_w.get("TOMATO", 0) >= 2 and days_left >= 13:
                 candidates.append("TOMATO")
         for prod in candidates:
@@ -974,6 +1000,11 @@ class MPCRevenueEngine:
                 cost *= 1.0 + (inv - MARKET_I0) / 80.0
             else:
                 cost *= max(0.45, 1.0 - (MARKET_I0 - inv) / 400.0)
+            # Melon is the only crop no shop ever buys. Town-centre drain
+            # is 1/day; a base-price fill saturates it. Make the KKT cost
+            # pay for that missing drain.
+            if prod == "MELON":
+                cost *= 3.0
             floor = max(1.0, mu * cost)
             if Econ.price(prod, inv) < floor:
                 units[prod] = 0
@@ -1098,11 +1129,13 @@ class MPCRevenueEngine:
             cap_g = goose_cap(st)
             p.animal_targets["GOOSE"] = min(
                 max(p.animal_targets.get("GOOSE", 0), min(12, cap_g)), cap_g)
-            if "MELON" in eligible and not product_contested(st, "MELON"):
-                p.crop_mix["MELON"] = max(p.crop_mix.get("MELON", 0),
-                                         min(8, max(4, st.usable_tiles // 8)))
-            if p.crop_mix.get("MELON", 0) > 12:
-                p.crop_mix["MELON"] = 12
+            # Do not floor melon. 12 tiles × a shop-less book is $7.
+            if p.crop_mix.get("MELON", 0):
+                cap_m = min(4, book_tiles(st, "MELON", 0.55))
+                if cap_m <= 0:
+                    p.crop_mix.pop("MELON", None)
+                else:
+                    p.crop_mix["MELON"] = min(int(p.crop_mix["MELON"]), cap_m)
             herd = (p.animal_targets.get("GOOSE", 0) + p.animal_targets.get("COW", 0)
                     + p.animal_targets.get("SHEEP", 0) + st.n_animals)
             ft = _feed_tiles(herd)
@@ -1118,7 +1151,7 @@ class MPCRevenueEngine:
         used = sum(p.crop_mix.values()) + sum(p.animal_targets.values())
         if used > st.usable_tiles > 0:
             overflow = used - st.usable_tiles
-            for crop in ("STRAWBERRY", "TOMATO", "CARROT", "MELON", "WHEAT"):
+            for crop in ("MELON", "TOMATO", "CARROT", "WHEAT"):
                 if overflow <= 0:
                     break
                 have = int(p.crop_mix.get(crop, 0) or 0)
@@ -1127,8 +1160,6 @@ class MPCRevenueEngine:
                 keep = 0
                 if crop == "WHEAT":
                     keep = min(have, max(2, st.usable_tiles // 6))
-                elif crop == "MELON" and not product_contested(st, "MELON"):
-                    keep = min(have, max(4, st.usable_tiles // 6))
                 take = min(overflow, max(0, have - keep))
                 if take > 0:
                     p.crop_mix[crop] = have - take
@@ -1836,7 +1867,7 @@ class KaggricultureAgent(object):
         float_cash = 200.0
         for _ in range(per_turn):
             c = fib(n)
-            if budget < c + float_cash and n >= 6:
+            if budget < c + float_cash and n >= 8:
                 break
             if budget < c:
                 break
