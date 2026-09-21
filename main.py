@@ -1649,6 +1649,23 @@ def build_tasks(st, plan):
     empties = []
     animals_unfed = 0
     on_board = {c: 0 for c in CROPS}
+    # Nearby boosted CARE (2*price*3) beats distant melon HARVEST after
+    # GAMMA^d. Raising harvest 2.2× stole FEED (cedbdb5). Wheat-first
+    # fertilize stole melon (9051 $60.1k→$52.0k). Drop the CARE boost
+    # only while a peak melon is standing; default CARE stays.
+    peak_melon = 0
+    melon_spec = CROPS.get("MELON") or {}
+    melon_first = int(melon_spec.get("first", 10) or 10)
+    for _y, _row in enumerate(st.tiles):
+        for _x, _tile in enumerate(_row):
+            if not isinstance(_tile, dict) or _tile.get("kind") != "PLANT":
+                continue
+            if _tile.get("crop") != "MELON":
+                continue
+            _age_m = _age(st, _tile)
+            _units = int(_tile.get("yield_units", 0) or 0)
+            if _units > 0 and _age_m >= melon_first and (_units >= 6 or _age_m >= 10):
+                peak_melon += 1
 
     for y, row in enumerate(st.tiles):
         for x, tile in enumerate(row):
@@ -1734,8 +1751,9 @@ def build_tasks(st, plan):
                 if fed and not cared and days_left > spec["interval"]:
                     # Blanket 2*price*3 stole WATER: 9051 wheat 13→6,
                     # weeds 1→7, floor $59.1k→$53.3k. 9085 jumped +$7k.
-                    # Raise CARE only after today's plants are watered.
-                    if animal == "COW" and st.n_unwatered == 0:
+                    # Raise CARE only after today's plants are watered,
+                    # and not while a peak melon would lose the assignment.
+                    if animal == "COW" and st.n_unwatered == 0 and peak_melon == 0:
                         care_val = 2.0 * price * 3.0
                     else:
                         care_val = price * 0.95
@@ -1941,25 +1959,16 @@ class KaggricultureAgent(object):
                         tasks = [t for t in tasks if not (t.get("need") == "WHEAT" and t["pos"] == dst)]
                         continue
             if inv.get("FERTILIZER", 0) > 0:
-                # Unfertilized wheat peaks at 4, fertilized at 6. BUY bags
-                # stole FEED (9e52ae9). Wool trickle was a no-op. Prefer
-                # wheat so collected bags raise feed without new mouths.
-                wheat_tiles, other_tiles = [], []
+                fert_tiles = []
                 for y, row in enumerate(st.tiles):
                     for x, tile in enumerate(row):
                         if (isinstance(tile, dict) and tile.get("kind") == "PLANT"
                                 and not CROPS.get(tile.get("crop"), {}).get("ongoing", True)
                                 and int(tile.get("fertilized_until_day", -1) or -1) < st.day
                                 and _age(st, tile) < CROPS[tile["crop"]]["max_day"]):
-                            if tile.get("crop") == "WHEAT":
-                                wheat_tiles.append((x, y))
-                            else:
-                                other_tiles.append((x, y))
-                prefer = wheat_tiles or other_tiles
-                if prefer:
-                    dst, d = self._nearest(wpos, prefer)
-                    if d > 3 and wheat_tiles and other_tiles:
-                        dst, d = self._nearest(wpos, other_tiles)
+                            fert_tiles.append((x, y))
+                if fert_tiles:
+                    dst, d = self._nearest(wpos, fert_tiles)
                     if d <= 3:
                         actions[i] = self._goto_or(wpos, dst, ["FERTILIZE"])
                         continue
