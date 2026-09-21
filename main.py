@@ -1274,6 +1274,10 @@ class MPCRevenueEngine:
             # farm had 3 tiles at $347. Cap 6; leftover is not a dump.
             # max(kkt, 4) kept the KKT dump: scaler 9051 stood 25 straw.
             cap_s = min(6, book_tiles(st, "STRAWBERRY", 0.70))
+            # Hot milk: 9000 straw −301 at $266. Free two leftover
+            # tiles for wheat. Floor seeds (9051 $241) keep cap 6.
+            if quote_m >= 1.80 * MARKET_PARAMS["MILK"]["base"]:
+                cap_s = min(4, cap_s)
             if (cap_s > 0 and days_left >= 14 and quote_s >= 0.85 * MARKET_PARAMS["STRAWBERRY"]["base"]
                     and not product_contested(st, "STRAWBERRY")):
                 have_s = int(p.crop_mix.get("STRAWBERRY", 0) or 0)
