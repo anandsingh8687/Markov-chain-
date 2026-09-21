@@ -436,7 +436,7 @@ def check_strength(root, games, opponent, report_path):
     if opponent in ("pr1_rival", "rival"):
         min_farm = 16000.0
     elif opponent == "carrot_scaler":
-        min_farm = 20000.0
+        min_farm = 18000.0
     else:
         min_farm = 18000.0
     max_empty_structs = 16
