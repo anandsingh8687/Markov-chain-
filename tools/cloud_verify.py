@@ -33,7 +33,7 @@ def fail(msg):
 
 
 def check_syntax(root):
-    print("[1/6] byte-compiling {}".format(root))
+    print("[1/7] byte-compiling {}".format(root))
     if not compileall.compile_dir(root, quiet=1, force=True):
         fail("byte-compilation failed")
     print("      ok")
@@ -49,7 +49,7 @@ def check_loader(root):
     failure looks like a bizarre runtime error rather than a loading mistake.
     This has already cost one rewrite; it is cheap to assert.
     """
-    print("[2/6] resolving the entrypoint the way the evaluator does")
+    print("[2/7] resolving the entrypoint the way the evaluator does")
     path = os.path.join(root, "main.py")
     with open(path) as fh:
         raw = fh.read()
@@ -67,7 +67,7 @@ def check_loader(root):
 
 
 def check_import(root):
-    print("[3/6] importing submission entrypoint")
+    print("[3/7] importing submission entrypoint")
     sys.path.insert(0, root)
     import main  # noqa: E402
     if not callable(getattr(main, "agent", None)):
@@ -110,7 +110,7 @@ def run_episode(agents, seed, debug=False):
 
 
 def check_selfplay(root):
-    print("[4/6] validation episode: agent vs. a copy of itself (720 turns)")
+    print("[4/7] validation episode: agent vs. a copy of itself (720 turns)")
     # main.py catches its own exceptions and falls back to PASS so a single bad
     # turn cannot forfeit a ladder episode. That safety net would also hide a
     # planner bug from this gate, so verification runs with it disabled.
@@ -128,7 +128,7 @@ def check_selfplay(root):
 
 
 def check_latency(env):
-    print("[5/6] per-turn latency against the 1s actTimeout")
+    print("[5/7] per-turn latency against the 1s actTimeout")
     # remainingOverageTime is a budget that only *decreases* when an agent runs
     # past actTimeout, so the meaningful statistic is its minimum, not its
     # maximum. A material drawdown means some turn went long even though the
@@ -165,8 +165,67 @@ def check_latency(env):
     print("      ok")
 
 
+def check_structure(root, opponent="starter", seed=9034):
+    """Assert the farm is actually being worked, and the book is not crushed.
+
+    Absolute score hides both of the failure modes seen in this repository.
+    A farm can buy 75 tiles and work thirteen of them; an allocator can pour
+    tiles into the one product the town never buys and drive it to the floor.
+    Neither shows up as an exception and both can still beat `starter`.
+
+    Sampled at turn 480 (day 20, hour 12 -- NOT hour 0, where the end-of-day
+    wipe of farm["hands"] makes every crew read as zero).
+
+    The midgame staffing/utilisation form of this check is borrowed from
+    PR #2, which arrived at it independently after the same 40-weed symptom.
+    """
+    print("[7/7] structural check at turn 480 (staffing, utilisation, book)")
+    path = os.path.join(root, "main.py")
+    _, _, _, env = run_episode([path, opponent], seed=seed)
+
+    idx = 480 + 12
+    if idx >= len(env.steps):
+        idx = len(env.steps) // 2
+    obs = env.steps[idx][0]["observation"]
+    farm = obs["farms"][0]
+    unlocked = productive = weeds = 0
+    for row in farm["tiles"]:
+        for t in row:
+            if t == "LOCKED":
+                continue
+            unlocked += 1
+            if isinstance(t, dict):
+                if t.get("kind") == "PLANT" or t.get("animal"):
+                    productive += 1
+                elif t.get("kind") == "WEED":
+                    weeds += 1
+    hands = len(farm.get("hands", []) or [])
+    util = 100.0 * productive / float(max(1, unlocked))
+    print("      hands={}  unlocked={}  productive={}  utilisation={:.0f}%  weeds={}"
+          .format(hands, unlocked, productive, util, weeds))
+    if hands < 8:
+        fail("only {} hands at turn 480. Labour is the cheapest capacity in the "
+             "game; an under-staffed farm turns into weeds.".format(hands))
+    if util < 45.0:
+        fail("utilisation {:.0f}% at turn 480 ({} of {} tiles productive). The "
+             "board is being bought and not worked.".format(util, productive, unlocked))
+    if weeds > 20:
+        fail("{} weed tiles at turn 480 -- plants are dying unwatered.".format(weeds))
+
+    final = env.steps[-1][0]["observation"]["market"]
+    inv, prices = final["inventory"], final["prices"]
+    for item, base in (("MELON", 250), ("STRAWBERRY", 120), ("MILK", 160),
+                       ("WOOL", 200), ("CARROT", 35)):
+        over = inv.get(item, I0) - I0
+        if over > 60 and prices.get(item, base) < base * 0.25:
+            fail("{} finished {} units oversupplied at ${} against a ${} base. "
+                 "Tile-days went into a product the book had already stopped "
+                 "paying for.".format(item, over, prices.get(item), base))
+    print("      ok (no farmed product crushed below a quarter of base)")
+
+
 def check_strength(root, games, opponent, report_path):
-    print("[6/6] strength gate: {} episodes vs. built-in '{}'".format(games, opponent))
+    print("[6/7] strength gate: {} episodes vs. built-in '{}'".format(games, opponent))
     path = os.path.join(root, "main.py")
     wins = tie = loss = 0
     margins = []
@@ -291,6 +350,7 @@ def main():
         check_import(root)
         env = check_selfplay(root)
         check_latency(env)
+        check_structure(root)
     else:
         print("[skip] preflight already run in this job")
     rate = check_strength(root, args.games, args.opponent, report)

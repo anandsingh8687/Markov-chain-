@@ -246,7 +246,7 @@ mode (the agent's own exception guard disabled so nothing is hidden):
 | This agent vs. built-in `starter` | 4 | **4-0**, median margin +$77,458 |
 | This agent vs. PR #1 incumbent, seeds 1-18 | 32 | **32-0**, mean $76,393 vs ~$11k |
 | This agent vs. PR #1 incumbent, seeds 31-42 (fresh) | 24 | **24-0**, mean $73,106 |
-| This agent vs. PR #2 rival, two seed sets | 24 | **24-0**, mean $77,478 / $68,357 |
+| This agent vs. PR #2 rival (`32762ff`), two seed sets | 24 | **24-0**, mean $75,176 / $83,011 |
 | This agent vs. previous `main.py` | 12 | **12-0**, mean $63,512 |
 | Previous `main.py` vs. PR #1 incumbent | 16 | 31% win rate (both $9-13k) |
 
@@ -263,6 +263,27 @@ than assuming.
 The jump is not tuning. It comes from reading the market as a sink rather than
 a ceiling, and from actually staffing and feeding the farm that conclusion
 implies.
+
+## 6a. The structural gate
+
+Absolute score hides both failure modes this repository has produced, and
+neither raises an exception: a farm can buy 75 tiles and work thirteen, and
+an allocator can pour tile-days into the one product the town never buys and
+drive it to the floor. Both still beat `starter`.
+
+So `tools/cloud_verify.py` samples turn 480 and fails on: fewer than 8 hands,
+utilisation under 45%, more than 20 weed tiles, or any farmed product
+finishing oversupplied below a quarter of base. The midgame staffing and
+utilisation form of this is borrowed from PR #2, which arrived at it
+independently after the same 40-weed symptom; the crushed-book check is the
+other half, and catches what PR #2's own gates do not.
+
+It is sampled at **hour 12, not hour 0** — `_end_of_day` clears
+`farm["hands"]`, so an hour-0 snapshot reads every crew as zero however many
+were hired.
+
+Verified to fire: pointed at PR #2's `d77b193` it reports 25% utilisation and
+fails.
 
 ## 6b. Compute budget
 
@@ -306,6 +327,17 @@ roughly $260/tile-day, and its closing book on that episode has egg pushed
 high quote: production aimed at the one thing it had already saturated. Its
 "LOCK vacates their book" rule is the same idea as `OPP_PIPE` in section 7,
 which is measured here and loses.
+
+PR #2 has since fixed the staffing (`32762ff`: re-hire every morning, fill
+against `workers*4`, reopen milk and wool) and tripled on that seed, to
+$33,966. It is still 3x short, and its closing book shows why: melon **+156
+units at a $7 quote against a $250 base**, while strawberry finished 318 short
+at $270 and wheat 718 short at $52. Melon is the only crop with no shop demand
+— the town centre takes one a day — so it is the one product that genuinely
+saturates, and it took 12-17 tiles late while the products paying twice base
+went unplanted. Pricing a tile against the end-of-horizon book (§2) is exactly
+what prevents that: melon's marginal price collapses as its own pipeline grows
+because its drain is ~1/day, strawberry's does not.
 
 Both agents are kept in `benchmark/` and gated against on every push.
 
