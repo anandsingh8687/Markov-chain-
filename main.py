@@ -1658,8 +1658,11 @@ def build_tasks(st, plan):
             kind = tile.get("kind")
 
             if kind == "WEED":
+                # Floor seed 9017 sits at 6–7 weeds / 4–5 wheat / $56k.
+                # DIG only went CRITICAL at 8, so those tiles never cleared.
+                # FEED/missed WATER stay at full CRITICAL and still win.
                 add({"pos": pos, "op": ["DIG"], "kind": "DIG",
-                     "value": (CRITICAL * 0.05 if st.n_weeds >= 8
+                     "value": (CRITICAL * 0.05 if st.n_weeds >= 4
                                else 2.0 * plan.action_value)})
                 continue
 
@@ -1696,19 +1699,10 @@ def build_tasks(st, plan):
                         at_peak = (crop == "MELON" and (units_now >= 6 or age >= 10)) or (
                             crop != "MELON" and age >= spec["max_day"])
                         if at_peak or age > spec["max_day"] or days_left <= 1 or plan.phase == "LIQUIDATE":
-                            # Late wheat harvest left 4–6 standing tiles and
-                            # 6–9 empties at mid on the $56k seeds; the $71k
-                            # farm still had 10 wheat. Sow stops after hour
-                            # 16, so afternoon empties sit until morning.
-                            # Keep the feed block standing when shed/hands
-                            # already cover the herd; harvest in the morning
-                            # sow window. Do not re-enable HARVEST sow.
-                            if (crop == "WHEAT"
-                                    and st.hour > 14
-                                    and days_left > 2
-                                    and plan.phase != "LIQUIDATE"
-                                    and st.wheat_held() >= max(6, int(st.n_animals or 0))):
-                                continue
+                            # Holding ripe wheat after hour 14 cut the
+                            # starter floor $56k → $53.5k: seed 9051 milk
+                            # died at $175 (cows ate shed wheat we refused
+                            # to replenish) and weeds rose on 9017/9068.
                             urg = 1.7 if age > spec["max_day"] else 1.0
                             add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                                  "value": units_now * price * urg})
