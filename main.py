@@ -1211,7 +1211,10 @@ class MPCRevenueEngine:
                 else:
                     cow_floor = min(12, cap_c, max(4, st.usable_tiles // 4))
                 p.animal_targets["COW"] = min(
-                    max(int(p.animal_targets.get("COW", 0) or 0), cow_floor), cap_c)
+                    14,
+                    max(int(p.animal_targets.get("COW", 0) or 0), cow_floor),
+                    cap_c,
+                )
             elif cap_c <= 0:
                 p.animal_targets.pop("COW", None)
             if wool_ok:
@@ -1747,9 +1750,12 @@ def build_tasks(st, plan):
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
-    if plan.phase in ("HARVEST", "LIQUIDATE"):
-        # Late sow is how 36 melon became 26 weeds after harvest on seed 9051.
+    if plan.phase == "LIQUIDATE":
         spare = 0
+    elif plan.phase == "HARVEST":
+        # Turn 500 still has 10 days. Zero sow left 5–9 harvested empties
+        # on the $58k–$68k seeds. Wheat/carrot still mature; skip melon.
+        spare = min(spare, max(2, labor // 3))
     plant_empties = plant_empties[:spare]
 
     # crop_mix is a standing target, not a per-turn quota. Replanting the
@@ -2144,7 +2150,7 @@ class KaggricultureAgent(object):
             want_w = int(plan.crop_mix.get("WHEAT", 0) or 0)
             if want_w >= 2:
                 have_w = int(st.seeds.get("WHEAT", 0) or 0) + int(st.crops_alive.get("WHEAT", 0) or 0)
-                need_w = max(0, min(want_w, 8) - have_w)
+                need_w = max(0, min(want_w, 16) - have_w)
                 cost_w = SEED_COST["WHEAT"]
                 afford_w = int(min(need_w, max(0.0, budget - 400) // cost_w)) if cost_w else 0
                 if afford_w > 0:
@@ -2215,6 +2221,8 @@ class KaggricultureAgent(object):
                 pasture_wanted = cows_needed or sheep_needed
                 if animal == "COW":
                     quote_m = Econ.price("MILK", st.inventory.get("MILK", MARKET_I0))
+                    if (alive + in_shed) >= 14:
+                        continue
                     if quote_m < 1.05 * MARKET_PARAMS["MILK"]["base"] and (alive + in_shed) >= 10:
                         continue
                     cap = 1 if (alive + in_shed) >= 12 else 2
