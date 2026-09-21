@@ -1235,16 +1235,17 @@ class MPCRevenueEngine:
                 st.usable_tiles - used_now,
                 plant_slots(st) - sum(p.crop_mix.values()),
             ))
-            if left > 0 and quote_wh >= 1.40 * MARKET_PARAMS["WHEAT"]["base"]:
-                # 75-tile boards were leaving 22-27 idle while wheat sat
-                # −700 to −950 at $51–$56. Log absorption: dump leftovers.
-                p.crop_mix["WHEAT"] = int(p.crop_mix.get("WHEAT", 0) or 0) + left
-                left = 0
             if left > 0 and cap_s > 0 and days_left >= 14 and not product_contested(st, "STRAWBERRY"):
                 have_s = int(p.crop_mix.get("STRAWBERRY", 0) or 0)
                 extra = min(left, max(0, cap_s - have_s))
                 if extra:
                     p.crop_mix["STRAWBERRY"] = have_s + extra
+                    left -= extra
+            if left > 0 and quote_wh >= 1.40 * MARKET_PARAMS["WHEAT"]["base"]:
+                have_w = int(p.crop_mix.get("WHEAT", 0) or 0)
+                extra = min(left, max(0, 24 - have_w))
+                if extra:
+                    p.crop_mix["WHEAT"] = have_w + extra
 
         if not p.crop_mix and not p.animal_targets and days_left >= 4:
             fallback = "WHEAT" if product_contested(st, "CARROT") else "CARROT"
@@ -1345,7 +1346,7 @@ class MPCRevenueEngine:
             productive = int(getattr(st, "n_plants", 0) or 0) + int(getattr(st, "n_animals", 0) or 0)
             room_for_land = (
                 (next_cost <= 1000)
-                or (next_cost <= 2000 and productive >= 22)
+                or (next_cost <= 2000 and productive >= 40)
                 or (next_cost <= 4000 and productive >= 50)
             )
             p.buy_land = (
@@ -2040,7 +2041,7 @@ class KaggricultureAgent(object):
         )
         # Seed 9051 printed $0 and 4 hands: 3 HIREs then cows spent the till.
         # Four HIREs until 8 are queued; cows wait. Fib(0..7) ≈ $54.
-        per_turn = min(need_hands, hire_slots, 4 if not staffed_now else (2 if need_pasture_buy else 4))
+        per_turn = min(need_hands, hire_slots, 4 if not staffed_now else (3 if need_pasture_buy else 4))
         float_cash = 400.0
         for _ in range(per_turn):
             c = fib(n)
