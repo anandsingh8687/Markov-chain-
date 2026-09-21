@@ -1001,7 +1001,12 @@ class MPCRevenueEngine:
             if days_left >= 10:
                 candidates.append("WOOL")
             if days_left >= 14:
-                if shops_w.get("STRAWBERRY", 0) >= 1:
+                quote_s = Econ.price(
+                    "STRAWBERRY", st.inventory.get("STRAWBERRY", MARKET_I0))
+                # Town drain is 1/day even before shops. Green CI left
+                # strawberry −400 to −800 at $290–$350 with 0 tiles on
+                # most starter seeds.
+                if shops_w.get("STRAWBERRY", 0) >= 1 or quote_s >= 0.85 * MARKET_PARAMS["STRAWBERRY"]["base"]:
                     candidates.append("STRAWBERRY")
                 if phase == "COMPOUND" and shops_w.get("TOMATO", 0) >= 2 and days_left >= 13:
                     candidates.append("TOMATO")
@@ -1171,8 +1176,9 @@ class MPCRevenueEngine:
                 and not product_contested(st, "WOOL")
             )
             if milk_ok:
+                cow_floor = min(8, cap_c, max(4, st.usable_tiles // 5))
                 p.animal_targets["COW"] = min(
-                    max(int(p.animal_targets.get("COW", 0) or 0), min(4, cap_c)), cap_c)
+                    max(int(p.animal_targets.get("COW", 0) or 0), cow_floor), cap_c)
             elif cap_c <= 0:
                 p.animal_targets.pop("COW", None)
             if wool_ok:
@@ -1196,8 +1202,13 @@ class MPCRevenueEngine:
                 p.crop_mix["MELON"] = max(int(p.crop_mix.get("MELON", 0) or 0), cap_m)
             elif p.crop_mix.get("MELON", 0):
                 p.crop_mix.pop("MELON", None)
-            if p.crop_mix.get("STRAWBERRY", 0):
-                cap_s = min(10, book_tiles(st, "STRAWBERRY", 0.55))
+            quote_s = Econ.price("STRAWBERRY", st.inventory.get("STRAWBERRY", MARKET_I0))
+            cap_s = min(10, book_tiles(st, "STRAWBERRY", 0.55))
+            if (cap_s > 0 and days_left >= 14 and quote_s >= 0.85 * MARKET_PARAMS["STRAWBERRY"]["base"]
+                    and not product_contested(st, "STRAWBERRY")):
+                p.crop_mix["STRAWBERRY"] = max(
+                    int(p.crop_mix.get("STRAWBERRY", 0) or 0), min(6, cap_s))
+            elif p.crop_mix.get("STRAWBERRY", 0):
                 if cap_s <= 0:
                     p.crop_mix.pop("STRAWBERRY", None)
                 else:
@@ -1208,12 +1219,28 @@ class MPCRevenueEngine:
             quote_wh = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
             cap_wh = book_tiles(st, "WHEAT", 0.50)
             wheat_n = ft
-            # Wheat absorbs (log) but a $44-51 quote is a scarce book, not
-            # a cheap feed buy. Size a real field once it is 1.4× base.
+            # Wheat absorbs (log) but a $51-56 quote with −700 to −950 on
+            # the book is a field, not a feed buy. Size off land, cap 24.
             if quote_wh >= 1.40 * MARKET_PARAMS["WHEAT"]["base"] and cap_wh > 0:
-                wheat_n = max(ft, min(16, cap_wh))
+                wheat_n = max(ft, min(24, cap_wh, max(8, st.usable_tiles // 3)))
             if wheat_n:
                 p.crop_mix["WHEAT"] = max(int(p.crop_mix.get("WHEAT", 0) or 0), wheat_n)
+            used_now = sum(p.crop_mix.values()) + sum(p.animal_targets.values())
+            left = max(0, min(
+                st.usable_tiles - used_now,
+                plant_slots(st) - sum(p.crop_mix.values()),
+            ))
+            if left > 0 and quote_wh >= 1.40 * MARKET_PARAMS["WHEAT"]["base"]:
+                have_w = int(p.crop_mix.get("WHEAT", 0) or 0)
+                extra = min(left, max(0, 24 - have_w))
+                if extra:
+                    p.crop_mix["WHEAT"] = have_w + extra
+                    left -= extra
+            if left > 0 and cap_s > 0 and days_left >= 14 and not product_contested(st, "STRAWBERRY"):
+                have_s = int(p.crop_mix.get("STRAWBERRY", 0) or 0)
+                extra = min(left, max(0, cap_s - have_s))
+                if extra:
+                    p.crop_mix["STRAWBERRY"] = have_s + extra
 
         if not p.crop_mix and not p.animal_targets and days_left >= 4:
             fallback = "WHEAT" if product_contested(st, "CARROT") else "CARROT"
@@ -1227,10 +1254,11 @@ class MPCRevenueEngine:
             overflow = used - st.usable_tiles
             feed_keep = min(
                 int(p.crop_mix.get("WHEAT", 0) or 0),
-                max(2, st.usable_tiles // 6),
+                max(8, st.usable_tiles // 4),
             )
             melon_keep = min(int(p.crop_mix.get("MELON", 0) or 0), min(4, book_tiles(st, "MELON", 0.55)))
-            for crop in ("CARROT", "TOMATO", "STRAWBERRY", "WHEAT", "MELON"):
+            straw_keep = min(int(p.crop_mix.get("STRAWBERRY", 0) or 0), min(4, book_tiles(st, "STRAWBERRY", 0.55)))
+            for crop in ("CARROT", "TOMATO", "WHEAT", "STRAWBERRY", "MELON"):
                 if overflow <= 0:
                     break
                 have = int(p.crop_mix.get(crop, 0) or 0)
@@ -1241,6 +1269,8 @@ class MPCRevenueEngine:
                     keep = feed_keep
                 elif crop == "MELON":
                     keep = melon_keep
+                elif crop == "STRAWBERRY":
+                    keep = straw_keep
                 take = min(overflow, max(0, have - keep))
                 if take > 0:
                     p.crop_mix[crop] = have - take
