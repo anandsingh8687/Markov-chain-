@@ -2249,6 +2249,10 @@ class KaggricultureAgent(object):
             g_cap_buy = goose_buy_cap(st, plan)
             for animal in ("GOOSE", "COW", "SHEEP"):
                 target = plan.animal_targets.get(animal, 0)
+                # REPLAN_EVERY cached 14 cows on 9051 while 13 wheat and
+                # milk $241 were already live. Size the 15th off the board.
+                if animal == "COW":
+                    target = max(int(target or 0), cow_hard_cap(st))
                 alive = st.animals_alive.get(animal, 0)
                 in_shed = int(st.shed.get(animal, 0) or 0)
                 need = target - alive - in_shed
@@ -2259,7 +2263,10 @@ class KaggricultureAgent(object):
                     continue
                 if animal != "GOOSE":
                     prod = ANIMAL_PRODUCT[animal]
-                    if (alive + in_shed) >= max(1, pasture_cap(st, prod)):
+                    cap_now = pasture_cap(st, prod)
+                    if animal == "COW":
+                        cap_now = max(cap_now, cow_hard_cap(st))
+                    if (alive + in_shed) >= max(1, cap_now):
                         continue
                     # LOCK vacates a dying book, not a healthy $300 milk quote.
                     if st.stance == "LOCK":
