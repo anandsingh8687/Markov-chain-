@@ -291,7 +291,7 @@ def goose_buy_cap(st, plan=None):
             int(plan.animal_targets.get("COW", 0) or 0)
             + int(plan.animal_targets.get("SHEEP", 0) or 0)
         ) > 0
-    return min(8 if pasture else 12, cap)
+    return min(6 if pasture else 12, cap)
 
 
 def book_tiles(st, prod, frac=0.50):
@@ -338,10 +338,10 @@ def pasture_cap(st, product):
     rate = FLOW_PER_TILE_DAY.get(product, 1.0)
     n = int((head + regen - opp) / max(1.0, rate * float(days)))
     labor = effective_labor(st)
-    hard = 12 if product == "MILK" else 10
-    # labor-2 capped the $64k farm at 10 cows while milk sat −484 at $351.
-    # 12 workers can FEED a 12-cow / 4-sheep / 8-goose herd.
-    return min(hard, max(0, n), max(0, labor))
+    hard = 14 if product == "MILK" else 10
+    # 12 cows produced less milk than 10 when wheat tiles vanished.
+    # 12 workers can FEED 14 cows if the wheat field actually exists.
+    return min(hard, max(0, n), max(0, labor + 2))
 
 
 def plant_slots(st):
@@ -1170,10 +1170,7 @@ class MPCRevenueEngine:
         def _feed_tiles(h):
             if not h or days_left < 5:
                 return 0
-            # Wheat tiles feed the herd. A 14–20 tile field on a 50-tile
-            # NE is feed, not a market fill: the book stays −500 to −1000
-            # because animals eat it. Steal those tiles for strawberry.
-            return min(max(2, int(math.ceil(h * 0.40))), max(2, st.usable_tiles // 6))
+            return min(max(2, int(math.ceil(h * 0.50))), max(2, st.usable_tiles // 5))
         ft = _feed_tiles(herd)
         if ft:
             p.crop_mix["WHEAT"] = max(p.crop_mix.get("WHEAT", 0), ft)
@@ -1208,7 +1205,7 @@ class MPCRevenueEngine:
                 and not product_contested(st, "WOOL")
             )
             if milk_ok:
-                cow_floor = min(12, cap_c, max(4, st.usable_tiles // 4))
+                cow_floor = min(14, cap_c, max(4, st.usable_tiles // 3))
                 p.animal_targets["COW"] = min(
                     max(int(p.animal_targets.get("COW", 0) or 0), cow_floor), cap_c)
             elif cap_c <= 0:
@@ -1229,8 +1226,8 @@ class MPCRevenueEngine:
                 int(p.animal_targets.get("COW", 0) or 0)
                 + int(p.animal_targets.get("SHEEP", 0) or 0)
             )
-            g_lo = min(6 if pasture_on else 8, cap_g)
-            g_hi = min(8 if pasture_on else 12, cap_g)
+            g_lo = min(4 if pasture_on else 8, cap_g)
+            g_hi = min(6 if pasture_on else 12, cap_g)
             p.animal_targets["GOOSE"] = min(
                 max(int(p.animal_targets.get("GOOSE", 0) or 0), g_lo), g_hi)
             # Melon is shop-less. 12 tiles finish at $7; 0 tiles drop the
@@ -1242,11 +1239,13 @@ class MPCRevenueEngine:
             elif p.crop_mix.get("MELON", 0):
                 p.crop_mix.pop("MELON", None)
             quote_s = Econ.price("STRAWBERRY", st.inventory.get("STRAWBERRY", MARKET_I0))
-            cap_s = min(16, book_tiles(st, "STRAWBERRY", 0.55))
+            # 12 straw tiles crashed seed 9000 to $118 (at I0). The $64k
+            # farm had 3 tiles at $347. Cap 6; leftover is not a dump.
+            cap_s = min(6, book_tiles(st, "STRAWBERRY", 0.70))
             if (cap_s > 0 and days_left >= 14 and quote_s >= 0.85 * MARKET_PARAMS["STRAWBERRY"]["base"]
                     and not product_contested(st, "STRAWBERRY")):
                 p.crop_mix["STRAWBERRY"] = max(
-                    int(p.crop_mix.get("STRAWBERRY", 0) or 0), min(8, cap_s))
+                    int(p.crop_mix.get("STRAWBERRY", 0) or 0), min(4, cap_s))
             elif p.crop_mix.get("STRAWBERRY", 0):
                 if cap_s <= 0:
                     p.crop_mix.pop("STRAWBERRY", None)
@@ -1294,7 +1293,7 @@ class MPCRevenueEngine:
                 max(4, st.usable_tiles // 8),
             )
             melon_keep = min(int(p.crop_mix.get("MELON", 0) or 0), min(4, book_tiles(st, "MELON", 0.55)))
-            straw_keep = min(int(p.crop_mix.get("STRAWBERRY", 0) or 0), min(8, book_tiles(st, "STRAWBERRY", 0.55)))
+            straw_keep = min(int(p.crop_mix.get("STRAWBERRY", 0) or 0), min(4, book_tiles(st, "STRAWBERRY", 0.70)))
             for crop in ("CARROT", "TOMATO", "WHEAT", "STRAWBERRY", "MELON"):
                 if overflow <= 0:
                     break
@@ -1317,7 +1316,7 @@ class MPCRevenueEngine:
                 + int(p.animal_targets.get("SHEEP", 0) or 0)
             )
             cap_g = goose_cap(st)
-            g_lo = min(6 if pasture_on else 8, cap_g)
+            g_lo = min(4 if pasture_on else 8, cap_g)
             if overflow > 0:
                 have_g = int(p.animal_targets.get("GOOSE", 0) or 0)
                 take = min(overflow, max(0, have_g - g_lo))
@@ -1330,7 +1329,7 @@ class MPCRevenueEngine:
                 p.crop_mix = {k: max(0, int(v * scale)) for k, v in p.crop_mix.items()}
                 p.animal_targets = {k: max(0, int(v * scale)) for k, v in p.animal_targets.items()}
             if p.phase in ("EXPAND", "COMPOUND") and days_left >= 10:
-                g_hi = min(8 if pasture_on else 12, cap_g)
+                g_hi = min(6 if pasture_on else 12, cap_g)
                 p.animal_targets["GOOSE"] = min(
                     max(int(p.animal_targets.get("GOOSE", 0) or 0), g_lo), g_hi)
                 cap_c = pasture_cap(st, "MILK")
@@ -1754,10 +1753,16 @@ def build_tasks(st, plan):
     want = {c: max(0, int(plan.crop_mix.get(c, 0) or 0) - on_board.get(c, 0))
             for c in CROPS}
     planted = {c: 0 for c in CROPS}
+    # Wheat harvests leave empties; price_hint then sows strawberry into
+    # the feed block (3 wheat / 12 straw, 12 cows starving). Feed first.
+    _sow_order = ["WHEAT"] + sorted(
+        (k for k in want if k != "WHEAT"),
+        key=lambda k: -plan.price_hint.get(k, 0),
+    )
     if st.hour <= 16 and days_left >= 3:
         for pos in plant_empties:
             crop = None
-            for c in sorted(want, key=lambda k: -plan.price_hint.get(k, 0)):
+            for c in _sow_order:
                 if want[c] <= 0:
                     continue
                 spec = CROPS[c]
@@ -2125,7 +2130,7 @@ class KaggricultureAgent(object):
                     continue
                 have = int(st.seeds.get(crop, 0) or 0)
                 standing = int(st.crops_alive.get(crop, 0) or 0)
-                need = max(0, min(want, 10) - have - standing)
+                need = max(0, min(want, 6) - have - standing)
                 cost = SEED_COST[crop]
                 keep = 400
                 afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
@@ -2133,7 +2138,7 @@ class KaggricultureAgent(object):
                     budget = _spend(core, ["BUY_SEED", crop, afford], afford * cost)
 
             want_w = int(plan.crop_mix.get("WHEAT", 0) or 0)
-            if want_w >= 6:
+            if want_w >= 2:
                 have_w = int(st.seeds.get("WHEAT", 0) or 0) + int(st.crops_alive.get("WHEAT", 0) or 0)
                 need_w = max(0, min(want_w, 8) - have_w)
                 cost_w = SEED_COST["WHEAT"]
@@ -2244,7 +2249,7 @@ class KaggricultureAgent(object):
                 elif crop == "STRAWBERRY":
                     # 34 strawberry seeds at $100 left seed 9051 with $9 and 7 hands.
                     keep = 400
-                    need = min(need, 12)
+                    need = min(need, 6)
                 afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
                 if afford > 0:
                     budget = _spend(seeds, ["BUY_SEED", crop, afford], afford * cost)
