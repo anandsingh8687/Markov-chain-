@@ -1128,7 +1128,7 @@ class MPCRevenueEngine:
         if p.phase in ("EXPAND", "COMPOUND") and days_left >= 10:
             cap_g = goose_cap(st)
             p.animal_targets["GOOSE"] = min(
-                max(p.animal_targets.get("GOOSE", 0), min(12, cap_g)), cap_g)
+                max(p.animal_targets.get("GOOSE", 0), min(8, cap_g)), min(12, cap_g))
             # Melon is shop-less. 12 tiles finish at $7; 0 tiles drop the
             # score to 13k. Floor at remaining headroom, at most 4, and
             # drop it the moment the quote is dying.
@@ -1173,7 +1173,7 @@ class MPCRevenueEngine:
             if p.phase in ("EXPAND", "COMPOUND") and days_left >= 10:
                 cap_g = goose_cap(st)
                 p.animal_targets["GOOSE"] = min(
-                    max(p.animal_targets.get("GOOSE", 0), min(12, cap_g)), cap_g)
+                    max(p.animal_targets.get("GOOSE", 0), min(8, cap_g)), min(12, cap_g))
 
         p.action_value = max(2.0, mu / 4.0)
         p.wheat_reserve = max(herd * 2, st.n_animals * 3)
@@ -1885,6 +1885,25 @@ class KaggricultureAgent(object):
                 budget = _spend(core, ["BUY_PRODUCT", "WHEAT", afford], afford * price)
                 pending_wheat = afford
 
+        # Density-crop seeds before extra geese. 18 geese at $246 left
+        # seed 9000 with zero melon and $13.8k; the $28k farm was 8 geese
+        # plus melon sold into a still-alive book.
+        for crop in ("MELON", "STRAWBERRY"):
+            want = int(plan.crop_mix.get(crop, 0) or 0)
+            if want <= 0:
+                continue
+            spec = CROPS[crop]
+            need_days = 11 if crop == "MELON" else spec["max_day"] + 1
+            if need_days > days_left:
+                continue
+            have = int(st.seeds.get(crop, 0) or 0)
+            standing = int(st.crops_alive.get(crop, 0) or 0)
+            need = max(0, min(want, 4) - have - standing)
+            cost = SEED_COST[crop]
+            afford = int(min(need, max(0.0, budget - 400) // cost)) if cost else 0
+            if afford > 0:
+                budget = _spend(core, ["BUY_SEED", crop, afford], afford * cost)
+
         geese_alive = st.animals_alive.get("GOOSE", 0)
         land_after_geese = bool(
             plan.buy_land and st.next_land_cost and st.next_land_cost >= 2000 and geese_alive < 8)
@@ -1901,7 +1920,7 @@ class KaggricultureAgent(object):
             cost = ANIMAL_COST[animal]
             if need <= 0 or days_left <= ANIMALS[animal]["first"] + 2:
                 continue
-            if animal == "GOOSE" and (alive + in_shed) >= goose_cap(st):
+            if animal == "GOOSE" and (alive + in_shed) >= min(12, goose_cap(st)):
                 continue
             if animal != "GOOSE":
                 prod = ANIMAL_PRODUCT[animal]
