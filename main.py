@@ -1187,8 +1187,15 @@ class MPCRevenueEngine:
             elif cap_c <= 0:
                 p.animal_targets.pop("COW", None)
             if wool_ok:
+                sh_floor = min(3, cap_sh)
+                sh_hi = cap_sh
+                # Wool often printed +oversupply at $116–$189 while strawberry
+                # sat −400 at $300. Cap sheep at 4 unless the quote is still
+                # 1.25× base; those tiles go to strawberry/wheat leftovers.
+                if quote_wo < 1.25 * MARKET_PARAMS["WOOL"]["base"]:
+                    sh_hi = min(4, cap_sh)
                 p.animal_targets["SHEEP"] = min(
-                    max(int(p.animal_targets.get("SHEEP", 0) or 0), min(3, cap_sh)), cap_sh)
+                    max(int(p.animal_targets.get("SHEEP", 0) or 0), sh_floor), sh_hi)
             elif cap_sh <= 0:
                 p.animal_targets.pop("SHEEP", None)
             pasture_on = (
