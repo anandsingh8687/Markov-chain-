@@ -1894,7 +1894,7 @@ class KaggricultureAgent(object):
                     wheat_next += afford
                 if wheat_next < 2 * (st.n_animals + in_shed + 1):
                     continue
-            if (st.next_land_cost is not None and alive >= 8
+            if (plan.buy_land and st.next_land_cost is not None and alive >= 8
                     and budget < st.next_land_cost + 400):
                 break
             bought = 0
