@@ -338,24 +338,10 @@ def pasture_cap(st, product):
     rate = FLOW_PER_TILE_DAY.get(product, 1.0)
     n = int((head + regen - opp) / max(1.0, rate * float(days)))
     labor = effective_labor(st)
-    hard = cow_hard_cap(st) if product == "MILK" else 10
+    hard = 14 if product == "MILK" else 10
     # 12 cows produced less milk than 10 when wheat tiles vanished.
     # 12 workers can FEED 14 cows if the wheat field actually exists.
     return min(hard, max(0, n), max(0, labor + 2))
-
-
-def cow_hard_cap(st):
-    """15th cow only when the //4 wheat field is actually standing.
-
-    2866789 seed 9034: 15 cows + 15 wheat printed $73.9k at milk $369.
-    A bare 15th cow walked milk to $154. Require 12 wheat and a 1.20× quote.
-    """
-    wheat = int((getattr(st, "crops_alive", None) or {}).get("WHEAT", 0) or 0)
-    inv = (getattr(st, "inventory", None) or {}).get("MILK", MARKET_I0)
-    quote = Econ.price("MILK", inv)
-    if wheat >= 12 and quote >= 1.20 * MARKET_PARAMS["MILK"]["base"]:
-        return 15
-    return 14
 
 
 def plant_slots(st):
@@ -1236,15 +1222,13 @@ class MPCRevenueEngine:
                 and not product_contested(st, "WOOL")
             )
             if milk_ok:
-                # 14 cows at $364 printed $78k; 15 cows walked milk to $154
-                # unless the //4 wheat field is standing (9034 $73.9k).
-                hard_c = cow_hard_cap(st)
+                # 14 cows at $364 printed $78k; 15 cows walked milk to $154.
                 if quote_m >= 1.20 * MARKET_PARAMS["MILK"]["base"]:
-                    cow_floor = min(hard_c, cap_c, max(4, st.usable_tiles // 3))
+                    cow_floor = min(14, cap_c, max(4, st.usable_tiles // 3))
                 else:
                     cow_floor = min(12, cap_c, max(4, st.usable_tiles // 4))
                 p.animal_targets["COW"] = min(
-                    hard_c,
+                    14,
                     max(int(p.animal_targets.get("COW", 0) or 0), cow_floor),
                     cap_c,
                 )
@@ -1384,7 +1368,7 @@ class MPCRevenueEngine:
                 cap_c = pasture_cap(st, "MILK")
                 if cap_c > 0 and not product_contested(st, "MILK"):
                     p.animal_targets["COW"] = min(
-                        cow_hard_cap(st),
+                        14,
                         max(int(p.animal_targets.get("COW", 0) or 0), min(2, cap_c)),
                         cap_c,
                     )
@@ -2184,6 +2168,18 @@ class KaggricultureAgent(object):
                 budget = _spend(core, ["BUY_PRODUCT", "WHEAT", afford], afford * price)
                 pending_wheat = afford
 
+        # Unfertilized wheat peaks at 4; fertilized at 6. Collect-only
+        # never stocked the shed. Two bags, keep $600 for cows.
+        standing_w = int((getattr(st, "crops_alive", None) or {}).get("WHEAT", 0) or 0)
+        have_f = int(st.shed.get("FERTILIZER", 0) or 0)
+        if (not staff_first and standing_w >= 6 and have_f < 2
+                and plan.phase in ("EXPAND", "COMPOUND") and days_left >= 8):
+            price_f = Econ.price("FERTILIZER", st.inventory.get("FERTILIZER", MARKET_I0))
+            afford_f = int(min(2 - have_f, max(0.0, budget - 600) // max(1.0, price_f)))
+            if afford_f > 0:
+                budget = _spend(core, ["BUY_PRODUCT", "FERTILIZER", afford_f],
+                                afford_f * price_f)
+
         # Density-crop seeds before extra geese. 18 geese at $246 left
         # seed 9000 with zero melon and $13.8k; the $28k farm was 8 geese
         # plus melon sold into a still-alive book.
@@ -2249,10 +2245,6 @@ class KaggricultureAgent(object):
             g_cap_buy = goose_buy_cap(st, plan)
             for animal in ("GOOSE", "COW", "SHEEP"):
                 target = plan.animal_targets.get(animal, 0)
-                # REPLAN_EVERY cached 14 cows on 9051 while 13 wheat and
-                # milk $241 were already live. Size the 15th off the board.
-                if animal == "COW":
-                    target = max(int(target or 0), cow_hard_cap(st))
                 alive = st.animals_alive.get(animal, 0)
                 in_shed = int(st.shed.get(animal, 0) or 0)
                 need = target - alive - in_shed
@@ -2263,10 +2255,7 @@ class KaggricultureAgent(object):
                     continue
                 if animal != "GOOSE":
                     prod = ANIMAL_PRODUCT[animal]
-                    cap_now = pasture_cap(st, prod)
-                    if animal == "COW":
-                        cap_now = max(cap_now, cow_hard_cap(st))
-                    if (alive + in_shed) >= max(1, cap_now):
+                    if (alive + in_shed) >= max(1, pasture_cap(st, prod)):
                         continue
                     # LOCK vacates a dying book, not a healthy $300 milk quote.
                     if st.stance == "LOCK":
@@ -2297,7 +2286,7 @@ class KaggricultureAgent(object):
                 pasture_wanted = cows_needed or sheep_needed
                 if animal == "COW":
                     quote_m = Econ.price("MILK", st.inventory.get("MILK", MARKET_I0))
-                    need = min(need, max(0, cow_hard_cap(st) - alive - in_shed))
+                    need = min(need, max(0, 14 - alive - in_shed))
                     if need <= 0:
                         continue
                     if quote_m < 1.05 * MARKET_PARAMS["MILK"]["base"] and (alive + in_shed) >= 10:
