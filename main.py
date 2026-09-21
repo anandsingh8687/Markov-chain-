@@ -278,6 +278,22 @@ def goose_cap(st):
     return min(28, by_labor, by_land)
 
 
+def goose_buy_cap(st, plan=None):
+    """Geese must not consume the pasture slots a healthy milk/wool book needs.
+
+    Town draw is ~13 cows / 9 sheep / 7 geese, not 12 geese and nothing
+    else. Once cows or sheep are on the plan, stop buying geese at 8.
+    """
+    cap = goose_cap(st)
+    pasture = False
+    if plan is not None:
+        pasture = (
+            int(plan.animal_targets.get("COW", 0) or 0)
+            + int(plan.animal_targets.get("SHEEP", 0) or 0)
+        ) > 0
+    return min(8 if pasture else 12, cap)
+
+
 def book_tiles(st, prod, frac=0.50):
     """How many tiles the live book can still take at `frac * base`.
 
@@ -299,7 +315,13 @@ def book_tiles(st, prod, frac=0.50):
 
 
 def pasture_cap(st, product):
-    """Milk and wool crash. Size cows/sheep to remaining headroom, not a flat 8."""
+    """Milk and wool crash. Size cows/sheep to headroom PLUS town/shop drain.
+
+    An I0 fill at 0.55×base is ~2-3 cows because it ignores regen. Town-centre
+    drain is 1/day even with zero shops; pizza/ice-cream/smoothie and the
+    yarn store multiply that. Subtract opponent flow so we do not walk a
+    contested book. Cap at labour that can FEED, not at a flat 6.
+    """
     params = MARKET_PARAMS.get(product)
     if not params:
         return 0
@@ -309,10 +331,15 @@ def pasture_cap(st, product):
         return 0
     head = Econ.units_until(product, inv, floor)
     days = max(1, DAYS - int(getattr(st, "day", 0) or 0))
+    shops = getattr(st, "shops", None) or []
+    drain_turn = TownDemand.drain_per_turn(shops).get(product, 1.0 / float(TURNS_PER_DAY))
+    regen = drain_turn * float(TURNS_PER_DAY) * float(days)
+    opp = float((getattr(st, "opp_flow", None) or {}).get(product, 0.0) or 0.0)
     rate = FLOW_PER_TILE_DAY.get(product, 1.0)
-    n = int(head / max(1.0, rate * float(days)))
+    n = int((head + regen - opp) / max(1.0, rate * float(days)))
     labor = effective_labor(st)
-    return min(6, max(0, n), max(0, labor - 4))
+    hard = 12 if product == "MILK" else 10
+    return min(hard, max(0, n), max(0, labor - 2))
 
 
 def plant_slots(st):
@@ -965,18 +992,19 @@ class MPCRevenueEngine:
             inv_m = st.inventory.get("MELON", MARKET_I0)
             if Econ.price("MELON", inv_m) >= 0.55 * MARKET_PARAMS["MELON"]["base"]:
                 candidates.append("MELON")
-        if phase in ("EXPAND", "COMPOUND") and days_left >= 14:
-            # Milk/wool/strawberry have shop drain. Melon does not.
-            # Closing milk/wool froze the farm on geese; never listing
-            # strawberry left it 318 units short at 2.2× base.
-            if shops_w.get("MILK", 0) >= 1:
+        if phase in ("EXPAND", "COMPOUND"):
+            # Town-centre drain is 1/day with zero shops. Requiring a
+            # milk/wool shop to even list them froze the herd on geese
+            # while those books sat 200-500 units scarce at 1.5-2× base.
+            if days_left >= 12:
                 candidates.append("MILK")
-            if shops_w.get("WOOL", 0) >= 1:
+            if days_left >= 10:
                 candidates.append("WOOL")
-            if shops_w.get("STRAWBERRY", 0) >= 1:
-                candidates.append("STRAWBERRY")
-            if phase == "COMPOUND" and shops_w.get("TOMATO", 0) >= 2 and days_left >= 13:
-                candidates.append("TOMATO")
+            if days_left >= 14:
+                if shops_w.get("STRAWBERRY", 0) >= 1:
+                    candidates.append("STRAWBERRY")
+                if phase == "COMPOUND" and shops_w.get("TOMATO", 0) >= 2 and days_left >= 13:
+                    candidates.append("TOMATO")
         for prod in candidates:
             if prod in ("WHEAT", "EGG"):
                 allow.add(prod)
@@ -1123,12 +1151,43 @@ class MPCRevenueEngine:
             elif product_contested(st, prod):
                 p.crop_mix.pop(crop, None)
 
-        # EXPAND must stand up geese even if the water-fill rounded to zero
-        # tiles — that is the only unbounded asset on the book.
+        # EXPAND must stand up the herd even if the water-fill rounded to
+        # zero tiles. Eggs absorb, but milk/wool at 1.5-2× base are the
+        # books the goose floor has been crowding out.
         if p.phase in ("EXPAND", "COMPOUND") and days_left >= 10:
             cap_g = goose_cap(st)
+            cap_c = pasture_cap(st, "MILK")
+            cap_sh = pasture_cap(st, "WOOL")
+            quote_m = Econ.price("MILK", st.inventory.get("MILK", MARKET_I0))
+            quote_wo = Econ.price("WOOL", st.inventory.get("WOOL", MARKET_I0))
+            milk_ok = (
+                cap_c > 0
+                and quote_m >= 0.85 * MARKET_PARAMS["MILK"]["base"]
+                and not product_contested(st, "MILK")
+            )
+            wool_ok = (
+                cap_sh > 0
+                and quote_wo >= 0.85 * MARKET_PARAMS["WOOL"]["base"]
+                and not product_contested(st, "WOOL")
+            )
+            if milk_ok:
+                p.animal_targets["COW"] = min(
+                    max(int(p.animal_targets.get("COW", 0) or 0), min(4, cap_c)), cap_c)
+            elif cap_c <= 0:
+                p.animal_targets.pop("COW", None)
+            if wool_ok:
+                p.animal_targets["SHEEP"] = min(
+                    max(int(p.animal_targets.get("SHEEP", 0) or 0), min(3, cap_sh)), cap_sh)
+            elif cap_sh <= 0:
+                p.animal_targets.pop("SHEEP", None)
+            pasture_on = (
+                int(p.animal_targets.get("COW", 0) or 0)
+                + int(p.animal_targets.get("SHEEP", 0) or 0)
+            )
+            g_lo = min(6 if pasture_on else 8, cap_g)
+            g_hi = min(8 if pasture_on else 12, cap_g)
             p.animal_targets["GOOSE"] = min(
-                max(p.animal_targets.get("GOOSE", 0), min(8, cap_g)), min(12, cap_g))
+                max(int(p.animal_targets.get("GOOSE", 0) or 0), g_lo), g_hi)
             # Melon is shop-less. 12 tiles finish at $7; 0 tiles drop the
             # score to 13k. Floor at remaining headroom, at most 4, and
             # drop it the moment the quote is dying.
@@ -1146,19 +1205,32 @@ class MPCRevenueEngine:
             herd = (p.animal_targets.get("GOOSE", 0) + p.animal_targets.get("COW", 0)
                     + p.animal_targets.get("SHEEP", 0) + st.n_animals)
             ft = _feed_tiles(herd)
-            if ft:
-                p.crop_mix["WHEAT"] = max(p.crop_mix.get("WHEAT", 0), ft)
+            quote_wh = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
+            cap_wh = book_tiles(st, "WHEAT", 0.50)
+            wheat_n = ft
+            # Wheat absorbs (log) but a $44-51 quote is a scarce book, not
+            # a cheap feed buy. Size a real field once it is 1.4× base.
+            if quote_wh >= 1.40 * MARKET_PARAMS["WHEAT"]["base"] and cap_wh > 0:
+                wheat_n = max(ft, min(16, cap_wh))
+            if wheat_n:
+                p.crop_mix["WHEAT"] = max(int(p.crop_mix.get("WHEAT", 0) or 0), wheat_n)
 
         if not p.crop_mix and not p.animal_targets and days_left >= 4:
             fallback = "WHEAT" if product_contested(st, "CARROT") else "CARROT"
             p.crop_mix[fallback] = max(1, st.usable_tiles // 2)
 
-        # Never over-allocate tiles. Shrink contested/staple crops first so
-        # the goose floor and uncontested melon survive.
+        # Never over-allocate tiles. Shrink carrot first, then extra wheat,
+        # then extra geese. Keep the melon floor and the cow/sheep floor;
+        # restoring a 12-goose target here is how pastures vanished.
         used = sum(p.crop_mix.values()) + sum(p.animal_targets.values())
         if used > st.usable_tiles > 0:
             overflow = used - st.usable_tiles
-            for crop in ("MELON", "TOMATO", "CARROT", "WHEAT"):
+            feed_keep = min(
+                int(p.crop_mix.get("WHEAT", 0) or 0),
+                max(2, st.usable_tiles // 6),
+            )
+            melon_keep = min(int(p.crop_mix.get("MELON", 0) or 0), min(4, book_tiles(st, "MELON", 0.55)))
+            for crop in ("CARROT", "TOMATO", "STRAWBERRY", "WHEAT", "MELON"):
                 if overflow <= 0:
                     break
                 have = int(p.crop_mix.get(crop, 0) or 0)
@@ -1166,10 +1238,24 @@ class MPCRevenueEngine:
                     continue
                 keep = 0
                 if crop == "WHEAT":
-                    keep = min(have, max(2, st.usable_tiles // 6))
+                    keep = feed_keep
+                elif crop == "MELON":
+                    keep = melon_keep
                 take = min(overflow, max(0, have - keep))
                 if take > 0:
                     p.crop_mix[crop] = have - take
+                    overflow -= take
+            pasture_on = (
+                int(p.animal_targets.get("COW", 0) or 0)
+                + int(p.animal_targets.get("SHEEP", 0) or 0)
+            )
+            cap_g = goose_cap(st)
+            g_lo = min(6 if pasture_on else 8, cap_g)
+            if overflow > 0:
+                have_g = int(p.animal_targets.get("GOOSE", 0) or 0)
+                take = min(overflow, max(0, have_g - g_lo))
+                if take > 0:
+                    p.animal_targets["GOOSE"] = have_g - take
                     overflow -= take
             if overflow > 0:
                 scale = st.usable_tiles / float(
@@ -1177,11 +1263,29 @@ class MPCRevenueEngine:
                 p.crop_mix = {k: max(0, int(v * scale)) for k, v in p.crop_mix.items()}
                 p.animal_targets = {k: max(0, int(v * scale)) for k, v in p.animal_targets.items()}
             if p.phase in ("EXPAND", "COMPOUND") and days_left >= 10:
-                cap_g = goose_cap(st)
+                g_hi = min(8 if pasture_on else 12, cap_g)
                 p.animal_targets["GOOSE"] = min(
-                    max(p.animal_targets.get("GOOSE", 0), min(8, cap_g)), min(12, cap_g))
+                    max(int(p.animal_targets.get("GOOSE", 0) or 0), g_lo), g_hi)
+                cap_c = pasture_cap(st, "MILK")
+                if cap_c > 0 and not product_contested(st, "MILK"):
+                    p.animal_targets["COW"] = min(
+                        max(int(p.animal_targets.get("COW", 0) or 0), min(2, cap_c)), cap_c)
+                extra = (
+                    sum(p.crop_mix.values()) + sum(p.animal_targets.values())
+                    - st.usable_tiles
+                )
+                have_c = int(p.crop_mix.get("CARROT", 0) or 0)
+                if extra > 0 and have_c > 0:
+                    take = min(extra, have_c)
+                    p.crop_mix["CARROT"] = have_c - take
 
         p.action_value = max(2.0, mu / 4.0)
+        herd = (
+            int(p.animal_targets.get("GOOSE", 0) or 0)
+            + int(p.animal_targets.get("COW", 0) or 0)
+            + int(p.animal_targets.get("SHEEP", 0) or 0)
+            + int(st.n_animals or 0)
+        )
         p.wheat_reserve = max(herd * 2, st.n_animals * 3)
 
         # Cap crop mix to plants we can actually water.
@@ -1541,7 +1645,8 @@ def build_tasks(st, plan):
         (alive_p + shed_p + inflight) - st.n_pastures,
         inflight,
     ))
-    can_stock_pasture = st.money >= 500 and st.wheat_held() >= 4
+    can_stock_pasture = st.money >= 400 and (
+        st.wheat_held() >= 2 or shed_p > 0 or st.n_animals >= 2)
     if not can_stock_pasture and shed_p <= 0:
         need_past = 0
     reserve_n = min(need_coops + need_past, len(empties))
@@ -1868,7 +1973,12 @@ class KaggricultureAgent(object):
         reserved += 1  # one sell
         reserved += 1  # seeds
         hire_slots = max(2, MAX_MARKET_ORDERS - reserved)
-        per_turn = min(need_hands, hire_slots, 4)
+        need_pasture_buy = any(
+            int(plan.animal_targets.get(a, 0) or 0)
+            > st.animals_alive.get(a, 0) + int(st.shed.get(a, 0) or 0)
+            for a in ("COW", "SHEEP")
+        )
+        per_turn = min(need_hands, hire_slots, 3 if need_pasture_buy else 4)
         # Keep a working-capital floor so 12 hires + land do not print $17
         # midgame and then starve the wheat buy that stocks the next goose.
         float_cash = 200.0
@@ -1911,6 +2021,15 @@ class KaggricultureAgent(object):
             if afford > 0:
                 budget = _spend(core, ["BUY_SEED", crop, afford], afford * cost)
 
+        want_w = int(plan.crop_mix.get("WHEAT", 0) or 0)
+        if want_w >= 6:
+            have_w = int(st.seeds.get("WHEAT", 0) or 0) + int(st.crops_alive.get("WHEAT", 0) or 0)
+            need_w = max(0, min(want_w, 8) - have_w)
+            cost_w = SEED_COST["WHEAT"]
+            afford_w = int(min(need_w, max(0.0, budget - 300) // cost_w)) if cost_w else 0
+            if afford_w > 0:
+                budget = _spend(core, ["BUY_SEED", "WHEAT", afford_w], afford_w * cost_w)
+
         geese_alive = st.animals_alive.get("GOOSE", 0)
         land_after_geese = bool(
             plan.buy_land and st.next_land_cost and st.next_land_cost >= 2000 and geese_alive < 8)
@@ -1919,6 +2038,7 @@ class KaggricultureAgent(object):
             budget = _spend(core, ["BUY_LAND"], st.next_land_cost)
 
         wheat_next = st.wheat_held() + pending_wheat
+        g_cap_buy = goose_buy_cap(st, plan)
         for animal in ("GOOSE", "COW", "SHEEP"):
             target = plan.animal_targets.get(animal, 0)
             alive = st.animals_alive.get(animal, 0)
@@ -1927,16 +2047,19 @@ class KaggricultureAgent(object):
             cost = ANIMAL_COST[animal]
             if need <= 0 or days_left <= ANIMALS[animal]["first"] + 2:
                 continue
-            if animal == "GOOSE" and (alive + in_shed) >= min(12, goose_cap(st)):
+            if animal == "GOOSE" and (alive + in_shed) >= g_cap_buy:
                 continue
             if animal != "GOOSE":
                 prod = ANIMAL_PRODUCT[animal]
                 if (alive + in_shed) >= max(1, pasture_cap(st, prod)):
                     continue
-            if st.stance == "LOCK" and animal != "GOOSE":
-                continue
-            if animal != "GOOSE" and st.animals_alive.get("GOOSE", 0) < 4:
-                continue
+                # LOCK vacates a dying book, not a healthy $300 milk quote.
+                if st.stance == "LOCK":
+                    quote = Econ.price(prod, st.inventory.get(prod, MARKET_I0))
+                    if product_contested(st, prod) or quote < 0.90 * MARKET_PARAMS[prod]["base"]:
+                        continue
+                if (st.animals_alive.get("GOOSE", 0) + int(st.shed.get("GOOSE", 0) or 0)) < 2:
+                    continue
             want = ANIMAL_STRUCTURE[animal]
             housed = st.n_coops if animal == "GOOSE" else st.n_pastures
             empty_for = sum(1 for _, k in st.empty_structs if k == want)
@@ -1956,7 +2079,14 @@ class KaggricultureAgent(object):
                     and budget < st.next_land_cost + 400):
                 break
             bought = 0
-            cap = 2 if animal == "GOOSE" and wheat_next >= 4 * (st.n_animals + 1) else 1
+            pasture_wanted = (
+                int(plan.animal_targets.get("COW", 0) or 0)
+                + int(plan.animal_targets.get("SHEEP", 0) or 0)
+            ) > 0
+            cap = 2 if (
+                animal == "GOOSE" and not pasture_wanted
+                and wheat_next >= 4 * (st.n_animals + 1)
+            ) else 1
             while need > 0 and bought < cap:
                 if budget < cost + 80:
                     break
@@ -1984,7 +2114,7 @@ class KaggricultureAgent(object):
             cost = SEED_COST[crop]
             keep = 80
             if crop == "MELON":
-                geese_need = max(0, min(12, goose_cap(st)) - st.animals_alive.get("GOOSE", 0))
+                geese_need = max(0, goose_buy_cap(st, plan) - st.animals_alive.get("GOOSE", 0))
                 keep = 250 + 300 * min(2, geese_need)
             elif crop == "STRAWBERRY":
                 # 34 strawberry seeds at $100 left seed 9051 with $9 and 7 hands.

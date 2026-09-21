@@ -69,7 +69,9 @@ density **capacity-capped** crop, and it is the only crop **no shop
 ever buys** (town-centre drain is 1/day). Flooring 12 melon tiles
 walks the quote to $7 while strawberry (four of eight shops) sits
 unfarmed at 2.2× base. Size melon from remaining headroom, not base
-price. Strawberry/milk/wool enter the mix when their shops unlock.
+price. Strawberry enters the mix when its shops unlock. Milk and wool
+enter from town-centre drain (1/day) even before shops; shops multiply
+the cap, they do not gate eligibility.
 
 Capacity is a flow:
 
@@ -178,8 +180,14 @@ against a weak bot:
   turn** so wheat / land / geese still fit in the 10-order cap (8
   HIREs at dawn was the reverse of the old dropped-HIRE bug). Plants
   scale as `workers×8 − herd`. Land is NE/SW/SE at 4/8/12 intended
-  hands. Milk/wool reopen against remaining headroom, not a flat 8.
-  Glut (inv > I0) is derated; a scarce book is cheaper in the
-  water-fill. Vacate a book only when its quote is already dying.
+  hands. Milk/wool reopen against remaining headroom **plus town/shop
+  drain**, not a standing-stock I0 fill of 2-3 head. Town-centre drain
+  is 1/day with zero shops, so milk/wool stay eligible without a shop
+  unlock. Floor 4 cows / 3 sheep while the quote holds at 0.85× base;
+  cap geese at 8 once pastures are on the plan (town draw is ~13 cows /
+  9 sheep / 7 geese, not 12 geese). LOCK vacates a dying milk book, not
+  a $300 quote. Scarce wheat (quote ≥ 1.4× base) is a 16-tile field, not
+  a thin feed block. Glut (inv > I0) is derated; a scarce book is cheaper
+  in the water-fill. Vacate a book only when its quote is already dying.
   Midgame snapshot is hour 20. Frozen PR #1 lives in `benchmark/rival/`
   as a third cloud gate.

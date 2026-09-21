@@ -207,6 +207,41 @@ def _book_crush(env, player=0):
         return True, ""
 
 
+def _pasture_gap(env, at=500):
+    """Fail if milk/wool stayed scarce while the herd was goose-only.
+
+    Town-centre drain is 1/day with zero shops. A 50-tile farm that never
+    buys a cow while milk prints 1.5-2× base left that book on the table.
+    """
+    try:
+        idx = at if at < len(env.steps) else -1
+        last = env.steps[-1]
+        obs_end = (last[0] or {}).get("observation") or {}
+        market = obs_end.get("market") or {}
+        prices = market.get("prices") or {}
+        _me, _kinds, animals, _empty, locked = _tile_census(env, 0, idx)
+        unlocked = max(1, 100 - locked)
+        cows = int(animals.get("COW", 0) or 0)
+        sheep = int(animals.get("SHEEP", 0) or 0)
+        milk_p = float(prices.get("MILK", 160) or 160)
+        wool_p = float(prices.get("WOOL", 200) or 200)
+        if unlocked >= 40 and milk_p >= 0.90 * 160 and cows < 2:
+            return False, (
+                "pasture gap: {} cow(s) while milk is ${:.0f} (base $160). "
+                "Town drain always exists; shops_w must not close milk."
+                .format(cows, milk_p)
+            )
+        if unlocked >= 40 and wool_p >= 0.90 * 200 and sheep < 1:
+            return False, (
+                "pasture gap: {} sheep while wool is ${:.0f} (base $200). "
+                "Yarn-store / town drain was left on the table."
+                .format(sheep, wool_p)
+            )
+        return True, ""
+    except Exception:
+        return True, ""
+
+
 def book_telemetry(env, label="p0"):
     try:
         last = env.steps[-1]
@@ -478,6 +513,9 @@ def check_strength(root, games, opponent, report_path):
         if not ok:
             fail("{} vs {} seed {}".format(reason, opponent, seed))
         ok, reason = _book_crush(env)
+        if not ok:
+            fail("{} vs {} seed {}".format(reason, opponent, seed))
+        ok, reason = _pasture_gap(env)
         if not ok:
             fail("{} vs {} seed {}".format(reason, opponent, seed))
     rate = (wins + 0.5 * tie) / float(max(1, games))
