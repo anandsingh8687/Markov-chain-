@@ -400,7 +400,12 @@ def live_buy_land(st, plan=None):
     if cost is None:
         return False
     weeds = int(getattr(st, "n_weeds", 0) or 0)
-    hands = len(getattr(st, "hands", []) or [])
+    hour = int(getattr(st, "hour", 99) or 99)
+    arrived = len(getattr(st, "hands", []) or [])
+    # Hands are wiped at EOD. Dawn arrived-count is the farmer alone,
+    # so hands>=10 made SW impossible at hour 0–2 (8390986: every
+    # seed stayed locked=50). Use the crew the morning HIREs will land.
+    hands = max(arrived, intended_crew(st) - 1) if hour <= 3 else arrived
     money = float(getattr(st, "money", 0) or 0)
     empty = int(getattr(st, "n_empty", 99) or 0)
     animals = int(getattr(st, "n_animals", 0) or 0)
@@ -409,15 +414,14 @@ def live_buy_land(st, plan=None):
         flagged = True if plan is None else bool(getattr(plan, "buy_land", False))
         return flagged and hands >= 4 and weeds <= 10 and money > cost + 400
     if cost <= 2000:
-        hour = int(getattr(st, "hour", 99) or 99)
         # empty<=2 never fired by day 12 (2728dcf scores identical).
         # Buy SW at dawn so leftover wheat has hours 1–16 to fill the
         # new 25 tiles. Occupancy SW at any hour sat empty ($45k).
         return (
-            hour <= 4
+            hour <= 6
             and empty <= 8
-            and animals >= 20
-            and hands >= 10
+            and animals >= 16
+            and hands >= 8
             and weeds <= 5
             and money > 5000
             and days_left >= 18
@@ -1429,10 +1433,10 @@ class MPCRevenueEngine:
                 )
             elif next_cost <= 2000:
                 p.buy_land = (
-                    st.hour <= 4
+                    st.hour <= 6
                     and int(getattr(st, "n_empty", 99) or 0) <= 8
-                    and st.n_animals >= 20
-                    and hands >= 10
+                    and st.n_animals >= 16
+                    and hands >= 8
                     and getattr(st, "n_weeds", 0) <= 5
                     and cashish > 5000
                     and days_left >= 18
