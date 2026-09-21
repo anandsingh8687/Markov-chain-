@@ -32,11 +32,14 @@ Full reasoning, the measured numbers, and the engine facts the plan depends on:
 
 | Match | Episodes | Result |
 | --- | --- | --- |
-| vs. built-in `starter` | 16 | **16-0**, ~$62k vs ~$3.5k |
-| vs. `benchmark/incumbent` (PR #1), seeds 1-8 | 16 | **16-0**, mean $74,773 vs ~$11k |
-| vs. `benchmark/incumbent`, seeds 11-18 (held out) | 16 | **16-0**, mean $70,052 |
-| vs. `benchmark/incumbent`, seeds 21-28 (held out) | 16 | **16-0**, mean $50,709 |
+| vs. built-in `starter` | 4 | **4-0**, median margin +$77,458 |
+| vs. `benchmark/incumbent` (PR #1), seeds 1-18 | 32 | **32-0**, mean $76,393 vs ~$11k |
+| vs. `benchmark/incumbent`, seeds 31-42 (fresh) | 24 | **24-0**, mean $73,106 |
 | vs. the previous `main.py` in this repo | 12 | **12-0**, mean $63,512 |
+
+Even with two copies of this agent on both sides of the book, every product
+the town buys finishes *under*-supplied at two to three times base price. The
+market is not the ceiling — see `docs/ARCHITECTURE.md` §3b.
 
 For reference, the previous `main.py` in this repository won 31% against that
 same incumbent, with both sides finishing between $9k and $13k.

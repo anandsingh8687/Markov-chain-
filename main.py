@@ -97,8 +97,9 @@ _P = {
     "OVERSUPPLY": 1.35, "ANIM_MARGIN": 1.0, "WEED_W": 6.0,
     # logistics
     "SELL_SLOTS": 9, "CARRY_DROP": 11, "WHEAT_BUF": 2.4,
-    "PLACE_FIX": 1, "FERT_USE": 1,
+    "PLACE_FIX": 1, "FERT_USE": 1, "ONGOING_FIT": 1,
     # measured and rejected; kept so they are not re-tried (docs section 7)
+    "OPP_PIPE": 0.0,        # price the opponent's visible supply into the book
     "DISC": 0.0,            # discount the allocator to the payoff date
     "OPEN_FAST": 0, "OPEN_TD": 6,   # short-cycle-only opening
 }
@@ -180,6 +181,29 @@ def _plan_onetime(c):
 def _plan_ongoing(c):
     d = CROPS[c]
     return (d["fyd"], d["my"], d["fyd"] + d["interval"] * (d["my"] - 1) + 2)
+
+
+def _ongoing_fit(c, days_left):
+    """(yield, tile_days) for an ongoing crop planted now, truncated to the horizon.
+
+    Tomato and strawberry pay out in instalments -- one unit per production
+    day, `interval` days apart -- so a plant that cannot live out its full
+    lifespan is still worth its first few harvests. Valuing them all-or-nothing
+    hides that, and silently excludes strawberry from the whole second half of
+    the season even while the book is paying three times base for it.
+    """
+    d = CROPS[c]
+    n = 0
+    last = 0
+    for i in range(d["my"]):
+        age = d["fyd"] + i * d["interval"]
+        if age + 0.5 > days_left:
+            break
+        n += 1
+        last = age
+    if n <= 0:
+        return None
+    return (n, last + 1.0)
 
 
 PLAN = dict((c, _plan_ongoing(c) if CROPS[c]["ongoing"] else _plan_onetime(c))
@@ -278,6 +302,39 @@ def _decide(obs, config=None):
             elif k == "WEED":
                 weeds.append((x, y))
 
+    # The opponent's tiles are public (their shed and pockets are not), so the
+    # supply they will add to the shared book is partly observable. Folding it
+    # into the forward book is a best-response: if they are covering carrot, my
+    # marginal carrot price drops and the water-fill moves elsewhere on its own.
+    opp_pipe = dict((p2, 0.0) for p2 in PRODUCTS)
+    w_opp = P["OPP_PIPE"]
+    if w_opp > 0 and len(obs["farms"]) > 1:
+        for row in obs["farms"][1 - me]["tiles"]:
+            for t in row:
+                if not isinstance(t, dict):
+                    continue
+                if t.get("kind") == "PLANT":
+                    c = t.get("crop")
+                    if c not in CROPS:
+                        continue
+                    if CROPS[c]["ongoing"]:
+                        opp_pipe[c] += max(t.get("yield_units", 0), PLAN[c][1] * 0.6)
+                    else:
+                        age = day - t.get("planted_day", day)
+                        opp_pipe[c] += (PLAN[c][1] if age < PLAN[c][0]
+                                        else t.get("yield_units", 0))
+                elif "animal" in t:
+                    a = t.get("animal")
+                    if a not in ANIMALS:
+                        continue
+                    ad = ANIMALS[a]
+                    ramp = max(0.0, ad["fyd"] - (day - t.get("placed_day", day)))
+                    # assume they do not CARE: base rate, not the cared rate
+                    opp_pipe[ad["prod"]] += (t.get("yield_units", 0)
+                                             + max(0.0, days_left - ramp) / ad["interval"])
+    for p2 in PRODUCTS:
+        opp_pipe[p2] *= w_opp
+
     carried = {}
     for iv in invs[:nu]:
         for k2, v in iv.items():
@@ -296,7 +353,8 @@ def _decide(obs, config=None):
     open_tiles = len(empties) + len(weeds) + len(structs)
 
     wheat_buy = price_at("WHEAT", mkt["WHEAT"] - 1)
-    marg = dict((p, price_at(p, mkt[p] + pipe[p] - drain[p] * left)) for p in PRODUCTS)
+    marg = dict((p, price_at(p, mkt[p] + pipe[p] + opp_pipe[p] - drain[p] * left))
+                for p in PRODUCTS)
 
     # -------------------------------------------------------- valuation
     add = dict((p, 0.0) for p in PRODUCTS)
@@ -304,14 +362,20 @@ def _decide(obs, config=None):
     def crop_val(c):
         """Marginal revenue per tile-day of committing one more tile to c."""
         first, yld, td = PLAN[c]
-        if td + 0.4 > days_left:
+        if CROPS[c]["ongoing"] and P["ONGOING_FIT"]:
+            fit = _ongoing_fit(c, days_left)
+            if fit is None:
+                return None
+            yld, td = fit
+        elif td + 0.4 > days_left:
             return None
         if day < P["OPEN_FAST"] and td > P["OPEN_TD"]:
             # Optional fast opening: while capital is the binding constraint,
             # restrict the board to short-cycle crops so livestock can be
             # funded sooner.
             return None
-        px = price_at(c, mkt[c] + pipe[c] + add[c] + yld * 0.5 - drain[c] * left)
+        px = price_at(c, mkt[c] + pipe[c] + opp_pipe[c] + add[c] + yld * 0.5
+                      - drain[c] * left)
         # Discount to the payoff date. Early capital compounds into livestock,
         # so a dollar at harvest is not a dollar now; with DISC = 0 this is the
         # undiscounted marginal revenue per tile-day.
@@ -337,7 +401,8 @@ def _decide(obs, config=None):
             continue
         pr = ad["prod"]
         vol = RATE[a] * work
-        px = price_at(pr, mkt[pr] + pipe[pr] + vol * 0.5 - drain[pr] * left)
+        px = price_at(pr, mkt[pr] + pipe[pr] + opp_pipe[pr] + vol * 0.5
+                      - drain[pr] * left)
         gross = vol * px + days_left * marg["FERTILIZER"] * 0.7
         animal_val[a] = ((gross - ad["cost"] - wheat_buy * days_left)
                          / max(1.0, days_left)) * math.exp(-P["DISC"] * ad["fyd"])
@@ -443,7 +508,11 @@ def _decide(obs, config=None):
             if pick is None:
                 continue
             budget[pick] -= 1
-            add[pick] += PLAN[pick][1]          # next tile sees the softer price
+            if CROPS[pick]["ongoing"] and P["ONGOING_FIT"]:
+                fit = _ongoing_fit(pick, days_left)
+                add[pick] += fit[0] if fit else PLAN[pick][1]
+            else:
+                add[pick] += PLAN[pick][1]      # next tile sees the softer price
             ctasks.append((55.0 + 7.0 * pv, p, ["PLANT", pick], None))
         for p in weeds[:24]:
             ctasks.append((60.0 + P["WEED_W"] * max(crop_best, 0.0), p, ["DIG"], None))

@@ -101,6 +101,60 @@ The opening is still melon — six units at age 10 on an 11-tile-day cycle, the
 largest single capital event available before the herd can ramp — and carrot
 and wheat carry the middle game and feed the animals.
 
+## 3b. The book stays starved even against a mirror of this agent
+
+The obvious objection to section 1 is that it measures a market with one
+serious producer in it: put a real competitor on the other side and the
+ceiling reappears. It does not. Two copies of this agent, both farming all
+100 tiles for the full season, end seed 1 like this:
+
+| Product | Inventory vs I0 | Quote | Base | |
+| --- | --- | --- | --- | --- |
+| Milk | −398 | **$333** | $160 | above base |
+| Strawberry | −248 | **$252** | $120 | above base |
+| Tomato | −352 | **$213** | $60 | above base |
+| Wheat | −860 | **$54** | $25 | above base |
+| Wool | −6 | $217 | $200 | above base |
+| Egg | −66 | $54 | $50 | above base |
+| Carrot | +14 | $31 | $35 | at base |
+| Melon | +128 | $86 | $250 | below base |
+| Fertilizer | +236 | $53 | $100 | below base |
+
+Only melon and fertilizer — the two products the town never buys on a shop
+tick — finish oversupplied. Everything the town actually demands finishes
+*under*supplied, at two to three times base, with both players producing flat
+out.
+
+This has a direct strategic consequence, and it is the opposite of the usual
+advice. Against a competitor you do not yield contested ground, because there
+is no contested ground: the marginal unit still clears above base. Section 7
+records what happens when the agent is made to yield anyway.
+
+It also says where the remaining money is. Strawberry and tomato finish the
+most under-supplied of anything the town buys, which is what motivated the
+horizon-truncated valuation below.
+
+## 3c. Ongoing crops are valued over the horizon that is left
+
+Tomato and strawberry pay out in instalments — one unit per production day,
+`interval` days apart, up to `max_yield` times — so a plant that cannot live
+out its full lifespan is still worth its first few harvests. Valuing them
+all-or-nothing against their full lifetime (18 tile-days for strawberry)
+excluded strawberry from every planting decision after roughly day 11, even
+while the book was paying $250-290 for it. `_ongoing_fit` counts the
+production days that actually fit before the horizon and charges only the
+tile-days actually used.
+
+Measured across three seed sets, 56 episodes, sides swapped:
+
+| | mean | worst episode |
+| --- | --- | --- |
+| full-lifetime valuation | $72,413 / $69,532 | $42,504 / $36,100 |
+| horizon-truncated | **$76,393 / $73,106** | **$49,683 / $42,585** |
+
+Consistent direction and magnitude on seeds used for tuning and on twelve
+fresh ones: about +5% mean and +17% on the worst episode.
+
 ## 4. Three invariants, each of which cost a rewrite
 
 These are not tuning. Each one was added after an agent that ignored it
@@ -189,10 +243,9 @@ mode (the agent's own exception guard disabled so nothing is hidden):
 
 | Match | Episodes | Result |
 | --- | --- | --- |
-| This agent vs. built-in `starter` | 16 | **16-0**, ~$62k vs ~$3.5k |
-| This agent vs. PR #1 incumbent, seeds 1-8 | 16 | **16-0**, mean $74,773 vs ~$11k |
-| This agent vs. PR #1 incumbent, seeds 11-18 (held out) | 16 | **16-0**, mean $70,052 |
-| This agent vs. PR #1 incumbent, seeds 21-28 (held out) | 16 | **16-0**, mean $50,709 |
+| This agent vs. built-in `starter` | 4 | **4-0**, median margin +$77,458 |
+| This agent vs. PR #1 incumbent, seeds 1-18 | 32 | **32-0**, mean $76,393 vs ~$11k |
+| This agent vs. PR #1 incumbent, seeds 31-42 (fresh) | 24 | **24-0**, mean $73,106 |
 | This agent vs. previous `main.py` | 12 | **12-0**, mean $63,512 |
 | Previous `main.py` vs. PR #1 incumbent | 16 | 31% win rate (both $9-13k) |
 
@@ -209,6 +262,17 @@ than assuming.
 The jump is not tuning. It comes from reading the market as a sink rather than
 a ceiling, and from actually staffing and feeding the farm that conclusion
 implies.
+
+## 6b. Compute budget
+
+Measured over a full 720-turn episode: **0.26 ms mean, 0.52 ms p99, 0.66 ms
+worst turn**, against a 1000 ms `actTimeout` — roughly 1500x headroom, and the
+60 s overage budget finishes untouched. Time per turn is not what rules out
+heavier machinery here; the action space is. A single turn's action is a joint
+assignment of up to fifteen workers over ~20 operations each, plus ten market
+orders, and a full-season rollout costs about half a second, so tree search
+gets single-digit rollouts per turn over a branching factor with no
+meaningful ceiling. The leverage has been in the valuation, not the search.
 
 ## 7. Hypotheses that were tested and lost
 
@@ -238,6 +302,14 @@ sides swapped, against the incumbent.
   and the worst episode to $29,455 — milk and wool above `I0` sit on
   `linear 1.6` and `sq 3.2`, and the collapse is as steep as the table says.
   Tightening it to 1.0 also loses ($66,645), so the cap is close to right.
+* **Pricing the opponent's visible production into the book.** Their tiles are
+  public, so their future supply is partly observable, and folding it into the
+  forward book looks like a free best-response. Measured against the incumbent
+  it changed nothing (inside noise) and hurt the worst episode. Measured where
+  it should matter most — this agent against a copy of itself, both competing
+  for the same book — it **lost 7-9**. Section 3b is why: yielding ground in a
+  market that still clears above base just moves production to a worse crop.
+  Kept as `OPP_PIPE`, pinned at 0.
 * **Trimming the wheat feed buffer and the carry-drop threshold** to relieve
   the 100-item shed cap. All variants landed within ±2% of base — inside the
   noise at this sample size. The shed is near its cap in the late game, but the
