@@ -1236,11 +1236,10 @@ class MPCRevenueEngine:
                 plant_slots(st) - sum(p.crop_mix.values()),
             ))
             if left > 0 and quote_wh >= 1.40 * MARKET_PARAMS["WHEAT"]["base"]:
-                have_w = int(p.crop_mix.get("WHEAT", 0) or 0)
-                extra = min(left, max(0, 24 - have_w))
-                if extra:
-                    p.crop_mix["WHEAT"] = have_w + extra
-                    left -= extra
+                # 75-tile boards were leaving 22-27 idle while wheat sat
+                # −700 to −950 at $51–$56. Log absorption: dump leftovers.
+                p.crop_mix["WHEAT"] = int(p.crop_mix.get("WHEAT", 0) or 0) + left
+                left = 0
             if left > 0 and cap_s > 0 and days_left >= 14 and not product_contested(st, "STRAWBERRY"):
                 have_s = int(p.crop_mix.get("STRAWBERRY", 0) or 0)
                 extra = min(left, max(0, cap_s - have_s))
@@ -2041,7 +2040,7 @@ class KaggricultureAgent(object):
         )
         # Seed 9051 printed $0 and 4 hands: 3 HIREs then cows spent the till.
         # Four HIREs until 8 are queued; cows wait. Fib(0..7) ≈ $54.
-        per_turn = min(need_hands, hire_slots, 4 if not staffed_now else (3 if need_pasture_buy else 4))
+        per_turn = min(need_hands, hire_slots, 4 if not staffed_now else (2 if need_pasture_buy else 4))
         float_cash = 400.0
         for _ in range(per_turn):
             c = fib(n)
@@ -2077,7 +2076,7 @@ class KaggricultureAgent(object):
                     continue
                 have = int(st.seeds.get(crop, 0) or 0)
                 standing = int(st.crops_alive.get(crop, 0) or 0)
-                need = max(0, min(want, 4) - have - standing)
+                need = max(0, min(want, 6) - have - standing)
                 cost = SEED_COST[crop]
                 keep = 400
                 afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
