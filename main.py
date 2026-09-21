@@ -1732,11 +1732,10 @@ def build_tasks(st, plan):
                     add({"pos": pos, "op": ["FEED"], "kind": "FEED",
                          "value": val, "need": "WHEAT"})
                 if fed and not cared and days_left > spec["interval"]:
-                    # price*0.95 loses to PLANT melon (~$1420). A cared
-                    # cow is +2 milk/cycle; 14 cared at $364 printed $78k.
-                    # 1da2a20 cut sow so FEED/CARE could win and every
-                    # seed fell (9051 lost melon). Raise CARE, keep sow.
-                    if animal == "COW":
+                    # Blanket 2*price*3 stole WATER: 9051 wheat 13→6,
+                    # weeds 1→7, floor $59.1k→$53.3k. 9085 jumped +$7k.
+                    # Raise CARE only after today's plants are watered.
+                    if animal == "COW" and st.n_unwatered == 0:
                         care_val = 2.0 * price * 3.0
                     else:
                         care_val = price * 0.95
