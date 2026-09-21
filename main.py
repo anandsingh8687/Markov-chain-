@@ -1648,6 +1648,7 @@ def build_tasks(st, plan):
     days_left = max(0, DAYS - st.day)
     empties = []
     animals_unfed = 0
+    fert_pos = []
     on_board = {c: 0 for c in CROPS}
 
     for y, row in enumerate(st.tiles):
@@ -1745,9 +1746,15 @@ def build_tasks(st, plan):
                     add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                          "value": units_now * price})
                 if tile.get("fertilizer_available"):
-                    add({"pos": pos, "op": ["COLLECT_FERTILIZER"], "kind": "COLLECT",
-                         "value": 0.85 * plan.price_hint.get("FERTILIZER", 100)})
+                    fert_pos.append(pos)
                 continue
+
+    if animals_unfed == 0:
+        # BUY two bags (9e52ae9) stole FEED. Collect only after every
+        # mouth is fed so a later FERTILIZE cannot take a feeder.
+        for pos in fert_pos:
+            add({"pos": pos, "op": ["COLLECT_FERTILIZER"], "kind": "COLLECT",
+                 "value": 0.85 * plan.price_hint.get("FERTILIZER", 100)})
 
     # Structures first: planting every empty tile is how a goose target of 8
     # dies on a 25-tile board. Reserve empties for missing coops/pastures,
@@ -1800,16 +1807,6 @@ def build_tasks(st, plan):
     sow_this_hour = max(0, labor // 2) if st.hour <= 16 else 0
     if st.hour <= 12 and len(empties) >= 8:
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
-    standing_w = int(on_board.get("WHEAT", 0) or 0)
-    # 9017 mid wheat is 6 at hour 20: sow_this_hour is 0 after 16.
-    # unfed<=2 and unfed<=6 never fired (bit-identical). Drop the
-    # unfed gate; only open the two slots when wheat seeds exist so
-    # leftover straw cannot take them.
-    wheat_seeds = int(st.seeds.get("WHEAT", 0) or 0)
-    if (16 < st.hour <= 18 and standing_w < 8 and wheat_seeds > 0
-            and plan.phase not in ("HARVEST", "LIQUIDATE")):
-        sow_this_hour = max(
-            sow_this_hour, min(2, 8 - standing_w, wheat_seeds))
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
     if plan.phase in ("HARVEST", "LIQUIDATE"):
@@ -1950,7 +1947,8 @@ class KaggricultureAgent(object):
                         actions[i] = self._goto_or(wpos, dst, ["FEED"])
                         tasks = [t for t in tasks if not (t.get("need") == "WHEAT" and t["pos"] == dst)]
                         continue
-            if inv.get("FERTILIZER", 0) > 0:
+            if (inv.get("FERTILIZER", 0) > 0
+                    and getattr(st, "_animals_unfed", 0) == 0):
                 fert_tiles = []
                 for y, row in enumerate(st.tiles):
                     for x, tile in enumerate(row):
@@ -2011,7 +2009,8 @@ class KaggricultureAgent(object):
             free_idx = free_idx[1:]
 
         if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 10
-                and plan.phase in ("EXPAND", "COMPOUND")):
+                and plan.phase in ("EXPAND", "COMPOUND")
+                and unfed == 0):
             i = free_idx[0]
             wpos = workers[i]
             dst, d = self._nearest(wpos, shed_tiles)
