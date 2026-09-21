@@ -1146,15 +1146,24 @@ class MPCRevenueEngine:
         p.action_value = max(2.0, mu / 4.0)
         p.wheat_reserve = max(herd * 2, st.n_animals * 3)
 
-        # Cap crop mix to plants we can actually water.
+        # Cap crop mix to plants we can actually water, then fill leftover
+        # slots with an uncontested staple. A 12-melon mix on a 100-tile
+        # board is how we bought SE at 32% util and failed the rival gate.
         slots = plant_slots(st)
-        planted_now = int(getattr(st, "n_plants", 0) or 0)
         used_c = sum(p.crop_mix.values())
         if used_c > slots:
             scale = slots / float(used_c)
             p.crop_mix = {k: max(0, int(v * scale)) for k, v in p.crop_mix.items()}
             if "WHEAT" in p.crop_mix or (p.animal_targets and days_left >= 5):
                 p.crop_mix["WHEAT"] = max(p.crop_mix.get("WHEAT", 0), min(2, slots))
+        elif p.phase in ("EXPAND", "COMPOUND") and days_left >= 4:
+            fill_to = min(slots, max(0, effective_labor(st) * 5 - int(getattr(st, "n_animals", 0) or 0)))
+            extra = fill_to - sum(p.crop_mix.values())
+            if extra > 0:
+                staple = "WHEAT" if product_contested(st, "CARROT") else "CARROT"
+                if staple == "CARROT" and days_left < 4:
+                    staple = "WHEAT"
+                p.crop_mix[staple] = p.crop_mix.get(staple, 0) + extra
 
         next_cost = st.next_land_cost
         if next_cost is not None and days_left >= 6 and p.phase in ("EXPAND", "COMPOUND"):
@@ -1167,8 +1176,15 @@ class MPCRevenueEngine:
                 or (next_cost <= 2000 and hands >= 8)
                 or (next_cost <= 4000 and hands >= 12)
             )
+            productive = int(getattr(st, "n_plants", 0) or 0) + int(getattr(st, "n_animals", 0) or 0)
+            room_for_land = (
+                (next_cost <= 1000)
+                or (next_cost <= 2000 and productive >= 22)
+                or (next_cost <= 4000 and productive >= 50)
+            )
             p.buy_land = (
                 staffed
+                and room_for_land
                 and getattr(st, "n_weeds", 0) <= 10
                 and (next_cost <= 1000 or st.animals_alive.get("GOOSE", 0) >= 8)
                 and st.money + 0.5 * sum(
