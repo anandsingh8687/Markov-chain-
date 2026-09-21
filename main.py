@@ -1800,6 +1800,15 @@ def build_tasks(st, plan):
     sow_this_hour = max(0, labor // 2) if st.hour <= 16 else 0
     if st.hour <= 12 and len(empties) >= 8:
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
+    standing_w = int(on_board.get("WHEAT", 0) or 0)
+    # 9017 mid wheat is 6 at hour 20: morning harvest empties the feed
+    # block and sow_this_hour is 0 after 16. HARVEST sow (693afb2) and
+    # morning thin-wheat (0879e63) both stole FEED. Two wheat only,
+    # hour 17–18, after the herd is fed. hours_left is 4–5 so another
+    # worker can water (the planter cannot).
+    if (16 < st.hour <= 18 and standing_w < 8 and animals_unfed <= 2
+            and plan.phase not in ("HARVEST", "LIQUIDATE")):
+        sow_this_hour = max(sow_this_hour, min(2, 8 - standing_w))
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
     if plan.phase in ("HARVEST", "LIQUIDATE"):
@@ -2102,15 +2111,6 @@ class KaggricultureAgent(object):
                     # from dumping this premium, sell our lot first.
                     if st.opp_imminent.get(prod, 0) > 0:
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
-                    # 9034 ends milk −602/$373. rate*2 trickles 1–2/turn
-                    # while the shed holds the rest (score is bank only).
-                    # 1.80× matches melon-at-2: 9051 floor is $241, so it
-                    # does not dump. Sell up to 8 into the hot book.
-                    if prod == "MILK":
-                        quote_ml = Econ.price(
-                            "MILK", st.inventory.get("MILK", MARKET_I0))
-                        if quote_ml >= 1.80 * MARKET_PARAMS["MILK"]["base"]:
-                            n = int(min(held, sellable, max(n, 8)))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
             if n > 0:
