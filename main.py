@@ -1258,6 +1258,11 @@ class MPCRevenueEngine:
             # score to 13k. Floor at remaining headroom, at most 4, and
             # drop it the moment the quote is dying.
             cap_m = min(4, book_tiles(st, "MELON", 0.55))
+            # 9034 $73.9k sold melon 2 at $250 with milk $369. 1.50×
+            # would fire on every seed (9051 floor is $241). 1.80×
+            # keeps 4 melon on the floor and frees 2 tiles on hot milk.
+            if quote_m >= 1.80 * MARKET_PARAMS["MILK"]["base"]:
+                cap_m = min(2, cap_m)
             if cap_m > 0 and not product_contested(st, "MELON"):
                 # max(kkt, cap) kept 12 melon when KKT over-assigned.
                 # Floor the shop-less book at remaining headroom, at most 4.
