@@ -1737,6 +1737,11 @@ def build_tasks(st, plan):
                     # Raise CARE only after today's plants are watered.
                     if animal == "COW" and st.n_unwatered == 0:
                         care_val = 2.0 * price * 3.0
+                    elif animal == "GOOSE" and st.n_unwatered == 0:
+                        # Eggs absorb. Live melon sow was a score no-op.
+                        # Price goose CARE after water so it beats leftover
+                        # PLANT wheat, not melon.
+                        care_val = price * 4.0
                     else:
                         care_val = price * 0.95
                     add({"pos": pos, "op": ["CARE"], "kind": "CARE",
@@ -1833,16 +1838,6 @@ def build_tasks(st, plan):
                     continue
                 if st.seeds.get(c, 0) <= planted[c]:
                     continue
-                if c == "MELON":
-                    # REPLAN_EVERY=4 thrashed the mix (9000 wheat 12→2,
-                    # floor $59.2k→$48.8k). Keep the 8-turn cache and
-                    # enforce melon-at-2 on the live milk quote so a
-                    # stale plan cannot plant the third and fourth.
-                    quote_m = Econ.price(
-                        "MILK", st.inventory.get("MILK", MARKET_I0))
-                    if (quote_m >= 1.80 * MARKET_PARAMS["MILK"]["base"]
-                            and on_board.get("MELON", 0) + planted.get("MELON", 0) >= 2):
-                        continue
                 crop = c
                 break
             if crop is None:
