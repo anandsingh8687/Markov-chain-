@@ -414,17 +414,10 @@ def live_buy_land(st, plan=None):
         flagged = True if plan is None else bool(getattr(plan, "buy_land", False))
         return flagged and hands >= 4 and weeds <= 10 and money > cost + 400
     if cost <= 2000:
-        # empty<=2 never fired by day 12 (2728dcf scores identical).
-        # Buy SW at dawn so leftover wheat has hours 1–16 to fill the
-        # new 25 tiles. Occupancy SW at any hour sat empty ($45k).
-        return (
-            hour <= 8
-            and animals >= 8
-            and hands >= 8
-            and weeds <= 12
-            and money > 3000
-            and days_left >= 14
-        )
+        # Dawn/pack SW vs starter never fired (four CI runs locked=50).
+        # Vs scaler it bought and sat empty: 58 empties, $40k→$37k.
+        # Occupancy SW (0de5859) cut the median to $45k. Stay on NE.
+        return False
     return False
 
 
@@ -1431,14 +1424,7 @@ class MPCRevenueEngine:
                     and cashish > next_cost + 400
                 )
             elif next_cost <= 2000:
-                p.buy_land = (
-                    st.hour <= 8
-                    and st.n_animals >= 8
-                    and hands >= 8
-                    and getattr(st, "n_weeds", 0) <= 12
-                    and cashish > 3000
-                    and days_left >= 14
-                )
+                p.buy_land = False
             else:
                 p.buy_land = False
 
@@ -2318,7 +2304,7 @@ class KaggricultureAgent(object):
                     and budget >= st.next_land_cost + 400):
                 budget = _spend(core, ["BUY_LAND"], st.next_land_cost)
 
-            seed_order = ("WHEAT", "STRAWBERRY", "MELON", "CARROT", "TOMATO")
+            seed_order = ("STRAWBERRY", "MELON", "WHEAT", "CARROT", "TOMATO")
             for crop in seed_order:
                 want = plan.crop_mix.get(crop, 0)
                 spec = CROPS[crop]
