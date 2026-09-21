@@ -1709,15 +1709,7 @@ def build_tasks(st, plan):
                             # starter floor $56k → $53.5k: seed 9051 milk
                             # died at $175 (cows ate shed wheat we refused
                             # to replenish) and weeds rose on 9017/9068.
-                            # Goose CARE stole 9017 melon (book 18→12,
-                            # $59.8k→$56.0k). Peak melon must beat nearby
-                            # CARE. Do not hold wheat (541c981).
-                            if crop == "MELON" and at_peak:
-                                urg = 2.2
-                            elif age > spec["max_day"]:
-                                urg = 1.7
-                            else:
-                                urg = 1.0
+                            urg = 1.7 if age > spec["max_day"] else 1.0
                             add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                                  "value": units_now * price * urg})
                 continue
@@ -2112,6 +2104,14 @@ class KaggricultureAgent(object):
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
+                elif prod == "WOOL" and not self.gate.armed:
+                    # 9068 often prints wool +14/$189. Melon harvest urg
+                    # stole FEED/WATER (9068 $67.5k→$52.1k). Trickle wool
+                    # under base; do not change field labour.
+                    quote_wo = Econ.price(
+                        "WOOL", st.inventory.get("WOOL", MARKET_I0))
+                    if quote_wo < MARKET_PARAMS["WOOL"]["base"]:
+                        n = int(min(n, 2))
             if n > 0:
                 orders.append(["SELL", prod, int(n)])
         orders.sort(key=lambda o: -Econ.price(o[1], st.inventory.get(o[1], MARKET_I0)) * o[2])
