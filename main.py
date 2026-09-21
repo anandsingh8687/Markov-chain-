@@ -291,9 +291,7 @@ def goose_buy_cap(st, plan=None):
             int(plan.animal_targets.get("COW", 0) or 0)
             + int(plan.animal_targets.get("SHEEP", 0) or 0)
         ) > 0
-    # Comment and town draw are 7 geese beside the herd. The buy
-    # cap of 6 is why 9000/9068 finished at 4 with eggs still absorbing.
-    return min(8 if pasture else 12, cap)
+    return min(6 if pasture else 12, cap)
 
 
 def book_tiles(st, prod, frac=0.50):
@@ -1186,7 +1184,10 @@ class MPCRevenueEngine:
         def _feed_tiles(h):
             if not h or days_left < 5:
                 return 0
-            return min(max(2, int(math.ceil(h * 0.50))), max(2, st.usable_tiles // 5))
+            # usable//5 is 10 on NE. 9017/9051 mid wheat is 4–6 against
+            # 14 cows; leftover carrot takes the rest. Cap 12 (//4) so
+            # wheat-first sow fills feed before carrot. Do not add mouths.
+            return min(max(2, int(math.ceil(h * 0.50))), max(2, st.usable_tiles // 4))
         ft = _feed_tiles(herd)
         if ft:
             p.crop_mix["WHEAT"] = max(p.crop_mix.get("WHEAT", 0), ft)
@@ -1249,8 +1250,8 @@ class MPCRevenueEngine:
                 int(p.animal_targets.get("COW", 0) or 0)
                 + int(p.animal_targets.get("SHEEP", 0) or 0)
             )
-            g_lo = min(6 if pasture_on else 8, cap_g)
-            g_hi = min(8 if pasture_on else 12, cap_g)
+            g_lo = min(4 if pasture_on else 8, cap_g)
+            g_hi = min(6 if pasture_on else 12, cap_g)
             p.animal_targets["GOOSE"] = min(
                 max(int(p.animal_targets.get("GOOSE", 0) or 0), g_lo), g_hi)
             # Melon is shop-less. 12 tiles finish at $7; 0 tiles drop the
@@ -1348,7 +1349,7 @@ class MPCRevenueEngine:
                 + int(p.animal_targets.get("SHEEP", 0) or 0)
             )
             cap_g = goose_cap(st)
-            g_lo = min(6 if pasture_on else 8, cap_g)
+            g_lo = min(4 if pasture_on else 8, cap_g)
             if overflow > 0:
                 have_g = int(p.animal_targets.get("GOOSE", 0) or 0)
                 take = min(overflow, max(0, have_g - g_lo))
@@ -1361,7 +1362,7 @@ class MPCRevenueEngine:
                 p.crop_mix = {k: max(0, int(v * scale)) for k, v in p.crop_mix.items()}
                 p.animal_targets = {k: max(0, int(v * scale)) for k, v in p.animal_targets.items()}
             if p.phase in ("EXPAND", "COMPOUND") and days_left >= 10:
-                g_hi = min(8 if pasture_on else 12, cap_g)
+                g_hi = min(6 if pasture_on else 12, cap_g)
                 p.animal_targets["GOOSE"] = min(
                     max(int(p.animal_targets.get("GOOSE", 0) or 0), g_lo), g_hi)
                 cap_c = pasture_cap(st, "MILK")
