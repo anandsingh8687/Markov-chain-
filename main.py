@@ -1781,6 +1781,13 @@ def build_tasks(st, plan):
     sow_this_hour = max(0, labor // 2) if st.hour <= 16 else 0
     if st.hour <= 12 and len(empties) >= 8:
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
+    # 9017/9051 floor: 4–6 wheat at mid while the $71k farm holds 10.
+    # Extra morning sow only while the feed block is thin, still
+    # clipped by water_left. Do not re-enable HARVEST sow.
+    standing_w = int((getattr(st, "crops_alive", None) or {}).get("WHEAT", 0) or 0)
+    if (st.hour <= 14 and standing_w < 8 and days_left >= 5
+            and plan.phase not in ("HARVEST", "LIQUIDATE")):
+        sow_this_hour = max(sow_this_hour, min(max(0, labor - 4), 8))
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
     if plan.phase in ("HARVEST", "LIQUIDATE"):
