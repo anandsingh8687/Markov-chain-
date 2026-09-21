@@ -950,7 +950,9 @@ class MPCRevenueEngine:
     Turn 650+    LIQUIDATE : gateway owns the book; field work is harvest/drop.
     """
 
-    REPLAN_EVERY = 8
+    # 8-turn cache left melon-at-2 and the 15th-cow live gate stale.
+    # Dawn already replans; 4 lets the book gates fire mid-day.
+    REPLAN_EVERY = 4
     MU_LO, MU_HI = 0.5, 4000.0
     BISECT = 26
 
@@ -1648,7 +1650,6 @@ def build_tasks(st, plan):
     days_left = max(0, DAYS - st.day)
     empties = []
     animals_unfed = 0
-    fert_pos = []
     on_board = {c: 0 for c in CROPS}
 
     for y, row in enumerate(st.tiles):
@@ -1746,15 +1747,9 @@ def build_tasks(st, plan):
                     add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                          "value": units_now * price})
                 if tile.get("fertilizer_available"):
-                    fert_pos.append(pos)
+                    add({"pos": pos, "op": ["COLLECT_FERTILIZER"], "kind": "COLLECT",
+                         "value": 0.85 * plan.price_hint.get("FERTILIZER", 100)})
                 continue
-
-    if animals_unfed == 0:
-        # BUY two bags (9e52ae9) stole FEED. Collect only after every
-        # mouth is fed so a later FERTILIZE cannot take a feeder.
-        for pos in fert_pos:
-            add({"pos": pos, "op": ["COLLECT_FERTILIZER"], "kind": "COLLECT",
-                 "value": 0.85 * plan.price_hint.get("FERTILIZER", 100)})
 
     # Structures first: planting every empty tile is how a goose target of 8
     # dies on a 25-tile board. Reserve empties for missing coops/pastures,
@@ -1947,8 +1942,7 @@ class KaggricultureAgent(object):
                         actions[i] = self._goto_or(wpos, dst, ["FEED"])
                         tasks = [t for t in tasks if not (t.get("need") == "WHEAT" and t["pos"] == dst)]
                         continue
-            if (inv.get("FERTILIZER", 0) > 0
-                    and getattr(st, "_animals_unfed", 0) == 0):
+            if inv.get("FERTILIZER", 0) > 0:
                 fert_tiles = []
                 for y, row in enumerate(st.tiles):
                     for x, tile in enumerate(row):
@@ -2009,8 +2003,7 @@ class KaggricultureAgent(object):
             free_idx = free_idx[1:]
 
         if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 10
-                and plan.phase in ("EXPAND", "COMPOUND")
-                and unfed == 0):
+                and plan.phase in ("EXPAND", "COMPOUND")):
             i = free_idx[0]
             wpos = workers[i]
             dst, d = self._nearest(wpos, shed_tiles)
