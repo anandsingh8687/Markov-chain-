@@ -1345,22 +1345,13 @@ class MPCRevenueEngine:
             # board. Staff NE/SW/SE at 4/8/12 hands. Hour 0 arrived-hands is
             # zero after the EOD wipe — use the crew we are about to hire.
             hands = max(len(st.hands), intended_crew(st) - 1) if st.hour <= 3 else len(st.hands)
-            staffed = (
-                (next_cost <= 1000 and hands >= 4)
-                or (next_cost <= 2000 and hands >= 8)
-                or (next_cost <= 4000 and hands >= 12)
-            )
-            productive = int(getattr(st, "n_plants", 0) or 0) + int(getattr(st, "n_animals", 0) or 0)
-            room_for_land = (
-                (next_cost <= 1000)
-                or (next_cost <= 2000 and productive >= 40)
-                or (next_cost <= 4000 and productive >= 50)
-            )
+            # $49k seeds bought SW and left 25-33 empty. $64k seed 9085
+            # stayed on a full 50-tile NE. Do not buy SW/SE until that
+            # board is the default, not a 75-tile pasture.
+            staffed = next_cost <= 1000 and hands >= 4
             p.buy_land = (
                 staffed
-                and room_for_land
                 and getattr(st, "n_weeds", 0) <= 10
-                and (next_cost <= 1000 or st.animals_alive.get("GOOSE", 0) >= 8)
                 and st.money + 0.5 * sum(
                     st.shed.get(s, 0) * Econ.price(s, st.inventory.get(s, MARKET_I0))
                     for s in ("CARROT", "EGG", "WHEAT")
