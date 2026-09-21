@@ -391,9 +391,10 @@ def live_buy_land(st, plan=None):
     """Issue BUY_LAND from the live board, not an 8-turn cached plan.
 
     After NE lands, REPLAN_EVERY leaves plan.buy_land True and the market
-    spends $2000 on SW into 22 empty tiles ($49k). $64k is a full 50-tile
-    NE. Occupancy-gated SW still bought the hour NE filled, then sat 25
-    tiles empty all season. Do not buy SW until leftover mix fills it.
+    spends $2000 on SW into 22 empty tiles ($49k). Occupancy-gated SW
+    still bought the hour NE filled, then sat empty. Buy SW only on a
+    packed NE, early enough that leftover wheat can fill the new 25
+    tiles during COMPOUND.
     """
     cost = getattr(st, "next_land_cost", None)
     if cost is None:
@@ -401,9 +402,17 @@ def live_buy_land(st, plan=None):
     weeds = int(getattr(st, "n_weeds", 0) or 0)
     hands = len(getattr(st, "hands", []) or [])
     money = float(getattr(st, "money", 0) or 0)
+    empty = int(getattr(st, "n_empty", 99) or 0)
+    animals = int(getattr(st, "n_animals", 0) or 0)
+    days_left = max(0, DAYS - int(getattr(st, "day", 0) or 0))
     if cost <= 1000:
         flagged = True if plan is None else bool(getattr(plan, "buy_land", False))
         return flagged and hands >= 4 and weeds <= 10 and money > cost + 400
+    if cost <= 2000:
+        return (
+            empty <= 2 and animals >= 18 and hands >= 8
+            and weeds <= 5 and money > 3500 and days_left >= 18
+        )
     return False
 
 
@@ -2220,7 +2229,8 @@ class KaggricultureAgent(object):
                 pasture_wanted = cows_needed or sheep_needed
                 if animal == "COW":
                     quote_m = Econ.price("MILK", st.inventory.get("MILK", MARKET_I0))
-                    if (alive + in_shed) >= 14:
+                    need = min(need, max(0, 14 - alive - in_shed))
+                    if need <= 0:
                         continue
                     if quote_m < 1.05 * MARKET_PARAMS["MILK"]["base"] and (alive + in_shed) >= 10:
                         continue
