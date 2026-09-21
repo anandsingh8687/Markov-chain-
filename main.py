@@ -1801,14 +1801,15 @@ def build_tasks(st, plan):
     if st.hour <= 12 and len(empties) >= 8:
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
     standing_w = int(on_board.get("WHEAT", 0) or 0)
-    # 9017 mid wheat is 6 at hour 20: morning harvest empties the feed
-    # block and sow_this_hour is 0 after 16. HARVEST sow (693afb2) and
-    # morning thin-wheat (0879e63) both stole FEED. Two wheat only,
-    # hour 17–18, after the herd is fed. hours_left is 4–5 so another
-    # worker can water (the planter cannot).
-    if (16 < st.hour <= 18 and standing_w < 8 and animals_unfed <= 6
+    # 9017 mid wheat is 6 at hour 20: sow_this_hour is 0 after 16.
+    # unfed<=2 and unfed<=6 never fired (bit-identical). Drop the
+    # unfed gate; only open the two slots when wheat seeds exist so
+    # leftover straw cannot take them.
+    wheat_seeds = int(st.seeds.get("WHEAT", 0) or 0)
+    if (16 < st.hour <= 18 and standing_w < 8 and wheat_seeds > 0
             and plan.phase not in ("HARVEST", "LIQUIDATE")):
-        sow_this_hour = max(sow_this_hour, min(2, 8 - standing_w))
+        sow_this_hour = max(
+            sow_this_hour, min(2, 8 - standing_w, wheat_seeds))
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
     if plan.phase in ("HARVEST", "LIQUIDATE"):
