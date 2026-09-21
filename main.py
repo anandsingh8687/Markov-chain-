@@ -392,9 +392,9 @@ def live_buy_land(st, plan=None):
 
     After NE lands, REPLAN_EVERY leaves plan.buy_land True and the market
     spends $2000 on SW into 22 empty tiles ($49k). Occupancy-gated SW
-    still bought the hour NE filled, then sat empty. Buy SW only on a
-    packed NE, early enough that leftover wheat can fill the new 25
-    tiles during COMPOUND.
+    still bought the hour NE filled, then sat empty. Buy SW at dawn
+    (hour<=4) so leftover wheat has the rest of the day to fill the
+    new 25 tiles. empty<=2 never fired by day 12.
     """
     cost = getattr(st, "next_land_cost", None)
     if cost is None:
@@ -409,9 +409,18 @@ def live_buy_land(st, plan=None):
         flagged = True if plan is None else bool(getattr(plan, "buy_land", False))
         return flagged and hands >= 4 and weeds <= 10 and money > cost + 400
     if cost <= 2000:
+        hour = int(getattr(st, "hour", 99) or 99)
+        # empty<=2 never fired by day 12 (2728dcf scores identical).
+        # Buy SW at dawn so leftover wheat has hours 1–16 to fill the
+        # new 25 tiles. Occupancy SW at any hour sat empty ($45k).
         return (
-            empty <= 2 and animals >= 18 and hands >= 8
-            and weeds <= 5 and money > 3500 and days_left >= 18
+            hour <= 4
+            and empty <= 8
+            and animals >= 20
+            and hands >= 10
+            and weeds <= 5
+            and money > 5000
+            and days_left >= 18
         )
     return False
 
@@ -1294,13 +1303,9 @@ class MPCRevenueEngine:
                 if extra:
                     p.crop_mix["STRAWBERRY"] = have_s + extra
                     left -= extra
-            standing_w = int((getattr(st, "crops_alive", None) or {}).get("WHEAT", 0) or 0)
-            if left > 0 and days_left >= 5 and standing_w < 8:
-                # Plan already asks for 10 wheat; 9017/9000 still show 4–5
-                # on the board because leftover carrot takes the replant
-                # slots after a harvest wave. Fill those empties with wheat
-                # until eight tiles are standing. All-wheat leftover
-                # (2d02c65) cut the median; carrot may return after that.
+            if left > 0 and days_left >= 5 and st.usable_tiles >= 75:
+                # SW's new 25 tiles must be wheat, not leftover carrot.
+                # Occupancy SW (0de5859) sat empty and cut the median to $45k.
                 have_w = int(p.crop_mix.get("WHEAT", 0) or 0)
                 p.crop_mix["WHEAT"] = have_w + left
                 left = 0
@@ -1424,11 +1429,12 @@ class MPCRevenueEngine:
                 )
             elif next_cost <= 2000:
                 p.buy_land = (
-                    int(getattr(st, "n_empty", 99) or 0) <= 2
-                    and st.n_animals >= 18
-                    and hands >= 8
+                    st.hour <= 4
+                    and int(getattr(st, "n_empty", 99) or 0) <= 8
+                    and st.n_animals >= 20
+                    and hands >= 10
                     and getattr(st, "n_weeds", 0) <= 5
-                    and cashish > 3500
+                    and cashish > 5000
                     and days_left >= 18
                 )
             else:
