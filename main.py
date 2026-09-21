@@ -1300,14 +1300,6 @@ class MPCRevenueEngine:
                 have_w = int(p.crop_mix.get("WHEAT", 0) or 0)
                 p.crop_mix["WHEAT"] = have_w + left
                 left = 0
-            standing_w = int((getattr(st, "crops_alive", None) or {}).get("WHEAT", 0) or 0)
-            if left > 0 and days_left >= 5 and standing_w < 8:
-                # 9017 mid wheat stays 4–6 because leftover carrot wins
-                # after straw. Fill the feed block first; all-wheat leftover
-                # (2d02c65) cut the median to $65k, so only while thin.
-                have_w = int(p.crop_mix.get("WHEAT", 0) or 0)
-                p.crop_mix["WHEAT"] = have_w + left
-                left = 0
             if left > 0 and days_left >= 4 and not product_contested(st, "CARROT"):
                 have_c = int(p.crop_mix.get("CARROT", 0) or 0)
                 extra = left
