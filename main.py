@@ -419,12 +419,11 @@ def live_buy_land(st, plan=None):
         # new 25 tiles. Occupancy SW at any hour sat empty ($45k).
         return (
             hour <= 8
-            and empty <= 10
-            and animals >= 12
+            and animals >= 8
             and hands >= 8
-            and weeds <= 8
-            and money > 4000
-            and days_left >= 16
+            and weeds <= 12
+            and money > 3000
+            and days_left >= 14
         )
     return False
 
@@ -1434,12 +1433,11 @@ class MPCRevenueEngine:
             elif next_cost <= 2000:
                 p.buy_land = (
                     st.hour <= 8
-                    and int(getattr(st, "n_empty", 99) or 0) <= 10
-                    and st.n_animals >= 12
+                    and st.n_animals >= 8
                     and hands >= 8
-                    and getattr(st, "n_weeds", 0) <= 8
-                    and cashish > 4000
-                    and days_left >= 16
+                    and getattr(st, "n_weeds", 0) <= 12
+                    and cashish > 3000
+                    and days_left >= 14
                 )
             else:
                 p.buy_land = False
@@ -2188,6 +2186,17 @@ class KaggricultureAgent(object):
         # Density-crop seeds before extra geese. 18 geese at $246 left
         # seed 9000 with zero melon and $13.8k; the $28k farm was 8 geese
         # plus melon sold into a still-alive book.
+        land_now = live_buy_land(st, plan)
+        geese_alive = st.animals_alive.get("GOOSE", 0)
+        # SW first in the pack. Seeds-then-cows-then-land never issued
+        # (three CI runs, every seed locked=50). Keep $400 after the $2000.
+        if (not staff_first and land_now and st.next_land_cost
+                and st.next_land_cost >= 2000
+                and geese_alive >= 4
+                and budget >= st.next_land_cost + 400):
+            budget = _spend(core, ["BUY_LAND"], st.next_land_cost)
+            land_now = False
+
         if not staff_first:
             # $56k floor seeds had 4 wheat on 24 animals: strawberry/melon
             # seeds took the 10-order cap. Feed seeds first.
@@ -2217,7 +2226,6 @@ class KaggricultureAgent(object):
                 if afford > 0:
                     budget = _spend(core, ["BUY_SEED", crop, afford], afford * cost)
 
-            geese_alive = st.animals_alive.get("GOOSE", 0)
             cows_needed = (
                 int(plan.animal_targets.get("COW", 0) or 0)
                 > st.animals_alive.get("COW", 0)
@@ -2230,10 +2238,7 @@ class KaggricultureAgent(object):
                 + int(st.shed.get("SHEEP", 0) or 0)
                 + carried_item(st, "SHEEP")
             )
-            land_now = live_buy_land(st, plan)
-            # SW after cows never issued (8390986/f33fc6e locked=50):
-            # two COW buys + $400 float ate the $2000. Land before
-            # pasture. Only wait on geese if we do not even have four.
+            # NE ($1000) still goes here. SW already issued above.
             land_after_geese = bool(
                 land_now and st.next_land_cost and st.next_land_cost >= 2000
                 and geese_alive < 4)
