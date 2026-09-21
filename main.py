@@ -950,9 +950,7 @@ class MPCRevenueEngine:
     Turn 650+    LIQUIDATE : gateway owns the book; field work is harvest/drop.
     """
 
-    # 8-turn cache left melon-at-2 and the 15th-cow live gate stale.
-    # Dawn already replans; 4 lets the book gates fire mid-day.
-    REPLAN_EVERY = 4
+    REPLAN_EVERY = 8
     MU_LO, MU_HI = 0.5, 4000.0
     BISECT = 26
 
@@ -1835,6 +1833,16 @@ def build_tasks(st, plan):
                     continue
                 if st.seeds.get(c, 0) <= planted[c]:
                     continue
+                if c == "MELON":
+                    # REPLAN_EVERY=4 thrashed the mix (9000 wheat 12→2,
+                    # floor $59.2k→$48.8k). Keep the 8-turn cache and
+                    # enforce melon-at-2 on the live milk quote so a
+                    # stale plan cannot plant the third and fourth.
+                    quote_m = Econ.price(
+                        "MILK", st.inventory.get("MILK", MARKET_I0))
+                    if (quote_m >= 1.80 * MARKET_PARAMS["MILK"]["base"]
+                            and on_board.get("MELON", 0) + planted.get("MELON", 0) >= 2):
+                        continue
                 crop = c
                 break
             if crop is None:
