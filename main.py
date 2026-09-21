@@ -1097,10 +1097,12 @@ class MPCRevenueEngine:
         if p.phase in ("EXPAND", "COMPOUND") and days_left >= 10:
             cap_g = goose_cap(st)
             p.animal_targets["GOOSE"] = min(
-                max(p.animal_targets.get("GOOSE", 0), min(6, cap_g)), cap_g)
+                max(p.animal_targets.get("GOOSE", 0), min(12, cap_g)), cap_g)
             if "MELON" in eligible and not product_contested(st, "MELON"):
                 p.crop_mix["MELON"] = max(p.crop_mix.get("MELON", 0),
-                                         min(10, max(4, st.usable_tiles // 5)))
+                                         min(8, max(4, st.usable_tiles // 8)))
+            if p.crop_mix.get("MELON", 0) > 12:
+                p.crop_mix["MELON"] = 12
             herd = (p.animal_targets.get("GOOSE", 0) + p.animal_targets.get("COW", 0)
                     + p.animal_targets.get("SHEEP", 0) + st.n_animals)
             ft = _feed_tiles(herd)
@@ -1139,7 +1141,7 @@ class MPCRevenueEngine:
             if p.phase in ("EXPAND", "COMPOUND") and days_left >= 10:
                 cap_g = goose_cap(st)
                 p.animal_targets["GOOSE"] = min(
-                    max(p.animal_targets.get("GOOSE", 0), min(6, cap_g)), cap_g)
+                    max(p.animal_targets.get("GOOSE", 0), min(12, cap_g)), cap_g)
 
         p.action_value = max(2.0, mu / 4.0)
         p.wheat_reserve = max(herd * 2, st.n_animals * 3)
@@ -1168,6 +1170,7 @@ class MPCRevenueEngine:
             p.buy_land = (
                 staffed
                 and getattr(st, "n_weeds", 0) <= 10
+                and (next_cost <= 1000 or st.animals_alive.get("GOOSE", 0) >= 8)
                 and st.money + 0.5 * sum(
                     st.shed.get(s, 0) * Econ.price(s, st.inventory.get(s, MARKET_I0))
                     for s in ("CARROT", "EGG", "WHEAT")
@@ -1470,15 +1473,25 @@ def build_tasks(st, plan):
     target_c = min(int(plan.animal_targets.get("COW", 0) or 0), pasture_cap(st, "MILK"))
     target_s = min(int(plan.animal_targets.get("SHEEP", 0) or 0), pasture_cap(st, "WOOL"))
     target_p = target_c + target_s
-    need_coops = max(0, min(target_g - st.animals_alive["GOOSE"], target_g - st.n_coops))
-    need_past = max(0, min(target_p - st.animals_alive["COW"] - st.animals_alive["SHEEP"],
-                           target_p - st.n_pastures))
-    need_coops = min(need_coops, 2)
-    need_past = min(need_past, 2)
-    # Empty pastures were the feed-pacing sibling of empty coops: we reserved
-    # tiles for cows/sheep the bank and wheat loft could not stock this turn.
+    # Structures lead living animals by at most 2. Targeting 24 geese and
+    # reserving `target - n_coops` paved 19 empty sheds on seed 9000.
+    inflight = 2
+    shed_g = int(st.shed.get("GOOSE", 0) or 0)
+    shed_p = int(st.shed.get("COW", 0) or 0) + int(st.shed.get("SHEEP", 0) or 0)
+    alive_g = st.animals_alive["GOOSE"]
+    alive_p = st.animals_alive["COW"] + st.animals_alive["SHEEP"]
+    need_coops = max(0, min(
+        target_g - st.n_coops,
+        (alive_g + shed_g + inflight) - st.n_coops,
+        inflight,
+    ))
+    need_past = max(0, min(
+        target_p - st.n_pastures,
+        (alive_p + shed_p + inflight) - st.n_pastures,
+        inflight,
+    ))
     can_stock_pasture = st.money >= 500 and st.wheat_held() >= 4
-    if not can_stock_pasture:
+    if not can_stock_pasture and shed_p <= 0:
         need_past = 0
     reserve_n = min(need_coops + need_past, len(empties))
     plant_empties = empties[:max(0, len(empties) - reserve_n)]
@@ -1801,7 +1814,7 @@ class KaggricultureAgent(object):
         per_turn = min(need_hands, hire_slots, 4)
         # Keep a working-capital floor so 12 hires + land do not print $17
         # midgame and then starve the wheat buy that stocks the next goose.
-        float_cash = 350.0 + 20.0 * max(herd, 1)
+        float_cash = 200.0
         for _ in range(per_turn):
             c = fib(n)
             if budget < c + float_cash and n >= 6:
@@ -1812,17 +1825,20 @@ class KaggricultureAgent(object):
             n += 1
 
         short = reserve_wheat - st.wheat_held()
-        # Pre-buy feed for animals we are about to take, not only the living herd.
-        planned_herd = herd + sum(int(v or 0) for v in (plan.animal_targets or {}).values())
-        short = max(short, planned_herd * 2 - st.wheat_held())
-        if short > 0 and (herd > 0 or planned_herd > 0):
+        # Feed the living herd plus the next few buys, not the 24-head target.
+        short = max(short, 2 * (herd + 4) - st.wheat_held())
+        if short > 0 and (herd > 0 or plan.animal_targets.get("GOOSE", 0) > 0):
             price = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
-            afford = int(min(max(short, 1), budget // max(1.0, price), 24))
+            afford = int(min(max(short, 1), max(0.0, budget - 400) // max(1.0, price), 12))
             if afford > 0:
                 budget = _spend(core, ["BUY_PRODUCT", "WHEAT", afford], afford * price)
                 pending_wheat = afford
 
-        if plan.buy_land and st.next_land_cost and budget >= st.next_land_cost + float_cash:
+        geese_alive = st.animals_alive.get("GOOSE", 0)
+        land_after_geese = bool(
+            plan.buy_land and st.next_land_cost and st.next_land_cost >= 2000 and geese_alive < 8)
+        if (plan.buy_land and st.next_land_cost and not land_after_geese
+                and budget >= st.next_land_cost + 200):
             budget = _spend(core, ["BUY_LAND"], st.next_land_cost)
 
         wheat_next = st.wheat_held() + pending_wheat
@@ -1865,12 +1881,16 @@ class KaggricultureAgent(object):
             bought = 0
             cap = 2 if animal == "GOOSE" and wheat_next >= 4 * (st.n_animals + 1) else 1
             while need > 0 and bought < cap:
-                if budget < cost + float_cash:
+                if budget < cost + 80:
                     break
                 budget = _spend(core, ["BUY_ANIMAL", animal, 1], cost)
                 need -= 1
                 bought += 1
                 wheat_next = max(0, wheat_next - 2)
+
+        if (land_after_geese and plan.buy_land and st.next_land_cost
+                and budget >= st.next_land_cost + 200):
+            budget = _spend(core, ["BUY_LAND"], st.next_land_cost)
 
         seed_order = ("WHEAT", "CARROT", "MELON", "TOMATO", "STRAWBERRY")
         for crop in seed_order:
@@ -1884,7 +1904,10 @@ class KaggricultureAgent(object):
             if need <= 0:
                 continue
             cost = SEED_COST[crop]
-            keep = 250 if crop == "MELON" else 80
+            keep = 80
+            if crop == "MELON":
+                geese_need = max(0, goose_cap(st) - st.animals_alive.get("GOOSE", 0))
+                keep = 250 + 300 * min(2, geese_need)
             afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
             if afford > 0:
                 budget = _spend(seeds, ["BUY_SEED", crop, afford], afford * cost)
