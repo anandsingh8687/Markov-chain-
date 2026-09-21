@@ -1205,7 +1205,11 @@ class MPCRevenueEngine:
                 and not product_contested(st, "WOOL")
             )
             if milk_ok:
-                cow_floor = min(14, cap_c, max(4, st.usable_tiles // 3))
+                # 14 cows at $364 printed $78k; 15 cows walked milk to $154.
+                if quote_m >= 1.20 * MARKET_PARAMS["MILK"]["base"]:
+                    cow_floor = min(14, cap_c, max(4, st.usable_tiles // 3))
+                else:
+                    cow_floor = min(12, cap_c, max(4, st.usable_tiles // 4))
                 p.animal_targets["COW"] = min(
                     max(int(p.animal_targets.get("COW", 0) or 0), cow_floor), cap_c)
             elif cap_c <= 0:
@@ -1273,10 +1277,10 @@ class MPCRevenueEngine:
                 p.crop_mix["CARROT"] = have_c + extra
                 left = 0
             if left > 0 and days_left >= 5:
+                # $52k seeds left 7–10 empty because leftover wheat was
+                # capped at ft+4 and carrot was contested. Wheat absorbs.
                 have_w = int(p.crop_mix.get("WHEAT", 0) or 0)
-                extra = min(left, max(0, ft + 4 - have_w))
-                if extra:
-                    p.crop_mix["WHEAT"] = have_w + extra
+                p.crop_mix["WHEAT"] = have_w + left
 
         if not p.crop_mix and not p.animal_targets and days_left >= 4:
             fallback = "WHEAT" if product_contested(st, "CARROT") else "CARROT"
@@ -2210,7 +2214,10 @@ class KaggricultureAgent(object):
                 bought = 0
                 pasture_wanted = cows_needed or sheep_needed
                 if animal == "COW":
-                    cap = 2
+                    quote_m = Econ.price("MILK", st.inventory.get("MILK", MARKET_I0))
+                    if quote_m < 1.05 * MARKET_PARAMS["MILK"]["base"] and (alive + in_shed) >= 10:
+                        continue
+                    cap = 1 if (alive + in_shed) >= 12 else 2
                 elif (animal == "GOOSE" and not pasture_wanted
                       and wheat_next >= 4 * (st.n_animals + 1)):
                     cap = 2
