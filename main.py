@@ -1793,6 +1793,11 @@ def build_tasks(st, plan):
     sow_this_hour = max(0, labor // 2) if st.hour <= 16 else 0
     if st.hour <= 12 and len(empties) >= 8:
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
+    # Dawn unfed == the whole herd. Extra sow (0879e63) and extra mouths
+    # both steal FEED. Hold sow at labor//3 until eight animals are fed
+    # so leftover workers pick up wheat instead of planting.
+    if animals_unfed >= 8:
+        sow_this_hour = min(sow_this_hour, max(0, labor // 3))
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
     if plan.phase in ("HARVEST", "LIQUIDATE"):
