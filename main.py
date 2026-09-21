@@ -1256,17 +1256,20 @@ class MPCRevenueEngine:
             # drop it the moment the quote is dying.
             cap_m = min(4, book_tiles(st, "MELON", 0.55))
             if cap_m > 0 and not product_contested(st, "MELON"):
-                p.crop_mix["MELON"] = max(int(p.crop_mix.get("MELON", 0) or 0), cap_m)
+                # max(kkt, cap) kept 12 melon when KKT over-assigned.
+                # Floor the shop-less book at remaining headroom, at most 4.
+                p.crop_mix["MELON"] = cap_m
             elif p.crop_mix.get("MELON", 0):
                 p.crop_mix.pop("MELON", None)
             quote_s = Econ.price("STRAWBERRY", st.inventory.get("STRAWBERRY", MARKET_I0))
             # 12 straw tiles crashed seed 9000 to $118 (at I0). The $64k
             # farm had 3 tiles at $347. Cap 6; leftover is not a dump.
+            # max(kkt, 4) kept the KKT dump: scaler 9051 stood 25 straw.
             cap_s = min(6, book_tiles(st, "STRAWBERRY", 0.70))
             if (cap_s > 0 and days_left >= 14 and quote_s >= 0.85 * MARKET_PARAMS["STRAWBERRY"]["base"]
                     and not product_contested(st, "STRAWBERRY")):
-                p.crop_mix["STRAWBERRY"] = max(
-                    int(p.crop_mix.get("STRAWBERRY", 0) or 0), min(4, cap_s))
+                have_s = int(p.crop_mix.get("STRAWBERRY", 0) or 0)
+                p.crop_mix["STRAWBERRY"] = min(cap_s, max(have_s, min(4, cap_s)))
             elif p.crop_mix.get("STRAWBERRY", 0):
                 if cap_s <= 0:
                     p.crop_mix.pop("STRAWBERRY", None)
@@ -1781,13 +1784,6 @@ def build_tasks(st, plan):
     sow_this_hour = max(0, labor // 2) if st.hour <= 16 else 0
     if st.hour <= 12 and len(empties) >= 8:
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
-    # 9017/9051 floor: 4–6 wheat at mid while the $71k farm holds 10.
-    # Extra morning sow only while the feed block is thin, still
-    # clipped by water_left. Do not re-enable HARVEST sow.
-    standing_w = int((getattr(st, "crops_alive", None) or {}).get("WHEAT", 0) or 0)
-    if (st.hour <= 14 and standing_w < 8 and days_left >= 5
-            and plan.phase not in ("HARVEST", "LIQUIDATE")):
-        sow_this_hour = max(sow_this_hour, min(max(0, labor - 4), 8))
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
     if plan.phase in ("HARVEST", "LIQUIDATE"):
