@@ -341,6 +341,32 @@ because its drain is ~1/day, strawberry's does not.
 
 Both agents are kept in `benchmark/` and gated against on every push.
 
+## 6d. Measuring strength against a strong opponent
+
+Beating `starter` measures how much of an *uncontested* book an agent can
+harvest. A competitive ladder is a different problem: the book is shared and
+the town's draw is fixed, so whoever reaches the high-value products first
+gets the higher quotes and the loser is priced into what is left. A change can
+be worth nothing in the first problem and decisive in the second.
+
+`tools/selfplay_ab.py` plays a candidate against a frozen copy of the current
+agent (`tools/freeze_champion.py` writes a champion that ignores `KG_PARAMS`,
+so the two sides can differ). Identical agents score exactly 0.500 with zero
+edge, which is the control.
+
+Self-play has a blind spot worth stating: a change that expands *absolute*
+production shows as a tie, because the mirrored opponent expands too and they
+split the same book. So a candidate is read on both -- self-play for
+contested strength, and mean bank against a fixed opponent for absolute
+output. The feed-shadow experiment in section 7 is exactly the case where
+those two disagreed, and the absolute measure was the one that mattered.
+
+**The noise floor is the main finding of that work.** At 16 episodes the
+standard error on a self-play score is about 0.12 and on mean bank several
+thousand, and four separate candidates this session looked like clear wins at
+that sample size and reversed at 44-48 episodes. Nothing below roughly 8% on
+a 44+ episode sample should be treated as a result.
+
 ## 7. Hypotheses that were tested and lost
 
 Recorded so they are not re-tried. All measured the same way: eight seeds,
@@ -377,6 +403,38 @@ sides swapped, against the incumbent.
   for the same book — it **lost 7-9**. Section 3b is why: yielding ground in a
   market that still clears above base just moves production to a worse crop.
   Kept as `OPP_PIPE`, pinned at 0.
+* **Pricing wheat at the shadow price of feed.** Instrumenting the livestock
+  purchase caps shows feed -- not land, labour or the town's draw -- is what
+  holds the herd down all season, and a cared cow is worth ~$375/tile-day
+  against ~$45 for carrot. So a wheat tile ought to be valued at the animal-day
+  it unlocks, not at its sale price; the correct multiplier is exactly 1.0
+  (the dual), and the measured optimum sat precisely there, collapsing above
+  it. On 16 self-play episodes it scored 0.75 with a +$4,348 edge. It did not
+  survive: 0.542 over 48 self-play episodes, and **7% worse on absolute output**
+  ($75,756 vs $81,332 over 44 episodes against the rival). The reason is in the
+  cap formula -- `cap_feed` is `invest / (wheat_buy * days_left)`, which is a
+  *cash* constraint wearing a feed constraint's clothing. Wheat can simply be
+  bought, so the answer to "cannot afford feed" is to grow the crop that earns
+  most and buy the wheat, which is what the agent already does. Kept as
+  `FEED_SHADOW`, pinned at 0.
+* **Buying down the ranked animal list.** Episodes finish with thirteen
+  sustainable geese and none owned, because the agent only ever buys the single
+  best species and stops when that one saturates. Letting it fall through to
+  the next species diversified the herd as intended and lost: self-play 0.188
+  with a −$2,100 edge, and $63,792 against the rival where leaving it alone
+  scored ~$76,000. The agent was right to decline: a marginal goose is worth
+  less than the crop tile it displaces, and the animal valuation is optimistic
+  because it ignores the structure-building, placement and ramp that a new
+  species costs. Kept as `RANK_ANIMALS`, pinned at 0.
+* **Sowing to the end of the horizon.** A one-time crop was valued only at its
+  optimal harvest age, so the planner stopped sowing about four days early and
+  idled most of the board through the run-in -- carrot's best exit is age 3 but
+  it is harvestable at age 2. Valuing each crop at the best age that still fits
+  the horizon is the more correct model and is what ships, but the aggressive
+  form of it is a loss: late-game utilisation rose from 53% to 69% and the bank
+  fell from $83,571 to $80,112. Late labour is worth more on harvesting and
+  liquidating the standing crop than on a fresh carrot. `HARVEST_MARGIN` is
+  pinned at 2.0, which keeps the better valuation and roughly the old cutoff.
 * **Shortening the feed funding window.** Livestock purchases require enough
   cash to feed the herd for the whole remaining season, which is plainly
   conservative — an animal covers its own wheat inside a day — and the herd

@@ -88,6 +88,26 @@ spent:
    submission that loses to an agent already sitting in this tree is a
    regression whatever it scores against the starter.
 
+## Measuring against a strong opponent
+
+Beating `starter` measures how much of an *uncontested* book an agent can
+harvest. A ladder is a different problem — the book is shared and the town's
+draw is fixed, so whoever reaches the high-value products first gets the
+higher quotes. `tools/selfplay_ab.py` plays a candidate against a frozen copy
+of the current agent (`tools/freeze_champion.py`); identical agents score
+exactly 0.500, which is the control.
+
+Read both numbers. Self-play measures contested strength but is blind to any
+change that expands absolute production, because the mirrored opponent expands
+too and they split the same book. Mean bank against a fixed opponent measures
+that. They disagreed on the feed-shadow experiment, and the absolute measure
+was the one that mattered (`docs/ARCHITECTURE.md` §6d, §7).
+
+**The noise floor matters more than any single result here.** At 16 episodes
+the standard error on a self-play score is ~0.12; four candidates this session
+looked like clear wins at that size and reversed at 44-48 episodes. Treat
+nothing under ~8% on a 44+ episode sample as a result.
+
 ## Parameter search
 
 `main.py` reads an optional `KG_PARAMS` JSON override at import time; it is

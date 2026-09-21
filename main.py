@@ -97,8 +97,9 @@ _P = {
     # allocation
     "OVERSUPPLY": 1.35, "ANIM_MARGIN": 1.0, "WEED_W": 6.0,
     # logistics
-    "SELL_SLOTS": 9, "CARRY_DROP": 11, "WHEAT_BUF": 2.4,
-    "PLACE_FIX": 1, "FERT_USE": 1, "ONGOING_FIT": 1,
+    "SELL_SLOTS": 9, "CARRY_DROP": 11, "WHEAT_BUF": 2.4, "HARVEST_MARGIN": 2.0,
+    "FEED_SHADOW": 0.0,
+    "PLACE_FIX": 1, "FERT_USE": 1, "ONGOING_FIT": 1, "RANK_ANIMALS": 0,
     # measured and rejected; kept so they are not re-tried (docs section 7)
     "OPP_PIPE": 0.0,        # price the opponent's visible supply into the book
     "DISC": 0.0,            # discount the allocator to the payoff date
@@ -343,6 +344,10 @@ def _decide(obs, config=None):
     for p in PRODUCTS:
         pipe[p] += shed.get(p, 0) + carried.get(p, 0)
     n_animals = len(animals)
+    own_kind = {}
+    for _, t in animals:
+        own_kind[t["animal"]] = own_kind.get(t["animal"], 0) + 1
+    an_queued = dict((a, shed.get(a, 0) + carried.get(a, 0)) for a in ANIMALS)
     pipe["WHEAT"] -= n_animals * days_left          # feed burn is never sold
 
     def zk(p):
@@ -358,39 +363,6 @@ def _decide(obs, config=None):
                 for p in PRODUCTS)
 
     # -------------------------------------------------------- valuation
-    add = dict((p, 0.0) for p in PRODUCTS)
-
-    def crop_val(c):
-        """Marginal revenue per tile-day of committing one more tile to c."""
-        first, yld, td = PLAN[c]
-        if CROPS[c]["ongoing"] and P["ONGOING_FIT"]:
-            fit = _ongoing_fit(c, days_left)
-            if fit is None:
-                return None
-            yld, td = fit
-        elif td + 0.4 > days_left:
-            return None
-        if day < P["OPEN_FAST"] and td > P["OPEN_TD"]:
-            # Optional fast opening: while capital is the binding constraint,
-            # restrict the board to short-cycle crops so livestock can be
-            # funded sooner.
-            return None
-        px = price_at(c, mkt[c] + pipe[c] + opp_pipe[c] + add[c] + yld * 0.5
-                      - drain[c] * left)
-        # Discount to the payoff date. Early capital compounds into livestock,
-        # so a dollar at harvest is not a dollar now; with DISC = 0 this is the
-        # undiscounted marginal revenue per tile-day.
-        return ((yld * px - CROPS[c]["seed"]) / float(td)) * math.exp(-P["DISC"] * first)
-
-    ranked = []
-    for c in CROPS:
-        v = crop_val(c)
-        if v is not None:
-            ranked.append((v, c))
-    ranked.sort(reverse=True)
-    best_crop = ranked[0][1] if ranked else None
-    crop_best = ranked[0][0] if ranked else 0.0
-
     animal_val = {}
     sustain = {}
     for a, ad in ANIMALS.items():
@@ -407,11 +379,98 @@ def _decide(obs, config=None):
         gross = vol * px + days_left * marg["FERTILIZER"] * 0.7
         animal_val[a] = ((gross - ad["cost"] - wheat_buy * days_left)
                          / max(1.0, days_left)) * math.exp(-P["DISC"] * ad["fyd"])
-    best_animal = max(animal_val, key=animal_val.get) if animal_val else None
-    animal_best = animal_val.get(best_animal, -1e9) if best_animal else -1e9
-    want_animal = (best_animal is not None
-                   and animal_best > P["ANIM_MARGIN"] * max(crop_best, 0.0)
-                   and days_left > ANIMALS[best_animal]["fyd"] + 2.0)
+    # Buy DOWN the ranked list, not just the single best animal. Each product
+    # has its own town draw, so a herd saturates one species at a time: once
+    # cows match the milk draw, the next dollar belongs in sheep or geese, and
+    # another cow would only sell milk into a book it has already filled.
+    # Stopping at the best species is why episodes finished with thirteen
+    # sustainable geese and none owned.
+    animal_raw = max(animal_val.values()) if animal_val else -1e9
+    herd_room = 0
+    for a in animal_val:
+        herd_room = max(herd_room,
+                        sustain.get(a, 0) - own_kind.get(a, 0) - an_queued.get(a, 0))
+    # Feed is the binding dual on the herd: an animal that cannot be fed every
+    # day is not bought, and the debug trace shows this constraint -- not
+    # land, labour or the town's draw -- capping the herd all season. So a
+    # wheat tile is not worth its sale price when feed binds; it is worth the
+    # animal-day it unlocks, which is the shadow price of that constraint.
+    wheat_tiles = sum(1 for _, t in plants if t["crop"] == "WHEAT")
+    wheat_rate = wheat_tiles * (PLAN["WHEAT"][1] / float(PLAN["WHEAT"][2]))
+    feed_deficit = max(0.0, (n_animals + herd_room) - wheat_rate)
+    feed_binds = (herd_room > 0 and animal_raw > 0.0 and feed_deficit > 0.0
+                  and P["FEED_SHADOW"] > 0.0)
+    feed_tiles_wanted = int(math.ceil(feed_deficit
+                                      / (PLAN["WHEAT"][1] / float(PLAN["WHEAT"][2]))))
+    wheat_planned = [0]
+
+
+    add = dict((p, 0.0) for p in PRODUCTS)
+
+    def crop_val(c):
+        """(marginal revenue per tile-day, expected yield) for one more tile of c.
+
+        A one-time crop is valued at the best harvest age that still FITS the
+        remaining horizon, not at its unconstrained optimum. Those differ at
+        the end of the season: carrot's best exit is age 3 for three units,
+        but it is harvestable from age 2 for two, so a tile is still worth
+        sowing with two and a bit days left. Valuing it only at age 3 stops
+        sowing four days early and idles most of the board through the run-in.
+        """
+        d = CROPS[c]
+        if d["ongoing"]:
+            if not P["ONGOING_FIT"]:
+                first, yld, td = PLAN[c]
+                if td + 0.4 > days_left:
+                    return None
+            else:
+                fit = _ongoing_fit(c, days_left)
+                if fit is None:
+                    return None
+                yld, td = fit
+            px = price_at(c, mkt[c] + pipe[c] + opp_pipe[c] + add[c] + yld * 0.5
+                          - drain[c] * left)
+            return ((yld * px - d["seed"]) / float(td), yld)
+
+        ws = (d["myd"] + 1) // 2
+        best = None
+        for age in range(d["fyd"], d["myd"] + 1):
+            if age + P["HARVEST_MARGIN"] > days_left:
+                break
+            yld = min(d["my"], 1 + max(0, min(age, d["myd"]) - ws + 1))
+            td = age + 1
+            px = price_at(c, mkt[c] + pipe[c] + opp_pipe[c] + add[c] + yld * 0.5
+                          - drain[c] * left)
+            v = (yld * px - d["seed"]) / float(td)
+            if (c == "WHEAT" and feed_binds
+                    and wheat_planned[0] < feed_tiles_wanted):
+                v += P["FEED_SHADOW"] * animal_raw * (yld / float(td))
+            if best is None or v > best[0]:
+                best = (v, yld)
+        return best
+
+    ranked = []
+    for c in CROPS:
+        r = crop_val(c)
+        if r is not None:
+            ranked.append((r[0], c))
+    ranked.sort(reverse=True)
+    best_crop = ranked[0][1] if ranked else None
+    crop_best = ranked[0][0] if ranked else 0.0
+
+    best_animal = None
+    animal_best = -1e9
+    for a, v in sorted(animal_val.items(), key=lambda kv: -kv[1]):
+        if v <= P["ANIM_MARGIN"] * max(crop_best, 0.0):
+            continue
+        if days_left <= ANIMALS[a]["fyd"] + 2.0:
+            continue
+        if (P["RANK_ANIMALS"]
+                and sustain.get(a, 0) - own_kind.get(a, 0) - an_queued.get(a, 0) <= 0):
+            continue                     # species saturated: try the next one
+        best_animal, animal_best = a, v
+        break
+    want_animal = best_animal is not None
 
     # ------------------------------------------------------------ tasks
     atasks, ctasks = [], []
@@ -499,21 +558,19 @@ def _decide(obs, config=None):
                     break
             if built:
                 continue
-            pick, pv = None, 0.0
+            pick, pv, pyld = None, 0.0, 0
             for c in CROPS:
                 if budget.get(c, 0) <= 0:
                     continue
-                v = crop_val(c)
-                if v is not None and v > pv:
-                    pick, pv = c, v
+                r = crop_val(c)
+                if r is not None and r[0] > pv:
+                    pick, pv, pyld = c, r[0], r[1]
             if pick is None:
                 continue
             budget[pick] -= 1
-            if CROPS[pick]["ongoing"] and P["ONGOING_FIT"]:
-                fit = _ongoing_fit(pick, days_left)
-                add[pick] += fit[0] if fit else PLAN[pick][1]
-            else:
-                add[pick] += PLAN[pick][1]      # next tile sees the softer price
+            if pick == "WHEAT":
+                wheat_planned[0] += 1
+            add[pick] += pyld               # next tile sees the softer price
             ctasks.append((55.0 + 7.0 * pv, p, ["PLANT", pick], None))
         for p in weeds[:24]:
             ctasks.append((60.0 + P["WEED_W"] * max(crop_best, 0.0), p, ["DIG"], None))
@@ -650,10 +707,6 @@ def _decide(obs, config=None):
     for _, it, q in sellable[:P["SELL_SLOTS"]]:
         if len(orders) < maxord:
             orders.append(["SELL", it, q])
-
-    own_kind = {}
-    for _, t in animals:
-        own_kind[t["animal"]] = own_kind.get(t["animal"], 0) + 1
 
     cash = money
     work_tiles = len(plants) + n_animals + min(len(empties) + len(weeds), 34)
