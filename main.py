@@ -1137,6 +1137,12 @@ class MPCRevenueEngine:
                 p.crop_mix["MELON"] = max(int(p.crop_mix.get("MELON", 0) or 0), cap_m)
             elif p.crop_mix.get("MELON", 0):
                 p.crop_mix.pop("MELON", None)
+            if p.crop_mix.get("STRAWBERRY", 0):
+                cap_s = min(10, book_tiles(st, "STRAWBERRY", 0.55))
+                if cap_s <= 0:
+                    p.crop_mix.pop("STRAWBERRY", None)
+                else:
+                    p.crop_mix["STRAWBERRY"] = min(int(p.crop_mix["STRAWBERRY"]), cap_s)
             herd = (p.animal_targets.get("GOOSE", 0) + p.animal_targets.get("COW", 0)
                     + p.animal_targets.get("SHEEP", 0) + st.n_animals)
             ft = _feed_tiles(herd)
@@ -1900,7 +1906,8 @@ class KaggricultureAgent(object):
             standing = int(st.crops_alive.get(crop, 0) or 0)
             need = max(0, min(want, 4) - have - standing)
             cost = SEED_COST[crop]
-            afford = int(min(need, max(0.0, budget - 400) // cost)) if cost else 0
+            keep = 400
+            afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
             if afford > 0:
                 budget = _spend(core, ["BUY_SEED", crop, afford], afford * cost)
 
@@ -1977,8 +1984,12 @@ class KaggricultureAgent(object):
             cost = SEED_COST[crop]
             keep = 80
             if crop == "MELON":
-                geese_need = max(0, goose_cap(st) - st.animals_alive.get("GOOSE", 0))
+                geese_need = max(0, min(12, goose_cap(st)) - st.animals_alive.get("GOOSE", 0))
                 keep = 250 + 300 * min(2, geese_need)
+            elif crop == "STRAWBERRY":
+                # 34 strawberry seeds at $100 left seed 9051 with $9 and 7 hands.
+                keep = 400
+                need = min(need, 10)
             afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
             if afford > 0:
                 budget = _spend(seeds, ["BUY_SEED", crop, afford], afford * cost)
