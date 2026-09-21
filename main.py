@@ -1709,7 +1709,15 @@ def build_tasks(st, plan):
                             # starter floor $56k → $53.5k: seed 9051 milk
                             # died at $175 (cows ate shed wheat we refused
                             # to replenish) and weeds rose on 9017/9068.
-                            urg = 1.7 if age > spec["max_day"] else 1.0
+                            # Goose CARE stole 9017 melon (book 18→12,
+                            # $59.8k→$56.0k). Peak melon must beat nearby
+                            # CARE. Do not hold wheat (541c981).
+                            if crop == "MELON" and at_peak:
+                                urg = 2.2
+                            elif age > spec["max_day"]:
+                                urg = 1.7
+                            else:
+                                urg = 1.0
                             add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                                  "value": units_now * price * urg})
                 continue
@@ -1737,11 +1745,6 @@ def build_tasks(st, plan):
                     # Raise CARE only after today's plants are watered.
                     if animal == "COW" and st.n_unwatered == 0:
                         care_val = 2.0 * price * 3.0
-                    elif animal == "GOOSE" and st.n_unwatered == 0:
-                        # Eggs absorb. Live melon sow was a score no-op.
-                        # Price goose CARE after water so it beats leftover
-                        # PLANT wheat, not melon.
-                        care_val = price * 4.0
                     else:
                         care_val = price * 0.95
                     add({"pos": pos, "op": ["CARE"], "kind": "CARE",
