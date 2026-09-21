@@ -1732,8 +1732,16 @@ def build_tasks(st, plan):
                     add({"pos": pos, "op": ["FEED"], "kind": "FEED",
                          "value": val, "need": "WHEAT"})
                 if fed and not cared and days_left > spec["interval"]:
+                    # price*0.95 loses to PLANT melon (~$1420). A cared
+                    # cow is +2 milk/cycle; 14 cared at $364 printed $78k.
+                    # 1da2a20 cut sow so FEED/CARE could win and every
+                    # seed fell (9051 lost melon). Raise CARE, keep sow.
+                    if animal == "COW":
+                        care_val = 2.0 * price * 3.0
+                    else:
+                        care_val = price * 0.95
                     add({"pos": pos, "op": ["CARE"], "kind": "CARE",
-                         "value": price * 0.95})
+                         "value": care_val})
                 if units_now > 0:
                     add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                          "value": units_now * price})
@@ -1793,11 +1801,6 @@ def build_tasks(st, plan):
     sow_this_hour = max(0, labor // 2) if st.hour <= 16 else 0
     if st.hour <= 12 and len(empties) >= 8:
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
-    # Dawn unfed == the whole herd. Extra sow (0879e63) and extra mouths
-    # both steal FEED. Hold sow at labor//3 until eight animals are fed
-    # so leftover workers pick up wheat instead of planting.
-    if animals_unfed >= 8:
-        sow_this_hour = min(sow_this_hour, max(0, labor // 3))
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
     if plan.phase in ("HARVEST", "LIQUIDATE"):
