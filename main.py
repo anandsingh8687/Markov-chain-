@@ -1305,11 +1305,7 @@ class MPCRevenueEngine:
                 have_w = int(p.crop_mix.get("WHEAT", 0) or 0)
                 p.crop_mix["WHEAT"] = have_w + left
                 left = 0
-            # Hot-milk farms (9034 $74k) want feed leftover, not carrot.
-            # Floor seeds (9051 $241) keep carrot. All-wheat leftover
-            # (2d02c65) is not this: only when milk is already 1.80×.
-            if (left > 0 and days_left >= 4 and not product_contested(st, "CARROT")
-                    and quote_m < 1.80 * MARKET_PARAMS["MILK"]["base"]):
+            if left > 0 and days_left >= 4 and not product_contested(st, "CARROT"):
                 have_c = int(p.crop_mix.get("CARROT", 0) or 0)
                 extra = left
                 p.crop_mix["CARROT"] = have_c + extra
