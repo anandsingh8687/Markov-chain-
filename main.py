@@ -1351,7 +1351,10 @@ class MPCRevenueEngine:
                 cap_c = pasture_cap(st, "MILK")
                 if cap_c > 0 and not product_contested(st, "MILK"):
                     p.animal_targets["COW"] = min(
-                        max(int(p.animal_targets.get("COW", 0) or 0), min(2, cap_c)), cap_c)
+                        14,
+                        max(int(p.animal_targets.get("COW", 0) or 0), min(2, cap_c)),
+                        cap_c,
+                    )
                 extra = (
                     sum(p.crop_mix.values()) + sum(p.animal_targets.values())
                     - st.usable_tiles
@@ -1397,6 +1400,15 @@ class MPCRevenueEngine:
                     hands >= 4
                     and getattr(st, "n_weeds", 0) <= 10
                     and cashish > next_cost + 400
+                )
+            elif next_cost <= 2000:
+                p.buy_land = (
+                    int(getattr(st, "n_empty", 99) or 0) <= 2
+                    and st.n_animals >= 18
+                    and hands >= 8
+                    and getattr(st, "n_weeds", 0) <= 5
+                    and cashish > 3500
+                    and days_left >= 18
                 )
             else:
                 p.buy_land = False
@@ -2138,6 +2150,17 @@ class KaggricultureAgent(object):
         # seed 9000 with zero melon and $13.8k; the $28k farm was 8 geese
         # plus melon sold into a still-alive book.
         if not staff_first:
+            # $56k floor seeds had 4 wheat on 24 animals: strawberry/melon
+            # seeds took the 10-order cap. Feed seeds first.
+            want_w = int(plan.crop_mix.get("WHEAT", 0) or 0)
+            if want_w >= 2:
+                have_w = int(st.seeds.get("WHEAT", 0) or 0) + int(st.crops_alive.get("WHEAT", 0) or 0)
+                need_w = max(0, min(want_w, 16) - have_w)
+                cost_w = SEED_COST["WHEAT"]
+                afford_w = int(min(need_w, max(0.0, budget - 400) // cost_w)) if cost_w else 0
+                if afford_w > 0:
+                    budget = _spend(core, ["BUY_SEED", "WHEAT", afford_w], afford_w * cost_w)
+
             for crop in ("STRAWBERRY", "MELON"):
                 want = int(plan.crop_mix.get(crop, 0) or 0)
                 if want <= 0:
@@ -2154,15 +2177,6 @@ class KaggricultureAgent(object):
                 afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
                 if afford > 0:
                     budget = _spend(core, ["BUY_SEED", crop, afford], afford * cost)
-
-            want_w = int(plan.crop_mix.get("WHEAT", 0) or 0)
-            if want_w >= 2:
-                have_w = int(st.seeds.get("WHEAT", 0) or 0) + int(st.crops_alive.get("WHEAT", 0) or 0)
-                need_w = max(0, min(want_w, 16) - have_w)
-                cost_w = SEED_COST["WHEAT"]
-                afford_w = int(min(need_w, max(0.0, budget - 400) // cost_w)) if cost_w else 0
-                if afford_w > 0:
-                    budget = _spend(core, ["BUY_SEED", "WHEAT", afford_w], afford_w * cost_w)
 
             geese_alive = st.animals_alive.get("GOOSE", 0)
             cows_needed = (
