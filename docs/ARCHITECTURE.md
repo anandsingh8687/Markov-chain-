@@ -246,6 +246,7 @@ mode (the agent's own exception guard disabled so nothing is hidden):
 | This agent vs. built-in `starter` | 4 | **4-0**, median margin +$77,458 |
 | This agent vs. PR #1 incumbent, seeds 1-18 | 32 | **32-0**, mean $76,393 vs ~$11k |
 | This agent vs. PR #1 incumbent, seeds 31-42 (fresh) | 24 | **24-0**, mean $73,106 |
+| This agent vs. PR #2 rival, two seed sets | 24 | **24-0**, mean $77,478 / $68,357 |
 | This agent vs. previous `main.py` | 12 | **12-0**, mean $63,512 |
 | Previous `main.py` vs. PR #1 incumbent | 16 | 31% win rate (both $9-13k) |
 
@@ -273,6 +274,40 @@ assignment of up to fifteen workers over ~20 operations each, plus ten market
 orders, and a full-season rollout costs about half a second, so tree search
 gets single-digit rollouts per turn over a branching factor with no
 meaningful ceiling. The leverage has been in the valuation, not the search.
+
+## 6c. Why the other agents in this repository plateau
+
+All three sit in a $10-30k band, and the reason is the same in each case:
+the board is not worked. Seed 9034, day 24, same opponent:
+
+| | unlocked | productive | utilisation | final bank |
+| --- | --- | --- | --- | --- |
+| this agent | 100 | 80 | **80%** | $111,592 |
+| PR #2 (strongest rival) | 75 | 13 | **17%** | $10,903 |
+| PR #1 | 50 | 37 | 74% | $16,053 |
+
+PR #2 is worth reading closely because it diagnoses a real symptom and draws
+the opposite conclusion from the same evidence. Earlier revisions of its line
+harvested 33-47 weed tiles, so it shrank the farm to fit: never buy SE, herd
+capped at `min(8, workers-2, tiles/4)`, cows and sheep capped at four each,
+standing plants capped at `workers*2 - herd`. It then buys 75 tiles and farms
+thirteen.
+
+This repository hit the same 40-weed symptom (section 4) and traced it to
+hires being silently dropped by the ten-order-per-turn cap — the farm was
+paying for labour it never received. Fixing that took weeds from ~40 to 1-5
+on a *larger* board. Weeds are a symptom of under-staffing, not of
+over-expansion, and treating them by shrinking the board removes the revenue
+and leaves the cause in place.
+
+PR #2 also closes milk and wool, the two highest-value assets on the board at
+roughly $260/tile-day, and its closing book on that episode has egg pushed
+*above* the reference inventory while carrot sits 244 units below it at a
+high quote: production aimed at the one thing it had already saturated. Its
+"LOCK vacates their book" rule is the same idea as `OPP_PIPE` in section 7,
+which is measured here and loses.
+
+Both agents are kept in `benchmark/` and gated against on every push.
 
 ## 7. Hypotheses that were tested and lost
 

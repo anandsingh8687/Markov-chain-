@@ -115,6 +115,26 @@ jobs:
             --min-score-rate "${{ github.event.inputs.incumbent_min || '0.50' }}"
           echo "rate=$(python -c "import json;print(json.load(open('$AGENT_DIR/incumbent_report.json'))['score_rate'])")" >> "$GITHUB_OUTPUT"
 
+      # The strongest rival in the repo, on the same terms. A submission that
+      # loses to an agent already sitting in this tree is a regression no
+      # matter what it scores against the built-in starter.
+      - name: Benchmark against the rival
+        id: rival
+        continue-on-error: true
+        run: |
+          RIV="benchmark/rival/main.py"
+          if [ ! -f "$RIV" ]; then
+            echo "no rival at $RIV; skipping" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python "$AGENT_DIR/tools/cloud_verify.py" \
+            --root "$AGENT_DIR" \
+            --strength-only \
+            --games 4 \
+            --opponent "$RIV" \
+            --report "$AGENT_DIR/rival_report.json" \
+            --min-score-rate 0.50
+
       # Telemetry, never a gate: runs even when a strength gate has already
       # failed, because that is exactly when the census is worth reading.
       - name: Census (diagnostics)
@@ -138,6 +158,7 @@ jobs:
             ${{ env.AGENT_DIR }}/submission.tar.gz
             ${{ env.AGENT_DIR }}/verify_report.json
             ${{ env.AGENT_DIR }}/incumbent_report.json
+            ${{ env.AGENT_DIR }}/rival_report.json
           retention-days: 30
 
   submit:

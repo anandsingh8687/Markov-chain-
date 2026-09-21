@@ -35,6 +35,7 @@ Full reasoning, the measured numbers, and the engine facts the plan depends on:
 | vs. built-in `starter` | 4 | **4-0**, median margin +$77,458 |
 | vs. `benchmark/incumbent` (PR #1), seeds 1-18 | 32 | **32-0**, mean $76,393 vs ~$11k |
 | vs. `benchmark/incumbent`, seeds 31-42 (fresh) | 24 | **24-0**, mean $73,106 |
+| vs. `benchmark/rival` (PR #2), two seed sets | 24 | **24-0**, mean $77,478 / $68,357 |
 | vs. the previous `main.py` in this repo | 12 | **12-0**, mean $63,512 |
 
 Even with two copies of this agent on both sides of the book, every product
@@ -49,7 +50,8 @@ same incumbent, with both sides finishing between $9k and $13k.
 ```
 main.py                     the submission -- stdlib only, `agent` last
 agent.py                    import alias for notebooks and tooling
-benchmark/incumbent/        previous best agent; the regression gate
+benchmark/incumbent/        PR #1 agent; regression gate
+benchmark/rival/            PR #2 agent, the strongest rival; regression gate
 tools/cloud_verify.py       verification gates (see below)
 tools/search_params.py      coordinate search over the agent's tunables
 tools/build_submission.py   tarball with main.py at the archive root
@@ -76,9 +78,11 @@ spent:
    **disabled**, so a planner bug surfaces instead of being swallowed;
 5. per-turn latency against the 1s `actTimeout`, gated on the overage budget's
    low-water mark;
-6. strength against the built-in `starter` *and* against
-   `benchmark/incumbent` — beating the starter is table stakes and says nothing
-   about ladder position.
+6. strength against the built-in `starter` *and* against both
+   `benchmark/incumbent` (PR #1) and `benchmark/rival` (PR #2) — beating the
+   starter is table stakes and says nothing about ladder position. A
+   submission that loses to an agent already sitting in this tree is a
+   regression whatever it scores against the starter.
 
 ## Parameter search
 
