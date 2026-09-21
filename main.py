@@ -2102,6 +2102,15 @@ class KaggricultureAgent(object):
                     # from dumping this premium, sell our lot first.
                     if st.opp_imminent.get(prod, 0) > 0:
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
+                    # 9034 ends milk −602/$373. rate*2 trickles 1–2/turn
+                    # while the shed holds the rest (score is bank only).
+                    # 1.80× matches melon-at-2: 9051 floor is $241, so it
+                    # does not dump. Sell up to 8 into the hot book.
+                    if prod == "MILK":
+                        quote_ml = Econ.price(
+                            "MILK", st.inventory.get("MILK", MARKET_I0))
+                        if quote_ml >= 1.80 * MARKET_PARAMS["MILK"]["base"]:
+                            n = int(min(held, sellable, max(n, 8)))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
             if n > 0:
