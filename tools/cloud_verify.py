@@ -30,6 +30,8 @@ CRUSH_BASE = {
 }
 ANIMAL_PRODUCT = {"GOOSE": "EGG", "COW": "MILK", "SHEEP": "WOOL"}
 MARKET_I0 = 10000
+ACT_TIMEOUT_S = 1.0
+HORIZON = 720
 
 
 def fail(msg):
