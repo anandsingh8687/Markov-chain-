@@ -1635,23 +1635,33 @@ def build_tasks(st, plan):
     shed_p = int(st.shed.get("COW", 0) or 0) + int(st.shed.get("SHEEP", 0) or 0)
     alive_g = st.animals_alive["GOOSE"]
     alive_p = st.animals_alive["COW"] + st.animals_alive["SHEEP"]
+    empty_past = sum(1 for _, k in st.empty_structs if k == "PASTURE")
+    empty_coop = sum(1 for _, k in st.empty_structs if k == "COOP")
     need_coops = max(0, min(
         target_g - st.n_coops,
         (alive_g + shed_g + inflight) - st.n_coops,
         inflight,
+        max(0, 3 - empty_coop),
     ))
     need_past = max(0, min(
         target_p - st.n_pastures,
         (alive_p + shed_p + inflight) - st.n_pastures,
         inflight,
+        max(0, 3 - empty_past),
     ))
     can_stock_pasture = st.money >= 400 and (
         st.wheat_held() >= 2 or shed_p > 0 or st.n_animals >= 2)
     if not can_stock_pasture and shed_p <= 0:
         need_past = 0
     reserve_n = min(need_coops + need_past, len(empties))
-    plant_empties = empties[:max(0, len(empties) - reserve_n)]
-    build_empties = empties[len(plant_empties):]
+    # Build next to the shed. Last-empties on a 75-tile board are SW, a
+    # 9-step walk, so a dusk DROP used to bounce the cow and pave 15 sheds.
+    def _shed_d(pos):
+        return abs(pos[0] - 4) + abs(pos[1] - 4)
+    near = sorted(empties, key=_shed_d)
+    build_empties = near[:reserve_n]
+    build_set = set(build_empties)
+    plant_empties = [p for p in empties if p not in build_set]
     # Planters cannot water the same turn. Cap sow so leftover workers can
     # water new plants before EOD (consecutive_unwatered starts at 1).
     labor = effective_labor(st)
@@ -1774,6 +1784,10 @@ class KaggricultureAgent(object):
                     empty_structs = [(p, k) for p, k in empty_structs if p != dst]
                     actions[i] = self._goto_or(wpos, dst, ["PLACE", carried_animal, 1])
                     continue
+                # Seed 9000 vs starter paved 15 empty pastures: a worker
+                # picked up a cow, dusk DROP returned it, and we built more
+                # sheds against shed_p. Hold the animal until a slot exists.
+                continue
             # FEED is inventory-gated. A worker holding wheat who is standing
             # on (or one step from) an unfed animal should feed before anything
             # else — a starved animal is an unrecoverable write-off.
@@ -1800,7 +1814,7 @@ class KaggricultureAgent(object):
                         actions[i] = self._goto_or(wpos, dst, ["FERTILIZE"])
                         continue
             produce = sum(int(v or 0) for k, v in inv.items()
-                          if k in PRODUCTS or k in ANIMALS)
+                          if k in PRODUCTS)
             near_crit = any(
                 abs(t["pos"][0] - wpos[0]) + abs(t["pos"][1] - wpos[1]) <= 1
                 and t["value"] >= CRITICAL for t in tasks)
@@ -1825,15 +1839,25 @@ class KaggricultureAgent(object):
             actions[i] = self._goto_or(wpos, dst, ["PICKUP", "WHEAT", n])
             free_idx = [k for k in free_idx if k != i]
 
-        pending_animal = next((a for a in ("GOOSE", "COW", "SHEEP") if st.shed.get(a, 0) > 0), None)
-        if pending_animal and empty_structs and free_idx:
+        pending_animals = []
+        if any(k == "PASTURE" for _, k in empty_structs):
+            if st.shed.get("COW", 0):
+                pending_animals.append("COW")
+            if st.shed.get("SHEEP", 0):
+                pending_animals.append("SHEEP")
+        if st.shed.get("GOOSE", 0):
+            pending_animals.append("GOOSE")
+        for pending_animal in pending_animals:
+            if not free_idx:
+                break
             want = ANIMAL_STRUCTURE[pending_animal]
-            if any(k == want for _, k in empty_structs):
-                i = free_idx[0]
-                wpos = workers[i]
-                dst, _ = self._nearest(wpos, shed_tiles)
-                actions[i] = self._goto_or(wpos, dst, ["PICKUP", pending_animal, 1])
-                free_idx = free_idx[1:]
+            if not any(k == want for _, k in empty_structs):
+                continue
+            i = free_idx[0]
+            wpos = workers[i]
+            dst, _ = self._nearest(wpos, shed_tiles)
+            actions[i] = self._goto_or(wpos, dst, ["PICKUP", pending_animal, 1])
+            free_idx = free_idx[1:]
 
         if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 10
                 and plan.phase in ("EXPAND", "COMPOUND")):
@@ -2031,9 +2055,21 @@ class KaggricultureAgent(object):
                 budget = _spend(core, ["BUY_SEED", "WHEAT", afford_w], afford_w * cost_w)
 
         geese_alive = st.animals_alive.get("GOOSE", 0)
+        cows_needed = (
+            int(plan.animal_targets.get("COW", 0) or 0)
+            > st.animals_alive.get("COW", 0) + int(st.shed.get("COW", 0) or 0)
+        )
+        sheep_needed = (
+            int(plan.animal_targets.get("SHEEP", 0) or 0)
+            > st.animals_alive.get("SHEEP", 0) + int(st.shed.get("SHEEP", 0) or 0)
+        )
         land_after_geese = bool(
             plan.buy_land and st.next_land_cost and st.next_land_cost >= 2000 and geese_alive < 8)
-        if (plan.buy_land and st.next_land_cost and not land_after_geese
+        land_after_pasture = bool(
+            plan.buy_land and st.next_land_cost and st.next_land_cost >= 2000
+            and (cows_needed or sheep_needed))
+        if (plan.buy_land and st.next_land_cost
+                and not land_after_geese and not land_after_pasture
                 and budget >= st.next_land_cost + 200):
             budget = _spend(core, ["BUY_LAND"], st.next_land_cost)
 
@@ -2065,24 +2101,21 @@ class KaggricultureAgent(object):
             empty_for = sum(1 for _, k in st.empty_structs if k == want)
             if empty_for <= 0 and housed >= max(target, 1):
                 continue
-            if wheat_next < 2 * (st.n_animals + in_shed + 1):
-                more = 2 * (st.n_animals + in_shed + 1) - wheat_next
+            if wheat_next < 2:
                 price = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
-                afford = int(min(max(more, 1), budget // max(1.0, price), 16))
+                afford = int(min(4, budget // max(1.0, price), 8))
                 if afford > 0:
                     budget = _spend(core, ["BUY_PRODUCT", "WHEAT", afford], afford * price)
                     pending_wheat += afford
                     wheat_next += afford
-                if wheat_next < 2 * (st.n_animals + in_shed + 1):
+                if wheat_next < 2:
                     continue
-            if (plan.buy_land and st.next_land_cost is not None and alive >= 8
+            if (animal == "GOOSE" and plan.buy_land and st.next_land_cost is not None
+                    and alive >= 8 and (cows_needed or sheep_needed)
                     and budget < st.next_land_cost + 400):
-                break
+                continue
             bought = 0
-            pasture_wanted = (
-                int(plan.animal_targets.get("COW", 0) or 0)
-                + int(plan.animal_targets.get("SHEEP", 0) or 0)
-            ) > 0
+            pasture_wanted = cows_needed or sheep_needed
             cap = 2 if (
                 animal == "GOOSE" and not pasture_wanted
                 and wheat_next >= 4 * (st.n_animals + 1)
@@ -2095,7 +2128,8 @@ class KaggricultureAgent(object):
                 bought += 1
                 wheat_next = max(0, wheat_next - 2)
 
-        if (land_after_geese and plan.buy_land and st.next_land_cost
+        if (plan.buy_land and st.next_land_cost
+                and (land_after_geese or land_after_pasture)
                 and budget >= st.next_land_cost + 200):
             budget = _spend(core, ["BUY_LAND"], st.next_land_cost)
 
