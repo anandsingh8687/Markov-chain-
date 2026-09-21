@@ -418,13 +418,13 @@ def live_buy_land(st, plan=None):
         # Buy SW at dawn so leftover wheat has hours 1–16 to fill the
         # new 25 tiles. Occupancy SW at any hour sat empty ($45k).
         return (
-            hour <= 6
-            and empty <= 8
-            and animals >= 16
+            hour <= 8
+            and empty <= 10
+            and animals >= 12
             and hands >= 8
-            and weeds <= 5
-            and money > 5000
-            and days_left >= 18
+            and weeds <= 8
+            and money > 4000
+            and days_left >= 16
         )
     return False
 
@@ -1433,13 +1433,13 @@ class MPCRevenueEngine:
                 )
             elif next_cost <= 2000:
                 p.buy_land = (
-                    st.hour <= 6
-                    and int(getattr(st, "n_empty", 99) or 0) <= 8
-                    and st.n_animals >= 16
+                    st.hour <= 8
+                    and int(getattr(st, "n_empty", 99) or 0) <= 10
+                    and st.n_animals >= 12
                     and hands >= 8
-                    and getattr(st, "n_weeds", 0) <= 5
-                    and cashish > 5000
-                    and days_left >= 18
+                    and getattr(st, "n_weeds", 0) <= 8
+                    and cashish > 4000
+                    and days_left >= 16
                 )
             else:
                 p.buy_land = False
@@ -2231,11 +2231,13 @@ class KaggricultureAgent(object):
                 + carried_item(st, "SHEEP")
             )
             land_now = live_buy_land(st, plan)
+            # SW after cows never issued (8390986/f33fc6e locked=50):
+            # two COW buys + $400 float ate the $2000. Land before
+            # pasture. Only wait on geese if we do not even have four.
             land_after_geese = bool(
-                land_now and st.next_land_cost and st.next_land_cost >= 2000 and geese_alive < 8)
-            land_after_pasture = bool(
                 land_now and st.next_land_cost and st.next_land_cost >= 2000
-                and (cows_needed or sheep_needed))
+                and geese_alive < 4)
+            land_after_pasture = False
             if (land_now and st.next_land_cost
                     and not land_after_geese and not land_after_pasture
                     and budget >= st.next_land_cost + 400):
