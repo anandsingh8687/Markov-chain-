@@ -362,18 +362,23 @@ def product_contested(st, prod):
     Vacating a healthy book (price still near base) is how we parked on
     eggs above I0 while carrot sat 244 units scarce. Subtract their flow
     from demand either way; only leave the crop when the quote is dying.
+
+    Melon is the exception: no shop, town-centre drain 1/day. PR #1
+    farming it with us walked the quote to $46 (crush gate 0.25× base).
     """
     params = MARKET_PARAMS.get(prod)
     if not params:
         return False
     inv = st.inventory.get(prod, MARKET_I0)
     price = float(st.prices.get(prod) or Econ.price(prod, inv))
+    tiles = int((getattr(st, "opp_peak_tiles", None) or st.opp_tiles_of).get(prod, 0) or 0)
+    flow = float(st.opp_flow.get(prod, 0.0) or 0.0)
+    if prod == "MELON" and (tiles >= 1 or flow > 0):
+        return True
     if price >= 0.90 * params["base"]:
         return False
-    tiles = int((getattr(st, "opp_peak_tiles", None) or st.opp_tiles_of).get(prod, 0) or 0)
     if tiles >= 10:
         return True
-    flow = float(st.opp_flow.get(prod, 0.0) or 0.0)
     if flow <= 0:
         return False
     head = Econ.units_until(prod, inv, max(1.0, 0.45 * params["base"]))
