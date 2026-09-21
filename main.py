@@ -1941,16 +1941,25 @@ class KaggricultureAgent(object):
                         tasks = [t for t in tasks if not (t.get("need") == "WHEAT" and t["pos"] == dst)]
                         continue
             if inv.get("FERTILIZER", 0) > 0:
-                fert_tiles = []
+                # Unfertilized wheat peaks at 4, fertilized at 6. BUY bags
+                # stole FEED (9e52ae9). Wool trickle was a no-op. Prefer
+                # wheat so collected bags raise feed without new mouths.
+                wheat_tiles, other_tiles = [], []
                 for y, row in enumerate(st.tiles):
                     for x, tile in enumerate(row):
                         if (isinstance(tile, dict) and tile.get("kind") == "PLANT"
                                 and not CROPS.get(tile.get("crop"), {}).get("ongoing", True)
                                 and int(tile.get("fertilized_until_day", -1) or -1) < st.day
                                 and _age(st, tile) < CROPS[tile["crop"]]["max_day"]):
-                            fert_tiles.append((x, y))
-                if fert_tiles:
-                    dst, d = self._nearest(wpos, fert_tiles)
+                            if tile.get("crop") == "WHEAT":
+                                wheat_tiles.append((x, y))
+                            else:
+                                other_tiles.append((x, y))
+                prefer = wheat_tiles or other_tiles
+                if prefer:
+                    dst, d = self._nearest(wpos, prefer)
+                    if d > 3 and wheat_tiles and other_tiles:
+                        dst, d = self._nearest(wpos, other_tiles)
                     if d <= 3:
                         actions[i] = self._goto_or(wpos, dst, ["FERTILIZE"])
                         continue
@@ -2104,14 +2113,6 @@ class KaggricultureAgent(object):
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
-                elif prod == "WOOL" and not self.gate.armed:
-                    # 9068 often prints wool +14/$189. Melon harvest urg
-                    # stole FEED/WATER (9068 $67.5k→$52.1k). Trickle wool
-                    # under base; do not change field labour.
-                    quote_wo = Econ.price(
-                        "WOOL", st.inventory.get("WOOL", MARKET_I0))
-                    if quote_wo < MARKET_PARAMS["WOOL"]["base"]:
-                        n = int(min(n, 2))
             if n > 0:
                 orders.append(["SELL", prod, int(n)])
         orders.sort(key=lambda o: -Econ.price(o[1], st.inventory.get(o[1], MARKET_I0)) * o[2])
