@@ -1750,12 +1750,11 @@ def build_tasks(st, plan):
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
-    if plan.phase == "LIQUIDATE":
+    if plan.phase in ("HARVEST", "LIQUIDATE"):
+        # Late sow is how 36 melon became 26 weeds after harvest on seed 9051.
+        # Re-enabled HARVEST wheat sow (693afb2) cut median $65k → $58k with
+        # 6–8 end weeds. Keep the field as of turn 500.
         spare = 0
-    elif plan.phase == "HARVEST":
-        # Turn 500 still has 10 days. Zero sow left 5–9 harvested empties
-        # on the $58k–$68k seeds. Wheat/carrot still mature; skip melon.
-        spare = min(spare, max(2, labor // 3))
     plant_empties = plant_empties[:spare]
 
     # crop_mix is a standing target, not a per-turn quota. Replanting the
