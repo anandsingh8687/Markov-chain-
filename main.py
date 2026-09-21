@@ -2063,11 +2063,23 @@ class KaggricultureAgent(object):
                 budget = _spend(core, ["BUY_PRODUCT", "WHEAT", afford], afford * price)
                 pending_wheat = afford
 
+        # Strawberry is 2× base with 2 tiles on starter seeds because
+        # staff_first skips the seed block every dawn (EOD wipe). Buy
+        # them with the wheat core so the floor of 6 actually plants.
+        want_s = int(plan.crop_mix.get("STRAWBERRY", 0) or 0)
+        if want_s > 0 and days_left >= 14:
+            have_s = int(st.seeds.get("STRAWBERRY", 0) or 0) + int(st.crops_alive.get("STRAWBERRY", 0) or 0)
+            need_s = max(0, min(6, want_s) - have_s)
+            cost_s = SEED_COST["STRAWBERRY"]
+            afford_s = int(min(need_s, max(0.0, budget - 400) // cost_s)) if cost_s else 0
+            if afford_s > 0:
+                budget = _spend(core, ["BUY_SEED", "STRAWBERRY", afford_s], afford_s * cost_s)
+
         # Density-crop seeds before extra geese. 18 geese at $246 left
         # seed 9000 with zero melon and $13.8k; the $28k farm was 8 geese
         # plus melon sold into a still-alive book.
         if not staff_first:
-            for crop in ("MELON", "STRAWBERRY"):
+            for crop in ("MELON",):
                 want = int(plan.crop_mix.get(crop, 0) or 0)
                 if want <= 0:
                     continue
