@@ -1300,6 +1300,14 @@ class MPCRevenueEngine:
                 have_w = int(p.crop_mix.get("WHEAT", 0) or 0)
                 p.crop_mix["WHEAT"] = have_w + left
                 left = 0
+            standing_w = int((getattr(st, "crops_alive", None) or {}).get("WHEAT", 0) or 0)
+            if left > 0 and days_left >= 5 and standing_w < 8:
+                # 9017 mid wheat stays 4–6 because leftover carrot wins
+                # after straw. Fill the feed block first; all-wheat leftover
+                # (2d02c65) cut the median to $65k, so only while thin.
+                have_w = int(p.crop_mix.get("WHEAT", 0) or 0)
+                p.crop_mix["WHEAT"] = have_w + left
+                left = 0
             if left > 0 and days_left >= 4 and not product_contested(st, "CARROT"):
                 have_c = int(p.crop_mix.get("CARROT", 0) or 0)
                 extra = left
@@ -2167,18 +2175,6 @@ class KaggricultureAgent(object):
             if afford > 0:
                 budget = _spend(core, ["BUY_PRODUCT", "WHEAT", afford], afford * price)
                 pending_wheat = afford
-
-        # Unfertilized wheat peaks at 4; fertilized at 6. Collect-only
-        # never stocked the shed. Two bags, keep $600 for cows.
-        standing_w = int((getattr(st, "crops_alive", None) or {}).get("WHEAT", 0) or 0)
-        have_f = int(st.shed.get("FERTILIZER", 0) or 0)
-        if (not staff_first and standing_w >= 6 and have_f < 2
-                and plan.phase in ("EXPAND", "COMPOUND") and days_left >= 8):
-            price_f = Econ.price("FERTILIZER", st.inventory.get("FERTILIZER", MARKET_I0))
-            afford_f = int(min(2 - have_f, max(0.0, budget - 600) // max(1.0, price_f)))
-            if afford_f > 0:
-                budget = _spend(core, ["BUY_PRODUCT", "FERTILIZER", afford_f],
-                                afford_f * price_f)
 
         # Density-crop seeds before extra geese. 18 geese at $246 left
         # seed 9000 with zero melon and $13.8k; the $28k farm was 8 geese
