@@ -1106,7 +1106,7 @@ class MPCRevenueEngine:
         # local-optima agent starves itself of cash and never buys land.
         # Premium goods keep the KKT reserve so we do not walk them to $1.
         staple_frac = {
-            "WHEAT": 0.40, "CARROT": 0.40, "EGG": 0.55, "FERTILIZER": 0.45,
+            "WHEAT": 0.40, "CARROT": 0.40, "EGG": 0.40, "FERTILIZER": 0.45,
             "TOMATO": 0.50,
         }
         for prod in PRODUCTS:
