@@ -1294,6 +1294,16 @@ class MPCRevenueEngine:
                 if extra:
                     p.crop_mix["STRAWBERRY"] = have_s + extra
                     left -= extra
+            standing_w = int((getattr(st, "crops_alive", None) or {}).get("WHEAT", 0) or 0)
+            if left > 0 and days_left >= 5 and standing_w < 8:
+                # Plan already asks for 10 wheat; 9017/9000 still show 4–5
+                # on the board because leftover carrot takes the replant
+                # slots after a harvest wave. Fill those empties with wheat
+                # until eight tiles are standing. All-wheat leftover
+                # (2d02c65) cut the median; carrot may return after that.
+                have_w = int(p.crop_mix.get("WHEAT", 0) or 0)
+                p.crop_mix["WHEAT"] = have_w + left
+                left = 0
             if left > 0 and days_left >= 4 and not product_contested(st, "CARROT"):
                 have_c = int(p.crop_mix.get("CARROT", 0) or 0)
                 extra = left
@@ -1658,11 +1668,12 @@ def build_tasks(st, plan):
             kind = tile.get("kind")
 
             if kind == "WEED":
-                # Floor seed 9017 sits at 6–7 weeds / 4–5 wheat / $56k.
-                # DIG only went CRITICAL at 8, so those tiles never cleared.
-                # FEED/missed WATER stay at full CRITICAL and still win.
+                # DIG at 4 weeds cut median $68k → $63k: seed 9000 lost
+                # $12k because diggers stole morning sow (wheat 11 → 4).
+                # 9017's 6–7 weeds still lose to FEED/missed WATER at
+                # full CRITICAL. Leave the gate at 8.
                 add({"pos": pos, "op": ["DIG"], "kind": "DIG",
-                     "value": (CRITICAL * 0.05 if st.n_weeds >= 4
+                     "value": (CRITICAL * 0.05 if st.n_weeds >= 8
                                else 2.0 * plan.action_value)})
                 continue
 
