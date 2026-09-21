@@ -36,6 +36,8 @@ Read from the interpreter, not from prose:
 
 - `FEED` calls `_inv_take(inv, "WHEAT", 1)` on the **acting worker**. Wheat in
   the shed cannot feed an animal. The worker must `PICKUP WHEAT` first.
+- Hired hands are **wiped at EOD** (`farm["hands"] = []`). Fib resets
+  with them. The crew must be re-hired every morning.
 - `FERTILIZE` likewise consumes carried fertilizer, not shed fertilizer.
 - `SELL` / `BUY_ANIMAL` / `BUY_PRODUCT` touch the shed only.
 - If N workers `PLANT C` and `seeds[C] < N`, **every** plant of C that turn is
@@ -163,11 +165,9 @@ against a weak bot:
   hire / feed-wheat / land / goose. Sells still go first so the engine
   has cash; buys keep reserved slots.
 - Structure count is `empty + occupied`, at most 2 new coops per turn.
-  Weeds are **under-staffing**, not over-expansion. The 10-order cap
-  plus `target − hires_today` (re-hire the crew every morning, explode
-  fib) plus a 50-tile ceiling froze a 17% board. Fib resets daily: 4
-  cheap HIREs/day reach 18 hands in a week. Pack 2 cash sells then
-  HIRE so those orders land. Plants scale as `workers×4`. Land is
-  NE/SW/SE at 4/8/12 hands. Milk/wool reopen; glut (inv > I0) is
-  derated so eggs do not print into a crash while carrot is scarce.
-  Vacate a book only when its quote is already dying.
+  Weeds are **under-staffing**, not over-expansion. Hands are wiped
+  at EOD — a 4-hire/day cap left four workers all season. Re-hire
+  8–12 every morning (fib(0..11) ≈ $376/day). Pack HIREs first at
+  hour 0. Plants scale as `workers×4`. Land is NE/SW/SE at 4/8/12
+  hands. Milk/wool reopen; glut (inv > I0) is derated. Vacate a book
+  only when its quote is already dying. Midgame snapshot is hour 20.

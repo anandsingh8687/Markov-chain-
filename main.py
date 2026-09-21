@@ -849,10 +849,13 @@ class MPCRevenueEngine:
         due = (st.turn - self._last >= self.REPLAN_EVERY
                or not self.plan.crop_mix
                or phase != self.plan.phase
-               or st.stance != self.plan.stance)
+               or st.stance != self.plan.stance
+               or st.hour == 0
+               or len(st.hands) != getattr(self, "_hands", -1))
         if not due:
             return self.plan
         self._last = st.turn
+        self._hands = len(st.hands)
         try:
             self.plan = self._replan(st)
         except Exception:
@@ -961,7 +964,7 @@ class MPCRevenueEngine:
             p.animal_targets = {}
             p.shadow_td = 20.0
             p.action_value = 8.0
-            p.target_hands = 6
+            p.target_hands = 8
             p.wheat_reserve = 0
             p.buy_land = False
             p.stance = "NEUTRAL"
@@ -1120,10 +1123,9 @@ class MPCRevenueEngine:
                 ) > next_cost + 400
             )
 
-        # Hands: fill the unlocked board. Fib resets each day, so 4 cheap
-        # hires/day reach 18 in a week. Do not budget 28% of cash as if
-        # the whole crew were hired this morning.
-        need = min(18, max(8, (st.usable_tiles + 12) // 4, st.n_animals + 6))
+        # Hands are wiped at EOD (engine fact). Fib resets with them.
+        # 12 hires/day costs fib(0..11) ≈ 376. 18/day costs ≈ 6765.
+        need = min(12, max(8, (st.usable_tiles + 8) // 5))
         p.target_hands = need
         return p
 
@@ -1719,13 +1721,13 @@ class KaggricultureAgent(object):
             dest.append(order)
             return budget - cost
 
-        # Fib resets daily. At most 4 hires/day (cheap), 2 this turn, every
-        # hour until len(hands) hits target. `target - hires_today` re-hired
-        # the whole crew every morning and exploded the fib.
+        # Engine: farm["hands"] = [] at EOD. The crew does not accumulate.
+        # Re-hire every morning. Fib(0..11) ≈ 376/day; a 4/day cap left us
+        # with four workers all season (17% board).
         need_hands = max(0, plan.target_hands - len(st.hands))
-        left_today = max(0, 4 - st.hires_today)
         n = st.hires_today
-        for _ in range(min(need_hands, left_today, 2)):
+        per_turn = 8 if st.hour <= 3 else 3
+        for _ in range(min(need_hands, per_turn)):
             c = fib(n)
             if budget < c:
                 break
@@ -1792,10 +1794,13 @@ class KaggricultureAgent(object):
             if afford > 0:
                 budget = _spend(seeds, ["BUY_SEED", crop, afford], afford * cost)
 
-        # Must-land HIREs: 2 cash sells, then hires, then land/wheat/animals.
         cash_sells = orders[:2]
         rest_sells = orders[2:]
-        packed = cash_sells + hires + core + rest_sells + seeds
+        # Must-land HIREs at hour 0 (overnight bank, no sell needed).
+        if hires:
+            packed = hires + cash_sells[:1] + core + rest_sells + seeds
+        else:
+            packed = cash_sells + core + rest_sells + seeds
         return packed[:MAX_MARKET_ORDERS]
 
 

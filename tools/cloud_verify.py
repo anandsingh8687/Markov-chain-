@@ -127,8 +127,8 @@ def _productive(kinds, animals):
     return n
 
 
-def _midgame_staff(env, at=480):
-    """Day-20 snapshot. End-of-episode empty is harvest, not utilisation."""
+def _midgame_staff(env, at=500):
+    """Hour 20 of day 20. Not hour 0 — EOD wipes farm['hands']."""
     try:
         idx = at if at < len(env.steps) else -1
         me, kinds, animals, empty, locked = _tile_census(env, 0, idx)
@@ -189,7 +189,7 @@ def check_selfplay(root):
                 i, s, rewards))
     print("      ok  rewards={}  wall={:.1f}s".format(rewards, wall))
     farm_telemetry(env, "self-play-p0-end", -1)
-    farm_telemetry(env, "self-play-p0-mid", 480)
+    farm_telemetry(env, "self-play-p0-mid", 500)
     return env
 
 
@@ -361,7 +361,7 @@ def check_strength(root, games, opponent, report_path):
             seed, mine, theirs, "WIN" if mine > theirs else
             ("TIE" if mine == theirs else "LOSS")))
         farm_telemetry(env, "seed-{}-end".format(seed), -1)
-        farm_telemetry(env, "seed-{}-mid".format(seed), 480)
+        farm_telemetry(env, "seed-{}-mid".format(seed), 500)
         if mine < min_farm:
             fail("ramp collapse vs {} seed {}: score {:.0f} < {:.0f}. "
                  "We won or lost with a farm that never left the opponent's book."
