@@ -1692,16 +1692,8 @@ def build_tasks(st, plan):
                     else:
                         start = Econ.bonus_start(crop)
                         in_window = (not spec["ongoing"]) and start <= age <= spec["max_day"]
-                        # Dual: melon WATER at $247 loses to dry CARE 0.95×
-                        # (~$285). Skip-all-CARE while dry crashed the floor.
-                        # 1.2× on the bonus window only ($296) beats dry CARE
-                        # without lifting ongoing straw/tomato or same-day FEED.
-                        if in_window:
-                            bonus = 1.2 * price
-                        elif spec["ongoing"]:
-                            bonus = price
-                        else:
-                            bonus = 0.35 * price
+                        # Daily water is cheap labour and protects the bonus.
+                        bonus = price if in_window or spec["ongoing"] else 0.35 * price
                         add({"pos": pos, "op": ["WATER"], "kind": "WATER",
                              "value": max(bonus, 0.3 * plan.action_value)})
 
@@ -1794,8 +1786,11 @@ def build_tasks(st, plan):
         inflight,
         max(0, 3 - empty_past),
     ))
+    # Dual: n_animals>=2 (geese) used to unlock empty pastures with no
+    # wheat and no cow in the shed. inflight=1 still reserved those
+    # tiles. Require feed or a waiting animal. Money/inflight unchanged.
     can_stock_pasture = st.money >= 400 and (
-        st.wheat_held() >= 2 or shed_p > 0 or st.n_animals >= 2)
+        st.wheat_held() >= 2 or shed_p > 0)
     if not can_stock_pasture and shed_p <= 0:
         need_past = 0
     reserve_n = min(need_coops + need_past, len(empties))
