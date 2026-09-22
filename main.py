@@ -1738,9 +1738,6 @@ def build_tasks(st, plan):
                     # Blanket 2*price*3 stole WATER: 9051 wheat 13→6,
                     # weeds 1→7, floor $59.1k→$53.3k. 9085 jumped +$7k.
                     # Raise CARE only after today's plants are watered.
-                    # Dry cow/sheep CARE at 0.95× (~$152–$190) still beat
-                    # wheat WATER ($50) and young melon WATER ($87).
-                    # Goose CARE stays; skip the pasture 0.95 while dry.
                     if animal == "COW" and st.n_unwatered == 0:
                         care_val = 2.0 * price * 3.0
                     elif animal == "SHEEP" and st.n_unwatered == 0:
@@ -1749,13 +1746,10 @@ def build_tasks(st, plan):
                         # Blanket CARE stole WATER; this stays off while
                         # plants are dry.
                         care_val = 2.0 * price * 2.0
-                    elif animal == "GOOSE" or st.n_unwatered == 0:
-                        care_val = price * 0.95
                     else:
-                        care_val = None
-                    if care_val is not None:
-                        add({"pos": pos, "op": ["CARE"], "kind": "CARE",
-                             "value": care_val})
+                        care_val = price * 0.95
+                    add({"pos": pos, "op": ["CARE"], "kind": "CARE",
+                         "value": care_val})
                 if units_now > 0:
                     add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                          "value": units_now * price})
@@ -2320,6 +2314,10 @@ class KaggricultureAgent(object):
                     if need <= 0:
                         continue
                     if quote_m < 1.05 * MARKET_PARAMS["MILK"]["base"] and (alive + in_shed) >= 10:
+                        continue
+                    # 13th–14th cow into a $168–$200 book overproduced milk
+                    # (end quotes often still printed a negative book).
+                    if quote_m < 1.25 * MARKET_PARAMS["MILK"]["base"] and (alive + in_shed) >= 12:
                         continue
                     cap = 1 if (alive + in_shed) >= 12 else 2
                 elif (animal == "GOOSE" and not pasture_wanted
