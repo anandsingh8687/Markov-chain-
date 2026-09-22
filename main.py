@@ -1937,19 +1937,14 @@ class KaggricultureAgent(object):
                 # picked up a cow, dusk DROP returned it, and we built more
                 # sheds against shed_p. Hold the animal until a slot exists.
                 continue
-            # FEED is inventory-gated. A starved animal is an unrecoverable
-            # write-off, so CRITICAL feed still interrupts at d<=2. Same-day
-            # feed at two steps stole nearby melon HARVEST ($1500 vs ~$200);
-            # Hungarian already has those FEED tasks mixed with the field.
-            # Adjacent (d<=1) and afternoon (hour>=16) still commit.
+            # FEED is inventory-gated. A worker holding wheat who is standing
+            # on (or one step from) an unfed animal should feed before anything
+            # else — a starved animal is an unrecoverable write-off.
             if inv.get("WHEAT", 0) > 0:
                 feed = [t for t in tasks if t.get("need") == "WHEAT"]
                 if feed:
                     dst, d = self._nearest(wpos, [t["pos"] for t in feed])
-                    starve = any(
-                        t["pos"] == dst and t.get("value", 0) >= CRITICAL
-                        for t in feed)
-                    if d <= 1 or st.hour >= 16 or (d <= 2 and starve):
+                    if d <= 2 or st.hour >= 20:
                         actions[i] = self._goto_or(wpos, dst, ["FEED"])
                         tasks = [t for t in tasks if not (t.get("need") == "WHEAT" and t["pos"] == dst)]
                         continue
@@ -2007,11 +2002,17 @@ class KaggricultureAgent(object):
             want = ANIMAL_STRUCTURE[pending_animal]
             if not any(k == want for _, k in empty_structs):
                 continue
-            i = free_idx[0]
+            # Wheat pickup already takes the worker closest to the shed.
+            # free_idx[0] was often the farmer across the field, a 6–8 step
+            # walk while a hand stood next to the shed. Shorter trip, not
+            # an extra one.
+            i = min(free_idx, key=lambda k: min(
+                abs(workers[k][0] - s[0]) + abs(workers[k][1] - s[1])
+                for s in shed_tiles))
             wpos = workers[i]
             dst, _ = self._nearest(wpos, shed_tiles)
             actions[i] = self._goto_or(wpos, dst, ["PICKUP", pending_animal, 1])
-            free_idx = free_idx[1:]
+            free_idx = [k for k in free_idx if k != i]
 
         if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 10
                 and plan.phase in ("EXPAND", "COMPOUND")):
