@@ -1959,10 +1959,7 @@ class KaggricultureAgent(object):
                             fert_tiles.append((x, y))
                 if fert_tiles:
                     dst, d = self._nearest(wpos, fert_tiles)
-                    # Same watered-first gate as cow/sheep CARE. Skip
-                    # wheat/melon FERTILIZE died; this only waits until
-                    # today's plants are wet, then the stay still fires.
-                    if d <= 3 and st.n_unwatered == 0:
+                    if d <= 3:
                         actions[i] = self._goto_or(wpos, dst, ["FERTILIZE"])
                         continue
             produce = sum(int(v or 0) for k, v in inv.items()
@@ -2104,7 +2101,9 @@ class KaggricultureAgent(object):
                 turns_to_gate = max(1, LIQUIDATION_TURN - st.turn)
                 rate = max(drain, held / float(turns_to_gate), 1.0)
                 if prod in STAPLES:
-                    n = int(min(held, max(sellable, held if cash_tight else 0), 40))
+                    # 40/turn left surplus on the log book. egg dump raise
+                    # was bit-identical; this raises every staple, not eggs.
+                    n = int(min(held, max(sellable, held if cash_tight else 0), 48))
                     if n == 0:
                         n = int(min(held, sellable))
                 else:
