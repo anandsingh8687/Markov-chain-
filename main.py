@@ -1751,19 +1751,8 @@ def build_tasks(st, plan):
                     add({"pos": pos, "op": ["CARE"], "kind": "CARE",
                          "value": care_val})
                 if units_now > 0:
-                    # First pulse is 1 unit. CARE then stacks the interval
-                    # bonus on the vine. Picking the singleton spends a
-                    # worker-turn that could WATER; wait for 2. Goose
-                    # interval is 1 and eggs are cheap — leave those.
-                    hold_pulse = (
-                        animal in ("COW", "SHEEP")
-                        and units_now < 2
-                        and days_left > 2
-                        and plan.phase != "LIQUIDATE"
-                    )
-                    if not hold_pulse:
-                        add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
-                             "value": units_now * price})
+                    add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
+                         "value": units_now * price})
                 if tile.get("fertilizer_available"):
                     add({"pos": pos, "op": ["COLLECT_FERTILIZER"], "kind": "COLLECT",
                          "value": 0.85 * plan.price_hint.get("FERTILIZER", 100)})
@@ -2034,7 +2023,10 @@ class KaggricultureAgent(object):
             wpos = workers[i]
             dst, d = self._nearest(wpos, shed_tiles)
             if d <= 2:
-                actions[i] = self._goto_or(wpos, dst, ["PICKUP", "FERTILIZER", 1])
+                # Same morning walk. One unit left a second wheat/carrot
+                # tile unfertilized until tomorrow's hour<=10 window.
+                n_fert = int(min(2, st.shed.get("FERTILIZER", 0)))
+                actions[i] = self._goto_or(wpos, dst, ["PICKUP", "FERTILIZER", n_fert])
                 free_idx = free_idx[1:]
 
         field_tasks = [t for t in tasks if t.get("need") != "WHEAT"]
