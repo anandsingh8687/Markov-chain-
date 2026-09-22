@@ -1250,7 +1250,7 @@ class MPCRevenueEngine:
                 int(p.animal_targets.get("COW", 0) or 0)
                 + int(p.animal_targets.get("SHEEP", 0) or 0)
             )
-            g_lo = min(3 if pasture_on else 8, cap_g)
+            g_lo = min(4 if pasture_on else 8, cap_g)
             g_hi = min(6 if pasture_on else 12, cap_g)
             p.animal_targets["GOOSE"] = min(
                 max(int(p.animal_targets.get("GOOSE", 0) or 0), g_lo), g_hi)
@@ -1354,7 +1354,7 @@ class MPCRevenueEngine:
                 + int(p.animal_targets.get("SHEEP", 0) or 0)
             )
             cap_g = goose_cap(st)
-            g_lo = min(3 if pasture_on else 8, cap_g)
+            g_lo = min(4 if pasture_on else 8, cap_g)
             if overflow > 0:
                 have_g = int(p.animal_targets.get("GOOSE", 0) or 0)
                 take = min(overflow, max(0, have_g - g_lo))
@@ -1629,7 +1629,10 @@ class State(object):
             self.stance = "CONTEST"
         else:
             self.stance = "NEUTRAL"
-        self.risk_lambda = max(-0.6, min(0.6, self.edge / 25000.0))
+        # Dual: goose floor 3 crashed 9000/9017/9034 while 9085 hit $77k.
+        # Tighter risk clip so LOCK-ahead price_hint does not shade
+        # WATER/HARVEST. Stance floors 1.08/0.78 are not retried.
+        self.risk_lambda = max(-0.4, min(0.4, self.edge / 25000.0))
 
 
 def _age(st, tile):
