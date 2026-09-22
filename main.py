@@ -890,7 +890,10 @@ class LaborAssigner:
             for t in tasks:
                 tx, ty = t["pos"]
                 dist = abs(tx - wx) + abs(ty - wy)
-                row.append(-t["value"] * (self.GAMMA ** min(dist, self.LOOKAHEAD * 4)))
+                # Dual: LOOKAHEAD*4=12 never binds on NE (diameter ~9–10).
+                # LOOKAHEAD 4 was bit-identical. Cap at 8 so far WATER/HARVEST
+                # is not double-penalised. COMPOUND-at-220 cut 9000/9068 ~$7k.
+                row.append(-t["value"] * (self.GAMMA ** min(dist, 8)))
             row.extend([0.0] * (m - len(tasks)))
             cost.append(row)
         try:
@@ -907,7 +910,7 @@ class LaborAssigner:
                 if i in taken:
                     continue
                 d = abs(t["pos"][0] - wx) + abs(t["pos"][1] - wy)
-                score = t["value"] * (self.GAMMA ** min(d, 12))
+                score = t["value"] * (self.GAMMA ** min(d, 8))
                 if best is None or score > best:
                     best, best_i = score, i
             if best_i >= 0:
@@ -964,10 +967,7 @@ class MPCRevenueEngine:
             return "LIQUIDATE"
         if turn >= 500:
             return "HARVEST"
-        # Dual: enter COMPOUND 20 turns earlier so tomato/KKT can bind
-        # once shops exist. 2×(herd+2) wheat crushed milk vs scaler 9017
-        # ($38); scheduled wheat stays 3×.
-        if turn >= 220:
+        if turn >= 240:
             return "COMPOUND"
         carrot_opp = 0
         if st is not None:
