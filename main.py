@@ -1959,7 +1959,10 @@ class KaggricultureAgent(object):
                             fert_tiles.append((x, y))
                 if fert_tiles:
                     dst, d = self._nearest(wpos, fert_tiles)
-                    if d <= 3:
+                    # Same watered-first gate as cow/sheep CARE. Skip
+                    # wheat/melon FERTILIZE died; this only waits until
+                    # today's plants are wet, then the stay still fires.
+                    if d <= 3 and st.n_unwatered == 0:
                         actions[i] = self._goto_or(wpos, dst, ["FERTILIZE"])
                         continue
             produce = sum(int(v or 0) for k, v in inv.items()
@@ -2008,9 +2011,7 @@ class KaggricultureAgent(object):
             actions[i] = self._goto_or(wpos, dst, ["PICKUP", pending_animal, 1])
             free_idx = free_idx[1:]
 
-        # hour 14 (wider) died. hour<=10 still pulls a worker off WATER
-        # at 9–10. COLLECT and carried FERTILIZE stay. Cut the window.
-        if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 8
+        if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 10
                 and plan.phase in ("EXPAND", "COMPOUND")):
             i = free_idx[0]
             wpos = workers[i]
