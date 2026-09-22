@@ -1950,7 +1950,6 @@ class KaggricultureAgent(object):
                         continue
             if inv.get("FERTILIZER", 0) > 0:
                 fert_tiles = []
-                melon_tiles = []
                 for y, row in enumerate(st.tiles):
                     for x, tile in enumerate(row):
                         if (isinstance(tile, dict) and tile.get("kind") == "PLANT"
@@ -1958,15 +1957,8 @@ class KaggricultureAgent(object):
                                 and int(tile.get("fertilized_until_day", -1) or -1) < st.day
                                 and _age(st, tile) < CROPS[tile["crop"]]["max_day"]):
                             fert_tiles.append((x, y))
-                            if tile.get("crop") == "MELON":
-                                melon_tiles.append((x, y))
                 if fert_tiles:
-                    # Wheat-first fert (382e1e4) cut 9051 melon 4→1 and the
-                    # floor $60.1k→$52.0k. Prefer a melon inside d<=3; if
-                    # none, nearest one-time as before.
-                    dst, d = self._nearest(wpos, melon_tiles) if melon_tiles else (None, 99)
-                    if dst is None or d > 3:
-                        dst, d = self._nearest(wpos, fert_tiles)
+                    dst, d = self._nearest(wpos, fert_tiles)
                     if d <= 3:
                         actions[i] = self._goto_or(wpos, dst, ["FERTILIZE"])
                         continue
@@ -2229,6 +2221,11 @@ class KaggricultureAgent(object):
                 want = int(plan.crop_mix.get(crop, 0) or 0)
                 if want <= 0:
                     continue
+                # Melon has no shop. Buying more seed into inv>I0 restocks
+                # a book that already prints +12–+18. Live sow-skip crashed;
+                # this only skips the buy. Existing seeds still plant.
+                if crop == "MELON" and st.inventory.get("MELON", MARKET_I0) > MARKET_I0:
+                    continue
                 spec = CROPS[crop]
                 need_days = 11 if crop == "MELON" else spec["max_day"] + 1
                 if need_days > days_left:
@@ -2335,6 +2332,8 @@ class KaggricultureAgent(object):
                 spec = CROPS[crop]
                 need_days = 11 if crop == "MELON" else spec["max_day"] + 1
                 if want <= 0 or need_days > days_left:
+                    continue
+                if crop == "MELON" and st.inventory.get("MELON", MARKET_I0) > MARKET_I0:
                     continue
                 have = int(st.seeds.get(crop, 0) or 0)
                 standing = int(st.crops_alive.get(crop, 0) or 0)
