@@ -673,7 +673,10 @@ class BayesianElasticityFilter:
 class LiquidationGateway:
     """Hard-armed at turn 650. Unsold stock at 720 is worth zero, so V(T, q>0) = -inf."""
 
-    STAGES = 10
+    # Dual: opp_imminent 0.25 never bound vs starter. Coarser liquidation
+    # DP (10→8 stages) changes our own dump after 650. Race 0.35 and
+    # 1.5× drain are not retried.
+    STAGES = 8
     BUCKETS = 20
     NEG = -1e12
 
@@ -2108,11 +2111,8 @@ class KaggricultureAgent(object):
                     n = int(min(held, sellable, math.ceil(rate * 2.0)))
                     # Beat their harvest onto the book: if they are 0-2 days
                     # from dumping this premium, sell our lot first.
-                    # Dual: noon replan thrashed the mix. Race dump 0.40→0.25
-                    # so we do not empty a premium stack when they are 0-2
-                    # days out. Lead-sell rank and 1.5× drain are not retried.
                     if st.opp_imminent.get(prod, 0) > 0:
-                        n = int(min(held, max(n, math.ceil(held * 0.25)), sellable or held))
+                        n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
             if n > 0:
