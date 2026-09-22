@@ -30,7 +30,9 @@ import time
 TURNS_PER_DAY = 24
 DAYS = 30
 HORIZON = TURNS_PER_DAY * DAYS
-LIQUIDATION_TURN = 650
+# 640 nicked the floor (dump too early). 660 gives 10 more field
+# turns after hold-melon-to-cap before the gateway owns the book.
+LIQUIDATION_TURN = 660
 BOARD = 10
 QUADRANT = 5
 SHED_CAPACITY = 100
@@ -946,13 +948,11 @@ class MPCRevenueEngine:
     Turns 240-500 COMPOUND : KKT water-fill — equalise revenue per tile-day
                              subject to remaining book capacity minus opponent
                              pipeline plus town regeneration.
-    Turns 500-650 HARVEST  : no new long-cycle assets.
-    Turn 650+    LIQUIDATE : gateway owns the book; field work is harvest/drop.
+    Turns 500-660 HARVEST  : no new long-cycle assets.
+    Turn 660+    LIQUIDATE : gateway owns the book; field work is harvest/drop.
     """
 
-    # 4 overfit the mid-book and nicked the floor. 10 holds the mix
-    # two extra hours so KKT does not flip leftover carrot/wheat.
-    REPLAN_EVERY = 10
+    REPLAN_EVERY = 8
     MU_LO, MU_HI = 0.5, 4000.0
     BISECT = 26
 
