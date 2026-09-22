@@ -1649,8 +1649,6 @@ def build_tasks(st, plan):
     empties = []
     animals_unfed = 0
     on_board = {c: 0 for c in CROPS}
-    fert_held = sum(int(inv.get("FERTILIZER", 0) or 0)
-                    for inv in (st.inventories or []))
 
     for y, row in enumerate(st.tiles):
         for x, tile in enumerate(row):
@@ -1665,13 +1663,13 @@ def build_tasks(st, plan):
             kind = tile.get("kind")
 
             if kind == "WEED":
-                # DIG at 4 weeds cut median $68k → $63k: seed 9000 lost
-                # $12k because diggers stole morning sow (wheat 11 → 4).
-                # 9017's 6–7 weeds still lose to FEED/missed WATER at
-                # full CRITICAL. Leave the gate at 8.
-                add({"pos": pos, "op": ["DIG"], "kind": "DIG",
-                     "value": (CRITICAL * 0.05 if st.n_weeds >= 8
-                               else 2.0 * plan.action_value)})
+                # DIG at 4/6/10 changed the CRITICAL gate and failed.
+                # Low-value DIG (2*action_value) is still emitted on 1–4
+                # mid weeds and can steal an adjacent worker from WATER.
+                # Only emit when the CRITICAL gate actually fires.
+                if st.n_weeds >= 8:
+                    add({"pos": pos, "op": ["DIG"], "kind": "DIG",
+                         "value": CRITICAL * 0.05})
                 continue
 
             if kind == "PLANT":
@@ -1752,12 +1750,7 @@ def build_tasks(st, plan):
                 if units_now > 0:
                     add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                          "value": units_now * price})
-                if tile.get("fertilizer_available") and fert_held < 1:
-                    # Always-on COLLECT at 0.85 is keep; hour-gating dried
-                    # the till. Adjacent COLLECT ($85) beats far WATER
-                    # (~$66 after GAMMA^4). Skip once a worker already
-                    # carries fertilizer so the extra trip does not steal
-                    # 9017 wheat water.
+                if tile.get("fertilizer_available"):
                     add({"pos": pos, "op": ["COLLECT_FERTILIZER"], "kind": "COLLECT",
                          "value": 0.85 * plan.price_hint.get("FERTILIZER", 100)})
                 continue
