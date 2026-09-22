@@ -2110,10 +2110,7 @@ class KaggricultureAgent(object):
                     # from dumping this premium, sell our lot first.
                     if st.opp_imminent.get(prod, 0) > 0:
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
-                # 0.75 dumped premiums on a 76-unit harvest pulse. Hold
-                # to 80 so the forced 12-lot waits for a real jam. Live,
-                # no extra cash, no extra walks.
-                if st.shed_total > SHED_CAPACITY * 0.80:
+                if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
             if n > 0:
                 orders.append(["SELL", prod, int(n)])
@@ -2305,7 +2302,10 @@ class KaggricultureAgent(object):
                         continue
                     if quote_m < 1.05 * MARKET_PARAMS["MILK"]["base"] and (alive + in_shed) >= 10:
                         continue
-                    cap = 1 if (alive + in_shed) >= 12 else 2
+                    # 2/turn through 12 front-loads the 11th/12th on a
+                    # still-rising book. One/turn from 10 leaves the till
+                    # for wheat/seeds; 14-cow target and 15th-cow ban stay.
+                    cap = 1 if (alive + in_shed) >= 10 else 2
                 elif (animal == "GOOSE" and not pasture_wanted
                       and wheat_next >= 4 * (st.n_animals + 1)):
                     cap = 2
