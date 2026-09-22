@@ -1663,13 +1663,13 @@ def build_tasks(st, plan):
             kind = tile.get("kind")
 
             if kind == "WEED":
-                # DIG at 4/6/10 changed the CRITICAL gate and failed.
-                # Low-value DIG (2*action_value) is still emitted on 1–4
-                # mid weeds and can steal an adjacent worker from WATER.
-                # Only emit when the CRITICAL gate actually fires.
-                if st.n_weeds >= 8:
-                    add({"pos": pos, "op": ["DIG"], "kind": "DIG",
-                         "value": CRITICAL * 0.05})
+                # DIG at 4 weeds cut median $68k → $63k: seed 9000 lost
+                # $12k because diggers stole morning sow (wheat 11 → 4).
+                # 9017's 6–7 weeds still lose to FEED/missed WATER at
+                # full CRITICAL. Leave the gate at 8.
+                add({"pos": pos, "op": ["DIG"], "kind": "DIG",
+                     "value": (CRITICAL * 0.05 if st.n_weeds >= 8
+                               else 2.0 * plan.action_value)})
                 continue
 
             if kind == "PLANT":
@@ -1735,7 +1735,12 @@ def build_tasks(st, plan):
                     # Blanket 2*price*3 stole WATER: 9051 wheat 13→6,
                     # weeds 1→7, floor $59.1k→$53.3k. 9085 jumped +$7k.
                     # Raise CARE only after today's plants are watered.
-                    if animal == "COW" and st.n_unwatered == 0:
+                    if animal == "GOOSE":
+                        # Egg CARE at 0.95×base (~$47) still beats far
+                        # WATER after GAMMA^4. Goose-CARE-after-water was
+                        # a boost that failed; skip the cheap trip.
+                        care_val = None
+                    elif animal == "COW" and st.n_unwatered == 0:
                         care_val = 2.0 * price * 3.0
                     elif animal == "SHEEP" and st.n_unwatered == 0:
                         # Same watered-first gate as cows. Weaker than the
@@ -1745,8 +1750,9 @@ def build_tasks(st, plan):
                         care_val = 2.0 * price * 2.0
                     else:
                         care_val = price * 0.95
-                    add({"pos": pos, "op": ["CARE"], "kind": "CARE",
-                         "value": care_val})
+                    if care_val is not None:
+                        add({"pos": pos, "op": ["CARE"], "kind": "CARE",
+                             "value": care_val})
                 if units_now > 0:
                     add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                          "value": units_now * price})
