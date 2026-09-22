@@ -1257,11 +1257,7 @@ class MPCRevenueEngine:
             # Melon is shop-less. 12 tiles finish at $7; 0 tiles drop the
             # score to 13k. Floor at remaining headroom, at most 4, and
             # drop it the moment the quote is dying.
-            # 0.55 left a 4th shop-less melon tile that leftover carrot
-            # would have taken. Size the floor from 0.60× so the last
-            # tile stays leftover carrot (7cd483a: NE leftover carrot
-            # is load-bearing).
-            cap_m = min(4, book_tiles(st, "MELON", 0.60))
+            cap_m = min(4, book_tiles(st, "MELON", 0.55))
             # 9034 $73.9k sold melon 2 at $250 with milk $369. 1.50×
             # would fire on every seed (9051 floor is $241). 1.80×
             # keeps 4 melon on the floor and frees 2 tiles on hot milk.
@@ -1297,9 +1293,13 @@ class MPCRevenueEngine:
                 st.usable_tiles - used_now,
                 plant_slots(st) - sum(p.crop_mix.values()),
             ))
-            if left > 0 and cap_s > 0 and days_left >= 14 and not product_contested(st, "STRAWBERRY"):
+            # Reserve leftover carrot before straw extra. Cutting extra
+            # entirely crashed 9051 (77992f7); sending all leftover to
+            # wheat crashed 9017 (7cd483a). Keep 2 carrot tiles.
+            carrot_reserve = 2 if (days_left >= 4 and not product_contested(st, "CARROT")) else 0
+            if left > carrot_reserve and cap_s > 0 and days_left >= 14 and not product_contested(st, "STRAWBERRY"):
                 have_s = int(p.crop_mix.get("STRAWBERRY", 0) or 0)
-                extra = min(left, max(0, cap_s - have_s))
+                extra = min(left - carrot_reserve, max(0, cap_s - have_s))
                 if extra:
                     p.crop_mix["STRAWBERRY"] = have_s + extra
                     left -= extra
@@ -1334,7 +1334,7 @@ class MPCRevenueEngine:
                 int(p.crop_mix.get("WHEAT", 0) or 0),
                 max(4, st.usable_tiles // 8),
             )
-            melon_keep = min(int(p.crop_mix.get("MELON", 0) or 0), min(4, book_tiles(st, "MELON", 0.60)))
+            melon_keep = min(int(p.crop_mix.get("MELON", 0) or 0), min(4, book_tiles(st, "MELON", 0.55)))
             straw_keep = min(int(p.crop_mix.get("STRAWBERRY", 0) or 0), min(4, book_tiles(st, "STRAWBERRY", 0.70)))
             for crop in ("CARROT", "TOMATO", "WHEAT", "STRAWBERRY", "MELON"):
                 if overflow <= 0:
