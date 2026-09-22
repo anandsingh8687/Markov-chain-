@@ -1393,7 +1393,7 @@ class MPCRevenueEngine:
             + int(p.animal_targets.get("SHEEP", 0) or 0)
             + int(st.n_animals or 0)
         )
-        p.wheat_reserve = max(herd * 2, st.n_animals * 3)
+        p.wheat_reserve = herd * 2
 
         # Cap crop mix to plants we can actually water.
         slots = plant_slots(st)
@@ -2355,10 +2355,8 @@ class KaggricultureAgent(object):
         # Sells first so HIRE has cash. Hires before cows so seed 9051
         # cannot print $0 / 4 hands (cows ate the till after a failed dawn hire).
         # Shipping orders[1] after core (a9e2b62) dried mid-cash: 9034
-        # $10.6k→$5.6k and the floor $59.2k→$57.4k. HARVEST core no longer
-        # carries BUY_SEED, so the second sell fits in the dump window.
-        lead = 2 if plan.phase in ("HARVEST", "LIQUIDATE") else 1
-        packed = cash_sells[:lead] + hires + core + rest_sells + seeds
+        # $10.6k→$5.6k and the floor $59.2k→$57.4k.
+        packed = cash_sells[:1] + hires + core + rest_sells + seeds
         return packed[:MAX_MARKET_ORDERS]
 
 
