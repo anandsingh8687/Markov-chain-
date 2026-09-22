@@ -400,6 +400,42 @@ still playing, while frontier_v4 stopped the minute v6 landed and
 frontier_v3 stopped when v5 landed. That matters because frontier_v3 scored
 **2767.6**, the best this account has ever had, and it is already retired.
 
+**The margins up there are razor thin.** Six consecutive episodes for
+frontier_v7, banks and outcome:
+
+| opponent | banks | result |
+| --- | --- | --- |
+| miya | 78,120 – 77,873 | loss by 247 |
+| t-enstar | 59,877 – 58,067 | win by 1,810 |
+| uki706 | 117,786 – 118,294 | loss by 508 |
+| rode1234 | 77,913 – 77,388 | loss by 525 |
+| kitton | 124,918 – 124,845 | **loss by 73** |
+| Batuhan Ustun | 74,801 – 74,281 | loss by 520 |
+
+Every game is decided by 0.1–3% of the bank. Against a monoculture you do not
+need a different strategy; you need the same one executed a few hundred coins
+better. That also means the 6x margins this agent posts against
+`benchmark/incumbent` and `benchmark/rival` carry no information about ladder
+position -- those opponents are simply not in the game.
+
+**And this agent is ~18% behind that bar.** The replays carry their seed, so
+the comparison is exact rather than inferred -- `tools/ladder_gap.py` replays
+each ladder seed and compares banks:
+
+| seed | ladder | this agent | gap |
+| --- | --- | --- | --- |
+| 149070582 | 74,801 | 54,870 | 26.6% |
+| 1349377747 | 124,918 | 79,221 | 36.6% |
+| 1060396977 | 77,913 | 69,257 | 11.1% |
+| 845305836 | 118,294 | 87,617 | 25.9% |
+| 309891330 | 59,877 | **65,228** | **−8.9%** |
+| 527940527 | 78,120 | 66,602 | 14.7% |
+| 2053703874 | 97,247 | 75,734 | 22.1% |
+
+Ahead on one seed of seven; mean gap **18.3%**. The gap is the ramp, not the
+end state: the ladder agent owns four animals on day 0 and is selling
+fertilizer on day 1, where this one places its first animal around day 11.
+
 **Local bank does not cleanly predict ladder rating.** A submission in this
 repo's line ("v16 ... local ~83-89k") rated **529.4**, which is bottom-third
 of a 9,792-team field. Either that agent failed on the eval host or the local

@@ -1,0 +1,28 @@
+{
+  "_comment": [
+    "Reference banks from REAL Kaggriculture ladder episodes, pulled with the",
+    "Kaggle episode replay API. Each row is the winning bank from an episode",
+    "played by the public agent that dominates the top of the leaderboard,",
+    "together with the seed that episode ran on, so the same board can be",
+    "replayed locally and compared like for like.",
+    "",
+    "This is the only honest strength target in the repository. Beating the",
+    "built-in starter, or any agent in benchmark/incumbent or benchmark/rival,",
+    "says nothing: those all finish 6x below this.",
+    "",
+    "Note the spread -- 59k to 125k on the same agent. It is driven by the",
+    "shop draw, which is random with replacement, so compare per seed and",
+    "never across seeds."
+  ],
+  "source_competition": "kaggriculture",
+  "captured": "2026-09-22",
+  "episodes": [
+    {"episode": 111847428, "seed": 149070582,  "ladder_bank": 74801},
+    {"episode": 111852054, "seed": 1349377747, "ladder_bank": 124918},
+    {"episode": 111857844, "seed": 1060396977, "ladder_bank": 77913},
+    {"episode": 111860489, "seed": 845305836,  "ladder_bank": 118294},
+    {"episode": 111867739, "seed": 309891330,  "ladder_bank": 59877},
+    {"episode": 111873351, "seed": 527940527,  "ladder_bank": 78120},
+    {"episode": 111876587, "seed": 2053703874, "ladder_bank": 97247}
+  ]
+}

@@ -88,6 +88,22 @@ spent:
    submission that loses to an agent already sitting in this tree is a
    regression whatever it scores against the starter.
 
+## The only benchmark that matters
+
+`benchmark/ladder/reference.json` holds real banks from real Kaggriculture
+ladder episodes, with the seed each one ran on, pulled from the Kaggle episode
+replay API. `tools/ladder_gap.py` replays those seeds and compares.
+
+Everything else in `benchmark/` finishes around a sixth of what the
+leaderboard actually plays at, so a 6x margin over them means nothing. Real
+ladder games are decided by **0.1–3% of the bank** — one sampled episode was
+lost by $73 out of $124,918.
+
+Current standing against that bar: **ahead on 1 of 7 seeds, mean gap 18.3%.**
+The gap is the opening ramp — the ladder agent owns four animals on day 0 and
+sells fertilizer from day 1, where this agent places its first animal around
+day 11.
+
 ## Measuring against a strong opponent
 
 Beating `starter` measures how much of an *uncontested* book an agent can
