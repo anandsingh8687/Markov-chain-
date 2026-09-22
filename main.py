@@ -1293,7 +1293,10 @@ class MPCRevenueEngine:
                 st.usable_tiles - used_now,
                 plant_slots(st) - sum(p.crop_mix.values()),
             ))
-            if left > 0 and cap_s > 0 and days_left >= 14 and not product_contested(st, "STRAWBERRY"):
+            # Floor straw still at days_left>=14. Extra 4→6 only when the
+            # first+3 window still has slack. Cutting extra always crashed
+            # 9051 (77992f7); this only skips the last two days of that window.
+            if left > 0 and cap_s > 0 and days_left >= 16 and not product_contested(st, "STRAWBERRY"):
                 have_s = int(p.crop_mix.get("STRAWBERRY", 0) or 0)
                 extra = min(left, max(0, cap_s - have_s))
                 if extra:
@@ -2217,9 +2220,7 @@ class KaggricultureAgent(object):
                 # starve replants after harvest. Buy up to 24.
                 need_w = max(0, min(want_w, 24) - have_w)
                 cost_w = SEED_COST["WHEAT"]
-                # Hold a cow+float before core wheat seeds. Leftover wheat
-                # on the stale snapshot stays the replant stock (69d9a28).
-                afford_w = int(min(need_w, max(0.0, budget - 600) // cost_w)) if cost_w else 0
+                afford_w = int(min(need_w, max(0.0, budget - 400) // cost_w)) if cost_w else 0
                 if afford_w > 0:
                     budget = _spend(core, ["BUY_SEED", "WHEAT", afford_w], afford_w * cost_w)
 
