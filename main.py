@@ -2280,7 +2280,7 @@ class KaggricultureAgent(object):
                 empty_for = sum(1 for _, k in st.empty_structs if k == want)
                 if empty_for <= 0 and housed >= max(target, 1):
                     continue
-                if wheat_next < 3:
+                if wheat_next < 2:
                     price = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
                     afford = int(min(4, max(0.0, budget - 400) // max(1.0, price), 8))
                     if afford > 0:
@@ -2346,13 +2346,14 @@ class KaggricultureAgent(object):
                 if afford > 0:
                     budget = _spend(seeds, ["BUY_SEED", crop, afford], afford * cost)
 
-        cash_sells = orders[:2]
+        cash_sells = orders[:1]
         rest_sells = orders[2:]
-        # Sells first so HIRE has cash. Hires before cows so seed 9051
-        # cannot print $0 / 4 hands (cows ate the till after a failed dawn hire).
-        # Shipping orders[1] after core (a9e2b62) dried mid-cash: 9034
-        # $10.6k→$5.6k and the floor $59.2k→$57.4k.
-        packed = cash_sells[:1] + hires + core + rest_sells + seeds
+        # Shipping orders[1] after core (a9e2b62) dried mid-cash when #2 was
+        # premium. If #2 is a staple, that slot is wheat/carrot/egg cash
+        # currently voided; put it after core with the rest.
+        if len(orders) > 1 and orders[1][1] in STAPLES:
+            rest_sells = [orders[1]] + rest_sells
+        packed = cash_sells + hires + core + rest_sells + seeds
         return packed[:MAX_MARKET_ORDERS]
 
 
