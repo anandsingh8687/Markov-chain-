@@ -813,7 +813,10 @@ class DirectionCalibrator:
         ddx, ddy = tx - sx, ty - sy
         if ddx == 0 and ddy == 0:
             return None
-        prefer_x = abs(ddx) > abs(ddy) or (abs(ddx) == abs(ddy) and ddx != 0)
+        # Dual: sow hour 15 crashed 9034. Same tasks, same range: on a
+        # diagonal prefer Y first (was X). Shed is (4,4); NE fields are
+        # often equal |dx|=|dy|. Hour-13/16 sow windows stay.
+        prefer_x = abs(ddx) > abs(ddy)
         order = [(ddx, 0), (0, ddy)] if prefer_x else [(0, ddy), (ddx, 0)]
         for want_dx, want_dy in order:
             if want_dx == 0 and want_dy == 0:
@@ -1803,10 +1806,7 @@ def build_tasks(st, plan):
     # water new plants before EOD (consecutive_unwatered starts at 1).
     labor = effective_labor(st)
     hours_left = max(0, 22 - st.hour)
-    # Dual: hour-19 DROP crashed 9051. Hour-13 burst *extended* morning
-    # sow. This cuts the labor//2 window 16→15 so hour 16 waters today's
-    # plants (consecutive_unwatered starts at 1). Burst hour<=12 stays.
-    sow_this_hour = max(0, labor // 2) if st.hour <= 15 else 0
+    sow_this_hour = max(0, labor // 2) if st.hour <= 16 else 0
     if st.hour <= 12 and len(empties) >= 8:
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
     water_left = max(0, labor * hours_left - st.n_unwatered)
