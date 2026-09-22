@@ -2110,11 +2110,6 @@ class KaggricultureAgent(object):
                     # from dumping this premium, sell our lot first.
                     if st.opp_imminent.get(prod, 0) > 0:
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
-                    # Melon has no shop. Inventory already above I0 is the
-                    # 12-tile $7 walk; leftover melon seeds were unused cash
-                    # (73af7b0). Do not dump the rest onto that book.
-                    if prod == "MELON" and inv > MARKET_I0:
-                        n = int(min(n, 1))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
             if n > 0:
@@ -2226,6 +2221,7 @@ class KaggricultureAgent(object):
                 if afford_w > 0:
                     budget = _spend(core, ["BUY_SEED", "WHEAT", afford_w], afford_w * cost_w)
 
+            bought_core = set()
             for crop in ("STRAWBERRY", "MELON") if sow_seeds else ():
                 want = int(plan.crop_mix.get(crop, 0) or 0)
                 if want <= 0:
@@ -2242,6 +2238,7 @@ class KaggricultureAgent(object):
                 afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
                 if afford > 0:
                     budget = _spend(core, ["BUY_SEED", crop, afford], afford * cost)
+                    bought_core.add(crop)
 
             cows_needed = (
                 int(plan.animal_targets.get("COW", 0) or 0)
@@ -2350,6 +2347,13 @@ class KaggricultureAgent(object):
                     geese_need = max(0, goose_buy_cap(st, plan) - st.animals_alive.get("GOOSE", 0))
                     keep = max(keep, 250 + 300 * min(2, geese_need))
                 elif crop == "STRAWBERRY":
+                    # Density already bought strawberry into core (cap 6).
+                    # Leftover STRAWBERRY on the same snapshot is unused seed
+                    # cash, same as leftover MELON. standing>=4 skip nicked
+                    # 9068 $71; that gate also dropped leftover straw when
+                    # core was crowded out. Only skip the same-pack duplicate.
+                    if "STRAWBERRY" in bought_core:
+                        continue
                     # 34 strawberry seeds at $100 left seed 9051 with $9 and 7 hands.
                     keep = 400
                     need = min(need, 6)
