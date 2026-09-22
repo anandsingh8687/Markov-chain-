@@ -30,7 +30,7 @@ import time
 TURNS_PER_DAY = 24
 DAYS = 30
 HORIZON = TURNS_PER_DAY * DAYS
-LIQUIDATION_TURN = 650
+LIQUIDATION_TURN = 640
 BOARD = 10
 QUADRANT = 5
 SHED_CAPACITY = 100
@@ -946,8 +946,8 @@ class MPCRevenueEngine:
     Turns 240-500 COMPOUND : KKT water-fill — equalise revenue per tile-day
                              subject to remaining book capacity minus opponent
                              pipeline plus town regeneration.
-    Turns 500-650 HARVEST  : no new long-cycle assets.
-    Turn 650+    LIQUIDATE : gateway owns the book; field work is harvest/drop.
+    Turns 500-640 HARVEST  : no new long-cycle assets.
+    Turn 640+    LIQUIDATE : gateway owns the book; field work is harvest/drop.
     """
 
     REPLAN_EVERY = 8
@@ -1735,12 +1735,7 @@ def build_tasks(st, plan):
                     # Blanket 2*price*3 stole WATER: 9051 wheat 13→6,
                     # weeds 1→7, floor $59.1k→$53.3k. 9085 jumped +$7k.
                     # Raise CARE only after today's plants are watered.
-                    # Skip-all goose CARE (a85c60d) dried mid-cash $10k→$0.4–2k.
-                    # Skip goose CARE only while plants are dry; keep 0.95×
-                    # once watered (no boost — goose-CARE-after-water failed).
-                    if animal == "GOOSE" and st.n_unwatered > 0:
-                        care_val = None
-                    elif animal == "COW" and st.n_unwatered == 0:
+                    if animal == "COW" and st.n_unwatered == 0:
                         care_val = 2.0 * price * 3.0
                     elif animal == "SHEEP" and st.n_unwatered == 0:
                         # Same watered-first gate as cows. Weaker than the
@@ -1750,9 +1745,8 @@ def build_tasks(st, plan):
                         care_val = 2.0 * price * 2.0
                     else:
                         care_val = price * 0.95
-                    if care_val is not None:
-                        add({"pos": pos, "op": ["CARE"], "kind": "CARE",
-                             "value": care_val})
+                    add({"pos": pos, "op": ["CARE"], "kind": "CARE",
+                         "value": care_val})
                 if units_now > 0:
                     add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                          "value": units_now * price})
