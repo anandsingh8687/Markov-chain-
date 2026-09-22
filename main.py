@@ -1257,7 +1257,11 @@ class MPCRevenueEngine:
             # Melon is shop-less. 12 tiles finish at $7; 0 tiles drop the
             # score to 13k. Floor at remaining headroom, at most 4, and
             # drop it the moment the quote is dying.
-            cap_m = min(4, book_tiles(st, "MELON", 0.55))
+            # 0.55 left a 4th shop-less melon tile that leftover carrot
+            # would have taken. Size the floor from 0.60× so the last
+            # tile stays leftover carrot (7cd483a: NE leftover carrot
+            # is load-bearing).
+            cap_m = min(4, book_tiles(st, "MELON", 0.60))
             # 9034 $73.9k sold melon 2 at $250 with milk $369. 1.50×
             # would fire on every seed (9051 floor is $241). 1.80×
             # keeps 4 melon on the floor and frees 2 tiles on hot milk.
@@ -1330,7 +1334,7 @@ class MPCRevenueEngine:
                 int(p.crop_mix.get("WHEAT", 0) or 0),
                 max(4, st.usable_tiles // 8),
             )
-            melon_keep = min(int(p.crop_mix.get("MELON", 0) or 0), min(4, book_tiles(st, "MELON", 0.55)))
+            melon_keep = min(int(p.crop_mix.get("MELON", 0) or 0), min(4, book_tiles(st, "MELON", 0.60)))
             straw_keep = min(int(p.crop_mix.get("STRAWBERRY", 0) or 0), min(4, book_tiles(st, "STRAWBERRY", 0.70)))
             for crop in ("CARROT", "TOMATO", "WHEAT", "STRAWBERRY", "MELON"):
                 if overflow <= 0:
@@ -2359,11 +2363,6 @@ class KaggricultureAgent(object):
         # Shipping orders[1] after core (a9e2b62) dried mid-cash: 9034
         # $10.6k→$5.6k and the floor $59.2k→$57.4k.
         packed = cash_sells[:1] + hires + core + rest_sells + seeds
-        # HARVEST 3*(herd+2) wheat buy is feed (601fbac). Put dump sells
-        # before core so rest_sells take the 10-order cap; wheat still
-        # ships if a slot remains. Do not ship orders[1] as a second lead.
-        if plan.phase in ("HARVEST", "LIQUIDATE"):
-            packed = cash_sells[:1] + hires + rest_sells + core + seeds
         return packed[:MAX_MARKET_ORDERS]
 
 
