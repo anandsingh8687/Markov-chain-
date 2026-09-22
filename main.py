@@ -984,7 +984,6 @@ class MPCRevenueEngine:
                or phase != self.plan.phase
                or st.stance != self.plan.stance
                or st.hour == 0
-               or st.hour == 12
                or len(st.hands) != getattr(self, "_hands", -1)
                or st.usable_tiles != getattr(self, "_usable", -1))
         if not due:
@@ -2109,8 +2108,11 @@ class KaggricultureAgent(object):
                     n = int(min(held, sellable, math.ceil(rate * 2.0)))
                     # Beat their harvest onto the book: if they are 0-2 days
                     # from dumping this premium, sell our lot first.
+                    # Dual: noon replan thrashed the mix. Race dump 0.40→0.25
+                    # so we do not empty a premium stack when they are 0-2
+                    # days out. Lead-sell rank and 1.5× drain are not retried.
                     if st.opp_imminent.get(prod, 0) > 0:
-                        n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
+                        n = int(min(held, max(n, math.ceil(held * 0.25)), sellable or held))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
             if n > 0:
