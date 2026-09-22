@@ -1235,7 +1235,10 @@ class MPCRevenueEngine:
             elif cap_c <= 0:
                 p.animal_targets.pop("COW", None)
             if wool_ok:
-                sh_floor = min(3, cap_sh)
+                # sh_floor=3 left 9000/9034/9051 at 3 head: the keep cap is 4
+                # whenever wool is below 1.25×, and the cached floor never
+                # climbed. Fill the 4th; do not raise sh_hi.
+                sh_floor = min(4, cap_sh)
                 sh_hi = cap_sh
                 # Wool often printed +oversupply at $116–$189 while strawberry
                 # sat −400 at $300. Cap sheep at 4 unless the quote is still
@@ -2222,11 +2225,7 @@ class KaggricultureAgent(object):
                 if want <= 0:
                     continue
                 spec = CROPS[crop]
-                # Mix zeros new straw at days_left<14; max_day+1 is 11 and
-                # kept buying $100 seeds the sow window would still plant.
-                need_days = (14 if crop == "STRAWBERRY"
-                             else 11 if crop == "MELON"
-                             else spec["max_day"] + 1)
+                need_days = 11 if crop == "MELON" else spec["max_day"] + 1
                 if need_days > days_left:
                     continue
                 have = int(st.seeds.get(crop, 0) or 0)
@@ -2329,11 +2328,7 @@ class KaggricultureAgent(object):
             for crop in seed_order:
                 want = plan.crop_mix.get(crop, 0)
                 spec = CROPS[crop]
-                # Mix zeros new straw at days_left<14; max_day+1 is 11 and
-                # kept buying $100 seeds the sow window would still plant.
-                need_days = (14 if crop == "STRAWBERRY"
-                             else 11 if crop == "MELON"
-                             else spec["max_day"] + 1)
+                need_days = 11 if crop == "MELON" else spec["max_day"] + 1
                 if want <= 0 or need_days > days_left:
                     continue
                 have = int(st.seeds.get(crop, 0) or 0)
