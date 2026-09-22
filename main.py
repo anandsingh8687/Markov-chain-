@@ -962,11 +962,7 @@ class MPCRevenueEngine:
     def phase_of(self, turn, st=None):
         if turn >= LIQUIDATION_TURN:
             return "LIQUIDATE"
-        # Live straw at 2.50× was a no-op: the quote crosses after
-        # days_left<14. HARVEST at 500 zeros sow (9085 empty 8, 9017
-        # empty 7 at mid). Wheat still matures in 4 days. Do not
-        # re-enable HARVEST-phase wheat sow (693afb2 weeds).
-        if turn >= 560:
+        if turn >= 500:
             return "HARVEST"
         if turn >= 240:
             return "COMPOUND"
@@ -1055,7 +1051,10 @@ class MPCRevenueEngine:
                 # most starter seeds.
                 if shops_w.get("STRAWBERRY", 0) >= 1 or quote_s >= 0.85 * MARKET_PARAMS["STRAWBERRY"]["base"]:
                     candidates.append("STRAWBERRY")
-                if phase == "COMPOUND" and shops_w.get("TOMATO", 0) >= 2 and days_left >= 13:
+                # HARVEST at 560 bought 13 geese after mid (9017 $59.8k→$41.4k).
+                # One pizza shop drains tomato. Requiring two shops left
+                # tomato off the KKT board on most seeds.
+                if phase == "COMPOUND" and shops_w.get("TOMATO", 0) >= 1 and days_left >= 13:
                     candidates.append("TOMATO")
         for prod in candidates:
             if prod in ("WHEAT", "EGG"):
