@@ -311,7 +311,9 @@ def book_tiles(st, prod, frac=0.50):
     head = Econ.units_until(prod, inv, floor)
     days = max(1, DAYS - int(getattr(st, "day", 0) or 0))
     rate = FLOW_PER_TILE_DAY.get(prod, 1.0)
-    return max(0, int(math.floor(head / max(1.0, rate * float(days)))))
+    denom = max(1.0, rate * float(days))
+    extra = float(days) if prod == "MELON" else 0.0
+    return max(0, int(math.floor((head + extra) / denom)))
 
 
 def pasture_cap(st, product):
@@ -2008,7 +2010,7 @@ class KaggricultureAgent(object):
             actions[i] = self._goto_or(wpos, dst, ["PICKUP", pending_animal, 1])
             free_idx = free_idx[1:]
 
-        if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 8
+        if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 10
                 and plan.phase in ("EXPAND", "COMPOUND")):
             i = free_idx[0]
             wpos = workers[i]
