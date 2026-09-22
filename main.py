@@ -2180,7 +2180,10 @@ class KaggricultureAgent(object):
 
         short = reserve_wheat - st.wheat_held()
         # Feed the living herd plus the next few buys, not the 24-head target.
-        short = max(short, 3 * (herd + 2) - st.wheat_held())
+        # Dual: 2×(herd+2) still covers the next mouth; 3× over-bought
+        # wheat while herd<6 (cap 16 binds after that). Emergency buy 4→3
+        # was bit-identical (wheat_next already ≥2 from this line).
+        short = max(short, 2 * (herd + 2) - st.wheat_held())
         if short > 0 and (herd > 0 or plan.animal_targets.get("GOOSE", 0) > 0):
             price = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
             afford = int(min(max(short, 1), max(0.0, budget - 400) // max(1.0, price), 16))
@@ -2282,10 +2285,7 @@ class KaggricultureAgent(object):
                     continue
                 if wheat_next < 2:
                     price = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
-                    # Dual: buy 3 not 4 when the pack is about to add a mouth.
-                    # BOOTSTRAP 9 hands crashed 9051 wheat 13→8 / floor $57.5k
-                    # and scaler 9000 $55.2k→$49.9k; carrot labour stays 8.
-                    afford = int(min(3, max(0.0, budget - 400) // max(1.0, price), 8))
+                    afford = int(min(4, max(0.0, budget - 400) // max(1.0, price), 8))
                     if afford > 0:
                         budget = _spend(core, ["BUY_PRODUCT", "WHEAT", afford], afford * price)
                         pending_wheat += afford
