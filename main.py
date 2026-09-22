@@ -874,7 +874,7 @@ def linear_assignment(cost, n, m):
 
 
 class LaborAssigner:
-    GAMMA = 0.66
+    GAMMA = 0.72
     LOOKAHEAD = 3
 
     def assign(self, workers, tasks):
@@ -1959,7 +1959,7 @@ class KaggricultureAgent(object):
                             fert_tiles.append((x, y))
                 if fert_tiles:
                     dst, d = self._nearest(wpos, fert_tiles)
-                    if d <= 3:
+                    if d <= 2:
                         actions[i] = self._goto_or(wpos, dst, ["FERTILIZE"])
                         continue
             produce = sum(int(v or 0) for k, v in inv.items()
