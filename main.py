@@ -964,7 +964,10 @@ class MPCRevenueEngine:
             return "LIQUIDATE"
         if turn >= 500:
             return "HARVEST"
-        if turn >= 240:
+        # Dual: enter COMPOUND 20 turns earlier so tomato/KKT can bind
+        # once shops exist. 2×(herd+2) wheat crushed milk vs scaler 9017
+        # ($38); scheduled wheat stays 3×.
+        if turn >= 220:
             return "COMPOUND"
         carrot_opp = 0
         if st is not None:
@@ -2180,10 +2183,7 @@ class KaggricultureAgent(object):
 
         short = reserve_wheat - st.wheat_held()
         # Feed the living herd plus the next few buys, not the 24-head target.
-        # Dual: 2×(herd+2) still covers the next mouth; 3× over-bought
-        # wheat while herd<6 (cap 16 binds after that). Emergency buy 4→3
-        # was bit-identical (wheat_next already ≥2 from this line).
-        short = max(short, 2 * (herd + 2) - st.wheat_held())
+        short = max(short, 3 * (herd + 2) - st.wheat_held())
         if short > 0 and (herd > 0 or plan.animal_targets.get("GOOSE", 0) > 0):
             price = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
             afford = int(min(max(short, 1), max(0.0, budget - 400) // max(1.0, price), 16))
