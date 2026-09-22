@@ -1692,8 +1692,16 @@ def build_tasks(st, plan):
                     else:
                         start = Econ.bonus_start(crop)
                         in_window = (not spec["ongoing"]) and start <= age <= spec["max_day"]
-                        # Daily water is cheap labour and protects the bonus.
-                        bonus = price if in_window or spec["ongoing"] else 0.35 * price
+                        # Dual: melon WATER at $247 loses to dry CARE 0.95×
+                        # (~$285). Skip-all-CARE while dry crashed the floor.
+                        # 1.2× on the bonus window only ($296) beats dry CARE
+                        # without lifting ongoing straw/tomato or same-day FEED.
+                        if in_window:
+                            bonus = 1.2 * price
+                        elif spec["ongoing"]:
+                            bonus = price
+                        else:
+                            bonus = 0.35 * price
                         add({"pos": pos, "op": ["WATER"], "kind": "WATER",
                              "value": max(bonus, 0.3 * plan.action_value)})
 
@@ -1984,10 +1992,7 @@ class KaggricultureAgent(object):
                 abs(workers[k][0] - s[0]) + abs(workers[k][1] - s[1]) for s in shed_tiles))
             wpos = workers[i]
             dst, _ = self._nearest(wpos, shed_tiles)
-            # Dual: 12-unit pickup stole sow. 8 is keep. 7 leaves one
-            # wheat in the shed for a second feeder instead of loading
-            # the nearest walker to the cap.
-            n = int(min(7, need_wheat, st.shed.get("WHEAT", 0)))
+            n = int(min(8, need_wheat, st.shed.get("WHEAT", 0)))
             actions[i] = self._goto_or(wpos, dst, ["PICKUP", "WHEAT", n])
             free_idx = [k for k in free_idx if k != i]
 
