@@ -1118,10 +1118,7 @@ class MPCRevenueEngine:
             p.animal_targets = {}
             p.shadow_td = 20.0
             p.action_value = 8.0
-            # Dual: one extra dawn hire in BOOTSTRAP (fib(8)≈$34). Leaving
-            # EXPAND at turn 64 crashed 9000/9017/9034 (floor $51.4k);
-            # expand_from stays 72. This is carrot labour, not EXPAND rate.
-            p.target_hands = 9
+            p.target_hands = 8
             p.wheat_reserve = 0
             p.buy_land = False
             p.stance = "NEUTRAL"
@@ -2285,7 +2282,10 @@ class KaggricultureAgent(object):
                     continue
                 if wheat_next < 2:
                     price = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
-                    afford = int(min(4, max(0.0, budget - 400) // max(1.0, price), 8))
+                    # Dual: buy 3 not 4 when the pack is about to add a mouth.
+                    # BOOTSTRAP 9 hands crashed 9051 wheat 13→8 / floor $57.5k
+                    # and scaler 9000 $55.2k→$49.9k; carrot labour stays 8.
+                    afford = int(min(3, max(0.0, budget - 400) // max(1.0, price), 8))
                     if afford > 0:
                         budget = _spend(core, ["BUY_PRODUCT", "WHEAT", afford], afford * price)
                         pending_wheat += afford
