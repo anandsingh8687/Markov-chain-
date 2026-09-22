@@ -23,20 +23,23 @@ premium goods to $1; eggs and wheat absorb. That is the game.
 
 ## Policy (short)
 
-1. **BOOTSTRAP (turns 0–72)** — carrots only. Early cash is a multiplier.
-2. **EXPAND (72–240)** — buy land, stand up geese (the only scalable asset),
-   plant melon into remaining book capacity.
+1. **BOOTSTRAP (turns 0–72, or 0–48 vs a carrot farm)** — carrots only.
+   Early cash is a multiplier.
+2. **EXPAND (to 240)** — buy land, stand up geese (the only scalable asset),
+   plant melon into remaining **uncontested** book capacity.
 3. **COMPOUND (240–500)** — KKT water-fill: equalise revenue **per tile-day**,
-   subtract the opponent's public pipeline, add town-shop drain.
+   subtract the opponent's **replant flow**, add town-shop drain.
 4. **HARVEST (500–650)** — no new long-cycle assets.
 5. **LIQUIDATE (650–720)** — backward induction; unsold stock is `-inf`.
 
 Labour is a 3-turn linear assignment. `FEED` consumes wheat from the worker's
 inventory (engine fact). Collapse of >15% over 12 turns pivots the mix.
 
-Win probability is dual-NAV: lock a lead (no new premium) or contest a
-deficit (take remaining book). Opponent occupancy is counted from plant
-day 0. Liquidation reserves against their visible dump, not only town drain.
+Win probability is dual-NAV from turn 300: lock a lead by vacating their
+book (eggs absorb; uncontested melon stays), or contest a deficit.
+Opponent occupancy is a flow from plant day 0, not the standing field.
+Coop tiles are reserved before planting. Liquidation reserves against
+their dump, not only town drain.
 
 ## Cloud-only
 
@@ -48,8 +51,9 @@ Gates, in order:
 
 1. Parse / import / cold-start action shape
 2. 720-turn self-play (catches exceptions and the 1s `actTimeout`)
-3. ≥60% vs the built-in `starter`
-4. ≥50% vs a cloud-only carrot-scaler (starter-beating is not rank-1)
+3. ≥60% vs the built-in `starter` (score floor $18k)
+4. ≥50% vs a cloud-only carrot-scaler (score floor $20k)
+5. 2–0 vs the frozen PR #1 agent in `benchmark/rival/` (score floor $16k)
 
 ## Submission
 

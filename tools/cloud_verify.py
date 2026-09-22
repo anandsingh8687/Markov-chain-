@@ -9,7 +9,9 @@ Covers the three ways a Kaggriculture submission dies, then asserts strength:
 
 Beating the built-in starter is table stakes. The second gate is a stronger
 carrot-scaling opponent defined here (not a public ladder agent) so a
-submission that only farms the starter cannot pass.
+submission that only farms the starter cannot pass. The third gate is the
+frozen PR #1 agent in benchmark/rival/ — the strongest prior agent in this
+tree — so a 17%-utilisation farm cannot read as green.
 """
 
 from __future__ import annotations
@@ -22,6 +24,12 @@ import statistics
 import sys
 import time
 
+CRUSH_BASE = {
+    "CARROT": 35, "TOMATO": 60, "STRAWBERRY": 120, "MELON": 250,
+    "MILK": 160, "WOOL": 200,
+}
+ANIMAL_PRODUCT = {"GOOSE": "EGG", "COW": "MILK", "SHEEP": "WOOL"}
+MARKET_I0 = 10000
 ACT_TIMEOUT_S = 1.0
 HORIZON = 720
 
@@ -72,6 +80,201 @@ def check_import(root):
     return main
 
 
+def _census_farm(me):
+    tiles = (me or {}).get("tiles") or []
+    kinds = {}
+    animals = {}
+    locked = empty = 0
+    for row in tiles:
+        for t in row:
+            if t == "LOCKED":
+                locked += 1
+                continue
+            if t is None:
+                empty += 1
+                continue
+            if isinstance(t, dict):
+                if t.get("animal"):
+                    animals[t["animal"]] = animals.get(t["animal"], 0) + 1
+                else:
+                    k = t.get("crop") or t.get("kind") or "?"
+                    kinds[k] = kinds.get(k, 0) + 1
+    return me or {}, kinds, animals, empty, locked
+
+
+def _tile_census(env, player=0, step=-1):
+    last = env.steps[step]
+    obs = (last[0] or {}).get("observation") or {}
+    farms = obs.get("farms") or []
+    me = farms[player] if player < len(farms) else {}
+    return _census_farm(me)
+
+
+def _empty_struct_count(env, player=0):
+    try:
+        _me, kinds, _animals, _empty, _locked = _tile_census(env, player)
+        return int(kinds.get("COOP", 0) or 0) + int(kinds.get("PASTURE", 0) or 0)
+    except Exception:
+        return 0
+
+
+def _weed_count(env, player=0):
+    try:
+        _me, kinds, _animals, _empty, _locked = _tile_census(env, player)
+        return int(kinds.get("WEED", 0) or 0)
+    except Exception:
+        return 0
+
+
+def _productive(kinds, animals):
+    n = sum(int(v or 0) for v in animals.values())
+    for k, v in kinds.items():
+        if k in ("COOP", "PASTURE", "WEED", "?"):
+            continue
+        n += int(v or 0)
+    return n
+
+
+def _midgame_staff(env, at=500):
+    """Hour 20 of day 20. Not hour 0 — EOD wipes farm['hands']."""
+    try:
+        idx = at if at < len(env.steps) else -1
+        me, kinds, animals, empty, locked = _tile_census(env, 0, idx)
+        hands = len(me.get("hands") or [])
+        unlocked = max(1, 100 - locked)
+        prod = _productive(kinds, animals)
+        util = prod / float(unlocked)
+        n_animals = sum(int(v or 0) for v in animals.values())
+        if hands < 8:
+            return False, ("under-staffed midgame: {} hands (need 8). "
+                           "HIREs were dropped by the 10-order cap or fib-exploded."
+                           .format(hands))
+        if unlocked >= 40 and util < 0.35:
+            return False, ("under-utilized midgame: {:.0%} of {} tiles (need 35%). "
+                           "Weeds were under-staffing; shrinking the board froze idle land."
+                           .format(util, unlocked))
+        if unlocked >= 50 and n_animals < 6:
+            return False, ("herd stall midgame: {} animals on {} tiles (need 6). "
+                           "Hour-0 wipe reset goose_cap to the farmer and dropped the ramp."
+                           .format(n_animals, unlocked))
+        return True, ""
+    except Exception:
+        return True, ""
+
+
+def _farmed_products(kinds, animals):
+    farmed = set()
+    for k in kinds or {}:
+        if k in CRUSH_BASE or k in ("WHEAT", "EGG"):
+            farmed.add(k)
+    for a, n in (animals or {}).items():
+        if n and a in ANIMAL_PRODUCT:
+            farmed.add(ANIMAL_PRODUCT[a])
+    return farmed
+
+
+def _book_crush(env, player=0):
+    """Fail if a farmed premium/staple (not wheat/egg) finished oversupplied
+    below a quarter of base. That is the melon-at-$7 inversion: 12 tiles of
+    the only crop with no shop, while strawberry sat at 2.2× base unfarmed.
+    """
+    try:
+        last = env.steps[-1]
+        obs = (last[0] or {}).get("observation") or {}
+        market = obs.get("market") or {}
+        inv = market.get("inventory") or {}
+        prices = market.get("prices") or {}
+        _me, kinds, animals, _empty, _locked = _tile_census(env, player, 500)
+        farmed = _farmed_products(kinds, animals)
+        crushed = []
+        for prod in farmed:
+            if prod in ("WHEAT", "EGG", "FERTILIZER"):
+                continue
+            base = CRUSH_BASE.get(prod)
+            if not base:
+                continue
+            inventory = float(inv.get(prod, MARKET_I0) or MARKET_I0)
+            price = float(prices.get(prod, base) or base)
+            if inventory > MARKET_I0 and price < 0.25 * base:
+                crushed.append("{} inv={:.0f} quote=${:.0f} (base ${})".format(
+                    prod, inventory, price, base))
+        if crushed:
+            return False, ("book crush: {}. Staffing filled tiles; the mix "
+                           "walked a shop-less book to the floor.".format(
+                               "; ".join(crushed)))
+        return True, ""
+    except Exception:
+        return True, ""
+
+
+def _pasture_gap(env, at=500):
+    """Fail if milk/wool stayed scarce while the herd was goose-only.
+
+    Town-centre drain is 1/day with zero shops. A 50-tile farm that never
+    buys a cow while milk prints 1.5-2× base left that book on the table.
+    """
+    try:
+        idx = at if at < len(env.steps) else -1
+        last = env.steps[-1]
+        obs_end = (last[0] or {}).get("observation") or {}
+        market = obs_end.get("market") or {}
+        prices = market.get("prices") or {}
+        _me, _kinds, animals, _empty, locked = _tile_census(env, 0, idx)
+        unlocked = max(1, 100 - locked)
+        cows = int(animals.get("COW", 0) or 0)
+        sheep = int(animals.get("SHEEP", 0) or 0)
+        milk_p = float(prices.get("MILK", 160) or 160)
+        wool_p = float(prices.get("WOOL", 200) or 200)
+        if unlocked >= 40 and milk_p >= 0.90 * 160 and cows < 2:
+            return False, (
+                "pasture gap: {} cow(s) while milk is ${:.0f} (base $160). "
+                "Town drain always exists; shops_w must not close milk."
+                .format(cows, milk_p)
+            )
+        if unlocked >= 40 and wool_p >= 0.90 * 200 and sheep < 1:
+            return False, (
+                "pasture gap: {} sheep while wool is ${:.0f} (base $200). "
+                "Yarn-store / town drain was left on the table."
+                .format(sheep, wool_p)
+            )
+        return True, ""
+    except Exception:
+        return True, ""
+
+
+def book_telemetry(env, label="p0"):
+    try:
+        last = env.steps[-1]
+        obs = (last[0] or {}).get("observation") or {}
+        market = obs.get("market") or {}
+        inv = market.get("inventory") or {}
+        prices = market.get("prices") or {}
+        bits = []
+        for prod in ("MELON", "STRAWBERRY", "WHEAT", "MILK", "WOOL", "EGG"):
+            bits.append("{}={:.0f}/${:.0f}".format(
+                prod.lower()[:6],
+                float(inv.get(prod, MARKET_I0) or MARKET_I0) - MARKET_I0,
+                float(prices.get(prod, 0) or 0)))
+        print("      book {} {}".format(label, " ".join(bits)))
+    except Exception as exc:
+        print("      book telemetry unavailable: {}".format(exc))
+
+
+def farm_telemetry(env, label="p0", step=-1):
+    """Farm snapshot. Mid-horizon (step 480) is utilisation; T=720 is after harvest."""
+    try:
+        me, kinds, animals, empty, locked = _tile_census(env, 0, step)
+        hands = len(me.get("hands") or [])
+        unlocked = max(1, 100 - locked)
+        prod = _productive(kinds, animals)
+        print("      telemetry {} money={} hands={} quads={} animals={} crops={} "
+              "empty={} locked={} util={:.0%}".format(
+                  label, me.get("money"), hands, me.get("unlocked_quadrants"),
+                  animals, kinds, empty, locked, prod / float(unlocked)))
+    except Exception as exc:
+        print("      telemetry unavailable: {}".format(exc))
+
+
 def run_episode(agents, seed, debug=False):
     from kaggle_environments import make
     cfg = {"episodeSteps": HORIZON}
@@ -96,6 +299,8 @@ def check_selfplay(root):
             fail("self-play player {} ended with status {} (rewards={})".format(
                 i, s, rewards))
     print("      ok  rewards={}  wall={:.1f}s".format(rewards, wall))
+    farm_telemetry(env, "self-play-p0-end", -1)
+    farm_telemetry(env, "self-play-p0-mid", 500)
     return env
 
 
@@ -236,18 +441,43 @@ def carrot_scaler(obs):
     return {"farmer": farmer_action, "hands": hand_actions, "market": market[:10]}
 
 
+def load_callable_agent(path):
+    """Load a frozen rival's agent(obs) without shadowing the submission."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("kaggriculture_rival", path)
+    if spec is None or spec.loader is None:
+        fail("could not load rival agent from {}".format(path))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    fn = getattr(mod, "agent", None)
+    if not callable(fn):
+        fail("rival at {} has no callable agent()".format(path))
+    return fn
+
+
 def check_strength(root, games, opponent, report_path):
     print("[5/5] strength gate: {} episodes vs '{}'".format(games, opponent))
     path = os.path.join(root, "main.py")
     if opponent == "carrot_scaler":
         opp = carrot_scaler
+    elif opponent in ("pr1_rival", "rival"):
+        opp = load_callable_agent(os.path.join(root, "benchmark", "rival", "agent.py"))
     else:
         opp = opponent
     wins = tie = loss = 0
     margins = []
+    # A win at 6.6k is a ramp collapse: we parked on the opponent's book.
+    # 38+ empty coops is the next collapse: we built sheds faster than we fed.
+    if opponent in ("pr1_rival", "rival"):
+        min_farm = 16000.0
+    elif opponent == "carrot_scaler":
+        min_farm = 18000.0
+    else:
+        min_farm = 18000.0
+    max_empty_structs = 16
     for g in range(games):
         seed = 9000 + g * 17
-        rewards, statuses, wall, _ = run_episode([path, opp], seed=seed)
+        rewards, statuses, wall, env = run_episode([path, opp], seed=seed)
         if statuses[0] != "DONE":
             fail("episode {} (seed {}) ended with status {}".format(g, seed, statuses[0]))
         mine = rewards[0] if rewards[0] is not None else 0.0
@@ -262,6 +492,32 @@ def check_strength(root, games, opponent, report_path):
         print("      seed {:>5}  ours={:>10.0f}  opp={:>10.0f}  {}".format(
             seed, mine, theirs, "WIN" if mine > theirs else
             ("TIE" if mine == theirs else "LOSS")))
+        farm_telemetry(env, "seed-{}-end".format(seed), -1)
+        farm_telemetry(env, "seed-{}-mid".format(seed), 500)
+        book_telemetry(env, "seed-{}".format(seed))
+        if mine < min_farm:
+            fail("ramp collapse vs {} seed {}: score {:.0f} < {:.0f}. "
+                 "We won or lost with a farm that never left the opponent's book."
+                 .format(opponent, seed, mine, min_farm))
+        empty_structs = _empty_struct_count(env)
+        if empty_structs > max_empty_structs:
+            fail("structure explosion vs {} seed {}: {} empty COOP/PASTURE (max {}). "
+                 "Workers reserved every empty tile for sheds while geese starved."
+                 .format(opponent, seed, empty_structs, max_empty_structs))
+        weeds = _weed_count(env)
+        if weeds > 20:
+            fail("weed farm vs {} seed {}: {} weeds. Plants were sown faster "
+                 "than leftover workers could water them."
+                 .format(opponent, seed, weeds))
+        ok, reason = _midgame_staff(env)
+        if not ok:
+            fail("{} vs {} seed {}".format(reason, opponent, seed))
+        ok, reason = _book_crush(env)
+        if not ok:
+            fail("{} vs {} seed {}".format(reason, opponent, seed))
+        ok, reason = _pasture_gap(env)
+        if not ok:
+            fail("{} vs {} seed {}".format(reason, opponent, seed))
     rate = (wins + 0.5 * tie) / float(max(1, games))
     med = statistics.median(margins) if margins else 0.0
     print("      score rate vs {}: {:.0%}  (W{} T{} L{})  median margin {:+.0f}".format(

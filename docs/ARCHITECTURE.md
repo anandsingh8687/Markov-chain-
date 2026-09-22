@@ -36,6 +36,8 @@ Read from the interpreter, not from prose:
 
 - `FEED` calls `_inv_take(inv, "WHEAT", 1)` on the **acting worker**. Wheat in
   the shed cannot feed an animal. The worker must `PICKUP WHEAT` first.
+- Hired hands are **wiped at EOD** (`farm["hands"] = []`). Fib resets
+  with them. The crew must be re-hired every morning.
 - `FERTILIZE` likewise consumes carried fertilizer, not shed fertilizer.
 - `SELL` / `BUY_ANIMAL` / `BUY_PRODUCT` touch the shed only.
 - If N workers `PLANT C` and `seeds[C] < N`, **every** plant of C that turn is
@@ -63,7 +65,13 @@ Equalising **price per unit** is the local optimum and it is wrong: `tdpu`
 varies about 7× (egg 0.5, melon 1.83, strawberry 4.25). A flat floor rejects
 eggs (base $50, log glut curve) and accepts strawberries (base $120, linear
 crash). A cared goose is the only asset that scales; melon is the highest
-density **capacity-capped** crop.
+density **capacity-capped** crop, and it is the only crop **no shop
+ever buys** (town-centre drain is 1/day). Flooring 12 melon tiles
+walks the quote to $7 while strawberry (four of eight shops) sits
+unfarmed at 2.2× base. Size melon from remaining headroom, not base
+price. Strawberry enters the mix when its shops unlock. Milk and wool
+enter from town-centre drain (1/day) even before shops; shops multiply
+the cap, they do not gate eligibility.
 
 Capacity is a flow:
 
@@ -124,24 +132,62 @@ refuses to convert it to land and more geese. Cloud episodes that scored
 Buy order is hire → feed wheat → land → geese → seeds, which is the
 capital-velocity order, not the unit-price order.
 
-## 7. Dual NAV, day-0 occupancy, contested liquidation
+## 7. Dual NAV, flow occupancy, contested liquidation
 
-Exact Bellman / Nash / 720-turn MILP is infeasible under the 1s
-`actTimeout`. The feasible global policy is the KKT forecast plus three
-state-contingent forecasts that a peer copying the same water-fill must lose
-to:
+Exact Bellman / Nash / 720-turn MILP is not the 1s timeout (that claim
+was unmeasured). The infeasible object is the **action space**: 720
+turns × workers × tiles × market. The feasible global policy is the
+KKT forecast plus the state-contingent forecasts below.
 
-1. **Both NAVs.** `my_nav = bank + shed execution + my field pipeline`.
-   `opp_nav = their bank + their public field` (shed hidden ⇒ lower bound).
-   `LOCK` when the edge clears ~18% of NAV: stop planting premium.
-   `CONTEST` when behind: take remaining book and front-load premium sales.
-2. **Opponent book occupancy from plant day 0.** A 20-tile melon field
-   planted on day 0 is 120 units of future supply, not "invisible until
-   first_yield − 2". Capacity is `headroom + town drain − that pipeline`.
+1. **Both NAVs, late LOCK.** `my_nav = bank + shed + my field`.
+   `opp_nav = their bank + their public field + replant flow` (shed hidden
+   ⇒ lower bound). Counting only the standing plants overstates the lead
+   vs a 25-tile carrot farm and fires LOCK while we are still on their
+   book. LOCK starts at turn 300. It does **not** mean "stop premium":
+   it means vacate books they already occupy. Eggs absorb; uncontested
+   melon is how a lead is locked in. `CONTEST` takes remaining book.
+2. **Opponent occupancy is a FLOW.** A 25-tile carrot farm is not 75
+   units of current plants. It is `tiles × (units/cycle) × days left`
+   after this cycle. Peak tiles persist across harvest gaps so a brief
+   empty board does not look like a free carrot book. Capacity is
+   `headroom + town drain − that flow`.
 3. **Liquidation vs their dump.** Town drain makes later stages cheaper;
-   opponent supply does the opposite. Imminent premium units are added to
-   inventory now; remaining opponent units arrive as negative drain. If they
-   are 0–2 days from harvest we sell first so we are not second into $1.
+   opponent flow does the opposite. Imminent premium is raced.
 
 Phase changes force a replan so a carrot BOOTSTRAP mix cannot linger into
-EXPAND.
+EXPAND. A carrot-only opponent ends bootstrap at turn 48 (first cash
+print) instead of 72.
+
+## 8. Goose ramp cannot lose to the planter
+
+Three engine-faithful failure modes print a 6k farm that still "wins"
+against a weak bot:
+
+- Planting every empty tile leaves no square for `BUILD_COOP`. Geese
+  sit in the shed. Reserve empties for missing coops **before** plant.
+- `1.25` wheat tiles per animal on a 25-tile farm crowds out the herd.
+  Plant a thin wheat block; buy the rest (wheat absorbs).
+- The market cap is 10 orders. A long sell tape must not drop
+  hire / feed-wheat / land / goose. Sells still go first so the engine
+  has cash; buys keep reserved slots.
+- Structure count is `empty + occupied`, at most 2 new coops per turn.
+  Weeds are **under-staffing**, not over-expansion. Hands are wiped
+  at EOD — a 4-hire/day cap left four workers all season. Re-hire
+  8–12 every morning (fib(0..11) ≈ $376/day). **Do not plan hour 0
+  against the wiped crew**: `effective_labor` is the 8–12 hands about
+  to land, otherwise goose_cap and plant_slots collapse to 4 every
+  dawn and overnight cash buys nothing. Pack **at most 4 HIREs per
+  turn** so wheat / land / geese still fit in the 10-order cap (8
+  HIREs at dawn was the reverse of the old dropped-HIRE bug). Plants
+  scale as `workers×8 − herd`. Land is NE/SW/SE at 4/8/12 intended
+  hands. Milk/wool reopen against remaining headroom **plus town/shop
+  drain**, not a standing-stock I0 fill of 2-3 head. Town-centre drain
+  is 1/day with zero shops, so milk/wool stay eligible without a shop
+  unlock. Floor 4 cows / 3 sheep while the quote holds at 0.85× base;
+  cap geese at 8 once pastures are on the plan (town draw is ~13 cows /
+  9 sheep / 7 geese, not 12 geese). LOCK vacates a dying milk book, not
+  a $300 quote. Scarce wheat (quote ≥ 1.4× base) is a 16-tile field, not
+  a thin feed block. Glut (inv > I0) is derated; a scarce book is cheaper
+  in the water-fill. Vacate a book only when its quote is already dying.
+  Midgame snapshot is hour 20. Frozen PR #1 lives in `benchmark/rival/`
+  as a third cloud gate.
