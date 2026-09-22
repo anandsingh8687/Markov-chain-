@@ -958,10 +958,6 @@ class MPCRevenueEngine:
         self.el = elasticity
         self.plan = Plan()
         self._last = -999
-        # Latches once milk prints 1.80× so the melon-at-2 floor is not
-        # stuck behind REPLAN_EVERY. Noon / every-4 replans thrashed the
-        # mix; this fires once per crossing, not every hour.
-        self._hot_milk = False
 
     def phase_of(self, turn, st=None):
         if turn >= LIQUIDATION_TURN:
@@ -983,19 +979,13 @@ class MPCRevenueEngine:
 
     def maybe_replan(self, st):
         phase = self.phase_of(st.turn, st)
-        quote_m = Econ.price("MILK", st.inventory.get("MILK", MARKET_I0))
-        hot_milk = quote_m >= 1.80 * MARKET_PARAMS["MILK"]["base"]
-        milk_crossed = hot_milk and not self._hot_milk
-        if hot_milk:
-            self._hot_milk = True
         due = (st.turn - self._last >= self.REPLAN_EVERY
                or not self.plan.crop_mix
                or phase != self.plan.phase
                or st.stance != self.plan.stance
                or st.hour == 0
                or len(st.hands) != getattr(self, "_hands", -1)
-               or st.usable_tiles != getattr(self, "_usable", -1)
-               or milk_crossed)
+               or st.usable_tiles != getattr(self, "_usable", -1))
         if not due:
             return self.plan
         self._last = st.turn
@@ -1947,14 +1937,19 @@ class KaggricultureAgent(object):
                 # picked up a cow, dusk DROP returned it, and we built more
                 # sheds against shed_p. Hold the animal until a slot exists.
                 continue
-            # FEED is inventory-gated. A worker holding wheat who is standing
-            # on (or one step from) an unfed animal should feed before anything
-            # else — a starved animal is an unrecoverable write-off.
+            # FEED is inventory-gated. A starved animal is an unrecoverable
+            # write-off, so CRITICAL feed still interrupts at d<=2. Same-day
+            # feed at two steps stole nearby melon HARVEST ($1500 vs ~$200);
+            # Hungarian already has those FEED tasks mixed with the field.
+            # Adjacent (d<=1) and afternoon (hour>=16) still commit.
             if inv.get("WHEAT", 0) > 0:
                 feed = [t for t in tasks if t.get("need") == "WHEAT"]
                 if feed:
                     dst, d = self._nearest(wpos, [t["pos"] for t in feed])
-                    if d <= 2 or st.hour >= 20:
+                    starve = any(
+                        t["pos"] == dst and t.get("value", 0) >= CRITICAL
+                        for t in feed)
+                    if d <= 1 or st.hour >= 16 or (d <= 2 and starve):
                         actions[i] = self._goto_or(wpos, dst, ["FEED"])
                         tasks = [t for t in tasks if not (t.get("need") == "WHEAT" and t["pos"] == dst)]
                         continue
