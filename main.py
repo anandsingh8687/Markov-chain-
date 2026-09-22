@@ -1786,11 +1786,8 @@ def build_tasks(st, plan):
         inflight,
         max(0, 3 - empty_past),
     ))
-    # Dual: n_animals>=2 (geese) used to unlock empty pastures with no
-    # wheat and no cow in the shed. inflight=1 still reserved those
-    # tiles. Require feed or a waiting animal. Money/inflight unchanged.
     can_stock_pasture = st.money >= 400 and (
-        st.wheat_held() >= 2 or shed_p > 0)
+        st.wheat_held() >= 2 or shed_p > 0 or st.n_animals >= 2)
     if not can_stock_pasture and shed_p <= 0:
         need_past = 0
     reserve_n = min(need_coops + need_past, len(empties))
@@ -2220,7 +2217,10 @@ class KaggricultureAgent(object):
                 if afford_w > 0:
                     budget = _spend(core, ["BUY_SEED", "WHEAT", afford_w], afford_w * cost_w)
 
-            for crop in ("STRAWBERRY", "MELON"):
+            # Dual: leftover/first-block straw-then-melon can drop melon
+            # when the 10-order pack is full. Melon has no shop. Buy it
+            # first; straw still follows. Lead-sell rank is not retried.
+            for crop in ("MELON", "STRAWBERRY"):
                 want = int(plan.crop_mix.get(crop, 0) or 0)
                 if want <= 0:
                     continue
