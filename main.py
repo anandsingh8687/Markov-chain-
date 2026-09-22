@@ -1964,10 +1964,8 @@ class KaggricultureAgent(object):
                         continue
             produce = sum(int(v or 0) for k, v in inv.items()
                           if k in PRODUCTS)
-            # d<=1 let a worker walk past a dry plant to DROP. Two
-            # steps still beats a shed trip; this is not DROP-at-6.
             near_crit = any(
-                abs(t["pos"][0] - wpos[0]) + abs(t["pos"][1] - wpos[1]) <= 2
+                abs(t["pos"][0] - wpos[0]) + abs(t["pos"][1] - wpos[1]) <= 1
                 and t["value"] >= CRITICAL for t in tasks)
             deliver = (produce >= 4 or st.hour >= 18 or self.gate.armed
                        or st.shed_total > SHED_CAPACITY * 0.80)
@@ -2073,8 +2071,11 @@ class KaggricultureAgent(object):
         # selling the log-curve staple and the till died. Keep the
         # 2-per-head ration.
 
+        # +300 after NE ($2000) dumped staples whenever cash sat
+        # $2000–$2300. That is extra till, not a jam. Bind only when
+        # we cannot afford the next tile. 1400 still covers pre-NE.
         cash_tight = st.money < 1400 or (
-            st.next_land_cost is not None and st.money < st.next_land_cost + 300)
+            st.next_land_cost is not None and st.money < st.next_land_cost)
         orders = []
         for prod in PRODUCTS:
             held = int(st.shed.get(prod, 0) or 0)
