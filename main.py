@@ -1144,7 +1144,7 @@ class MPCRevenueEngine:
         # local-optima agent starves itself of cash and never buys land.
         # Premium goods keep the KKT reserve so we do not walk them to $1.
         staple_frac = {
-            "WHEAT": 0.40, "CARROT": 0.40, "EGG": 0.40, "FERTILIZER": 0.45,
+            "WHEAT": 0.40, "CARROT": 0.40, "EGG": 0.45, "FERTILIZER": 0.45,
             "TOMATO": 0.50,
         }
         for prod in PRODUCTS:
@@ -1811,14 +1811,8 @@ def build_tasks(st, plan):
     if plan.phase in ("HARVEST", "LIQUIDATE"):
         # Late sow is how 36 melon became 26 weeds after harvest on seed 9051.
         # Re-enabled HARVEST wheat sow (693afb2) cut median $65k → $58k with
-        # 6–8 end weeds. Keep the field as of turn 500 except a 2-tile
-        # morning wheat trickle while the board is already clean.
+        # 6–8 end weeds. Keep the field as of turn 500.
         spare = 0
-        if (plan.phase == "HARVEST"
-                and st.n_weeds == 0
-                and st.n_unwatered == 0
-                and st.hour <= 8):
-            spare = min(2, sow_this_hour, max(0, plant_slots(st) - st.n_plants))
     plant_empties = plant_empties[:spare]
 
     # crop_mix is a standing target, not a per-turn quota. Replanting the
