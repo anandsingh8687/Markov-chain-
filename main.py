@@ -1293,7 +1293,11 @@ class MPCRevenueEngine:
                 st.usable_tiles - used_now,
                 plant_slots(st) - sum(p.crop_mix.values()),
             ))
-            if left > 0 and cap_s > 0 and days_left >= 14 and not product_contested(st, "STRAWBERRY"):
+            # Cutting extra always crashed 9051 (weeds 0). Skip extra only
+            # when weeds already steal sow (9017 mid weeds 5).
+            if (left > 0 and cap_s > 0 and days_left >= 14
+                    and not product_contested(st, "STRAWBERRY")
+                    and int(getattr(st, "n_weeds", 0) or 0) < 4):
                 have_s = int(p.crop_mix.get("STRAWBERRY", 0) or 0)
                 extra = min(left, max(0, cap_s - have_s))
                 if extra:
@@ -2165,9 +2169,7 @@ class KaggricultureAgent(object):
         # Four HIREs until 8 are living or landing this pack; cows wait.
         # Fib(0..7) ≈ $54.
         per_turn = min(need_hands, hire_slots, 4 if not staffed_now else (3 if need_pasture_buy else 4))
-        # After 8 living, hold a cow+float so the 9th–11th HIRE cannot
-        # print $0 and stall cows (9051). 400 left that band on the table.
-        float_cash = 500.0
+        float_cash = 400.0
         queued = 0
         for _ in range(per_turn):
             c = fib(n)
