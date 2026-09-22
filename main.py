@@ -1709,10 +1709,7 @@ def build_tasks(st, plan):
                             # starter floor $56k → $53.5k: seed 9051 milk
                             # died at $175 (cows ate shed wheat we refused
                             # to replenish) and weeds rose on 9017/9068.
-                            # 1.7 pulled distant HARVEST over nearby WATER.
-                            # Dual: 1.55 so overripe still beats CARE 0.95
-                            # without the 2.2× melon fail.
-                            urg = 1.55 if age > spec["max_day"] else 1.0
+                            urg = 1.7 if age > spec["max_day"] else 1.0
                             add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                                  "value": units_now * price * urg})
                 continue
@@ -1731,7 +1728,11 @@ def build_tasks(st, plan):
                 if not fed:
                     animals_unfed += 1
                     future = (max(0, days_left - 1) / float(spec["interval"])) * price
-                    val = (CRITICAL + future) if unfed >= 1 else (price / float(spec["interval"])) * 2.0
+                    # *2 ≈ cow $300, already loses to melon HARVEST $1500
+                    # and watered CARE $960. *1.5 ≈ $225 so nearby melon
+                    # WATER ($247) wins; the cow is CRITICAL tomorrow.
+                    # Raising this (0.01×CRITICAL) stole sow. Dual: lower.
+                    val = (CRITICAL + future) if unfed >= 1 else (price / float(spec["interval"])) * 1.5
                     add({"pos": pos, "op": ["FEED"], "kind": "FEED",
                          "value": val, "need": "WHEAT"})
                 if fed and not cared and days_left > spec["interval"]:
