@@ -2110,6 +2110,10 @@ class KaggricultureAgent(object):
                     # from dumping this premium, sell our lot first.
                     if st.opp_imminent.get(prod, 0) > 0:
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
+                    # 9068 wool already sits above I0 at $187. Extra dump
+                    # (HARVEST two-sell, reserve-*2) walked that seed -$4-5k.
+                    if prod == "WOOL" and inv > MARKET_I0:
+                        n = int(min(n, 1))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
             if n > 0:
@@ -2325,10 +2329,7 @@ class KaggricultureAgent(object):
                     and budget >= st.next_land_cost + 400):
                 budget = _spend(core, ["BUY_LAND"], st.next_land_cost)
 
-            # Density already bought wheat into core (cap 24). A second
-            # leftover WHEAT order spent cash and a 10-order slot on the
-            # same have/standing snapshot.
-            seed_order = ("STRAWBERRY", "MELON", "CARROT", "TOMATO")
+            seed_order = ("STRAWBERRY", "MELON", "WHEAT", "CARROT", "TOMATO")
             for crop in seed_order if sow_seeds else ():
                 want = plan.crop_mix.get(crop, 0)
                 spec = CROPS[crop]
