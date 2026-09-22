@@ -1967,7 +1967,10 @@ class KaggricultureAgent(object):
             near_crit = any(
                 abs(t["pos"][0] - wpos[0]) + abs(t["pos"][1] - wpos[1]) <= 1
                 and t["value"] >= CRITICAL for t in tasks)
-            deliver = (produce >= 4 or st.hour >= 18 or self.gate.armed
+            # Dual: leftover wheat-first dried 9085. Hour 18 DROP walks
+            # off the field; 19 keeps FEED/WATER one more hour. DROP at
+            # 3/6 and shop-tick hold are not retried. Lot still 4+.
+            deliver = (produce >= 4 or st.hour >= 19 or self.gate.armed
                        or st.shed_total > SHED_CAPACITY * 0.80)
             if produce > 0 and deliver and not near_crit:
                 dst, _ = self._nearest(wpos, shed_tiles)
@@ -2321,10 +2324,7 @@ class KaggricultureAgent(object):
                     and budget >= st.next_land_cost + 400):
                 budget = _spend(core, ["BUY_LAND"], st.next_land_cost)
 
-            # Dual: first-block melon-before-straw dropped 9017/9068.
-            # Leftover only: wheat first so a harvested feed block can
-            # reclaim a 10-order slot before straw/carrot. Same keep.
-            seed_order = ("WHEAT", "STRAWBERRY", "MELON", "CARROT", "TOMATO")
+            seed_order = ("STRAWBERRY", "MELON", "WHEAT", "CARROT", "TOMATO")
             for crop in seed_order:
                 want = plan.crop_mix.get(crop, 0)
                 spec = CROPS[crop]
