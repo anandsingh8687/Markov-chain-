@@ -412,7 +412,10 @@ def live_buy_land(st, plan=None):
     days_left = max(0, DAYS - int(getattr(st, "day", 0) or 0))
     if cost <= 1000:
         flagged = True if plan is None else bool(getattr(plan, "buy_land", False))
-        return flagged and hands >= 4 and weeds <= 10 and money > cost + 400
+        # Dawn-only NE. Afternoon $1000 leaves leftover wheat no hours
+        # to fill the new 25 tiles. hour<=3 already counts intended
+        # crew; 4 still has that morning's HIREs living.
+        return flagged and hour <= 4 and hands >= 4 and weeds <= 10 and money > cost + 400
     if cost <= 2000:
         # Dawn/pack SW vs starter never fired (four CI runs locked=50).
         # Vs scaler it bought and sat empty: 58 empties, $40k→$37k.
@@ -2302,10 +2305,7 @@ class KaggricultureAgent(object):
                         continue
                     if quote_m < 1.05 * MARKET_PARAMS["MILK"]["base"] and (alive + in_shed) >= 10:
                         continue
-                    # 2/turn through 12 front-loads the 11th/12th on a
-                    # still-rising book. One/turn from 10 leaves the till
-                    # for wheat/seeds; 14-cow target and 15th-cow ban stay.
-                    cap = 1 if (alive + in_shed) >= 10 else 2
+                    cap = 1 if (alive + in_shed) >= 12 else 2
                 elif (animal == "GOOSE" and not pasture_wanted
                       and wheat_next >= 4 * (st.n_animals + 1)):
                     cap = 2
