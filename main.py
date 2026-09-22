@@ -698,10 +698,7 @@ class LiquidationGateway:
         turns_left = max(1, HORIZON - turn)
         if held <= 0:
             return 0
-        # Dual: STAGES 8 was bit-identical. Flatten remaining stock from
-        # turn 714 (was 716) so unsold goods are not still in the shed at
-        # 720. STAGES stays 10. 1.5× drain is not retried.
-        if turns_left <= 6:
+        if turns_left <= 4:
             return int(held)
         # Race an imminent premium dump: sell a third now, do not wait.
         race = 0
@@ -955,7 +952,10 @@ class MPCRevenueEngine:
 
     REPLAN_EVERY = 8
     MU_LO, MU_HI = 0.5, 4000.0
-    BISECT = 26
+    # Dual: T-6 flatten and STAGES 8 never bound (shed already empty).
+    # Coarser KKT (26→20) can shift the water-fill mix. REPLAN_EVERY
+    # stays 8. Noon replan is not retried.
+    BISECT = 20
 
     def __init__(self, elasticity):
         self.el = elasticity
