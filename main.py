@@ -587,9 +587,7 @@ class BayesianElasticityFilter:
     Collapse: a >15% drop across a 12-turn window pivots the farm vector.
     """
 
-    # Dual: 12-turn 15% collapse never bound (0.20 was bit-identical).
-    # Shorter lookback so a real drop pivots inside a day, not after.
-    WINDOW = 8
+    WINDOW = 12
     COLLAPSE_FRAC = 0.15
 
     def __init__(self):
@@ -2091,8 +2089,11 @@ class KaggricultureAgent(object):
                     opp_imminent=st.opp_imminent.get(prod, 0.0))
             else:
                 floor = plan.reserve.get(prod, 1.0)
+                # Dual: dump a bit more into a book they already occupy.
+                # Collapse WINDOW 8 / FRAC 0.20 never bound. vs starter
+                # opp premium flow is often 0; this is for scaler/PR1.
                 if st.opp_flow.get(prod, 0) > 0 and prod in PREMIUM:
-                    floor *= 0.88
+                    floor *= 0.80
                 if st.stance == "LOCK" and prod in PREMIUM:
                     floor *= 1.08
                 elif st.stance == "CONTEST" and prod in PREMIUM:
