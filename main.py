@@ -1702,7 +1702,10 @@ def build_tasks(st, plan):
                         add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                              "value": units_now * price})
                     else:
-                        at_peak = (crop == "MELON" and (units_now >= 6 or age >= 10)) or (
+                        # Age 10 with <6 units left money on the vine.
+                        # Wait for the cap or max_yield_day; day-10-with-6
+                        # still harvests immediately.
+                        at_peak = (crop == "MELON" and (units_now >= 6 or age >= 12)) or (
                             crop != "MELON" and age >= spec["max_day"])
                         if at_peak or age > spec["max_day"] or days_left <= 1 or plan.phase == "LIQUIDATE":
                             # Holding ripe wheat after hour 14 cut the
@@ -2116,11 +2119,6 @@ class KaggricultureAgent(object):
                     # from dumping this premium, sell our lot first.
                     if st.opp_imminent.get(prod, 0) > 0:
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
-                    # Trickle left ripe melon in the shed (score is bank
-                    # only). Dump while the shop-less book is still near base.
-                    if (prod == "MELON"
-                            and Econ.price(prod, inv) >= 0.95 * MARKET_PARAMS["MELON"]["base"]):
-                        n = int(min(held, 40))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
             if n > 0:
