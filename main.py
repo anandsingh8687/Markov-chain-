@@ -875,7 +875,7 @@ def linear_assignment(cost, n, m):
 
 class LaborAssigner:
     GAMMA = 0.72
-    LOOKAHEAD = 4
+    LOOKAHEAD = 3
 
     def assign(self, workers, tasks):
         n = len(workers)
@@ -907,7 +907,7 @@ class LaborAssigner:
                 if i in taken:
                     continue
                 d = abs(t["pos"][0] - wx) + abs(t["pos"][1] - wy)
-                score = t["value"] * (self.GAMMA ** min(d, self.LOOKAHEAD * 4))
+                score = t["value"] * (self.GAMMA ** min(d, 12))
                 if best is None or score > best:
                     best, best_i = score, i
             if best_i >= 0:
@@ -2008,7 +2008,7 @@ class KaggricultureAgent(object):
             actions[i] = self._goto_or(wpos, dst, ["PICKUP", pending_animal, 1])
             free_idx = free_idx[1:]
 
-        if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 10
+        if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 8
                 and plan.phase in ("EXPAND", "COMPOUND")):
             i = free_idx[0]
             wpos = workers[i]
