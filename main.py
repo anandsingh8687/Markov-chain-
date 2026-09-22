@@ -1235,9 +1235,9 @@ class MPCRevenueEngine:
             elif cap_c <= 0:
                 p.animal_targets.pop("COW", None)
             if wool_ok:
-                # sh_floor=3 left 9000/9034/9051 at 3 head: the keep cap is 4
-                # whenever wool is below 1.25×, and the cached floor never
-                # climbed. Fill the 4th; do not raise sh_hi.
+                # sh_floor=3 alone was a no-op: 9000/9034/9051 still finished
+                # at 3 because cows took every pasture and BUY skipped.
+                # Floor 4 plus sheep-before-cow (below) is one dual.
                 sh_floor = min(4, cap_sh)
                 sh_hi = cap_sh
                 # Wool often printed +oversupply at $116–$189 while strawberry
@@ -2257,7 +2257,10 @@ class KaggricultureAgent(object):
 
             wheat_next = st.wheat_held() + pending_wheat
             g_cap_buy = goose_buy_cap(st, plan)
-            for animal in ("GOOSE", "COW", "SHEEP"):
+            # Cow-first filled every pasture; sh_floor=4 then skipped the
+            # 4th sheep (empty_for=0). Buy sheep before extra cows so the
+            # 4th head actually lands. Do not raise sh_hi.
+            for animal in ("GOOSE", "SHEEP", "COW"):
                 target = plan.animal_targets.get(animal, 0)
                 alive = st.animals_alive.get(animal, 0)
                 in_shed = int(st.shed.get(animal, 0) or 0)
