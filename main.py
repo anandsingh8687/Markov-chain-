@@ -2109,12 +2109,11 @@ class KaggricultureAgent(object):
                     # Beat their harvest onto the book: if they are 0-2 days
                     # from dumping this premium, sell our lot first.
                     if st.opp_imminent.get(prod, 0) > 0:
-                        n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
+                        # leftover MELON keep was scaler-only. Race a
+                        # bigger slice when they are about to dump.
+                        n = int(min(held, max(n, math.ceil(held * 0.55)), sellable or held))
                 if st.shed_total > SHED_CAPACITY * 0.75:
-                    # 12 left surplus in a packed shed. Cap 40 never
-                    # bound (1293576); this only fires when the shed
-                    # is actually full.
-                    n = max(n, min(held, 16))
+                    n = max(n, min(held, 12))
             if n > 0:
                 orders.append(["SELL", prod, int(n)])
         orders.sort(key=lambda o: -Econ.price(o[1], st.inventory.get(o[1], MARKET_I0)) * o[2])
