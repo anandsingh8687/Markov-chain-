@@ -962,7 +962,11 @@ class MPCRevenueEngine:
     def phase_of(self, turn, st=None):
         if turn >= LIQUIDATION_TURN:
             return "LIQUIDATE"
-        if turn >= 500:
+        # Live straw at 2.50× was a no-op: the quote crosses after
+        # days_left<14. HARVEST at 500 zeros sow (9085 empty 8, 9017
+        # empty 7 at mid). Wheat still matures in 4 days. Do not
+        # re-enable HARVEST-phase wheat sow (693afb2 weeds).
+        if turn >= 560:
             return "HARVEST"
         if turn >= 240:
             return "COMPOUND"
@@ -1813,17 +1817,6 @@ def build_tasks(st, plan):
     # whole mix every hour stacked 12 melon/day into 36 and crashed the book.
     want = {c: max(0, int(plan.crop_mix.get(c, 0) or 0) - on_board.get(c, 0))
             for c in CROPS}
-    # Plan-level cap 8 at 2.50× was bit-identical: REPLAN_EVERY=8
-    # cached mix before the quote crossed. Raise live sow want so
-    # 9051/9085 (−550 to −770 at $318–$353) plant after wheat.
-    quote_s_live = Econ.price(
-        "STRAWBERRY", st.inventory.get("STRAWBERRY", MARKET_I0))
-    have_s_live = int(on_board.get("STRAWBERRY", 0) or 0)
-    if (quote_s_live >= 2.50 * MARKET_PARAMS["STRAWBERRY"]["base"]
-            and have_s_live < 8
-            and days_left >= 14
-            and not product_contested(st, "STRAWBERRY")):
-        want["STRAWBERRY"] = max(want.get("STRAWBERRY", 0), 8 - have_s_live)
     planted = {c: 0 for c in CROPS}
     # Wheat harvests leave empties; price_hint then sows strawberry into
     # the feed block (3 wheat / 12 straw, 12 cows starving). Feed first.
@@ -2219,11 +2212,6 @@ class KaggricultureAgent(object):
 
             for crop in ("STRAWBERRY", "MELON"):
                 want = int(plan.crop_mix.get(crop, 0) or 0)
-                if crop == "STRAWBERRY":
-                    quote_s_buy = Econ.price(
-                        "STRAWBERRY", st.inventory.get("STRAWBERRY", MARKET_I0))
-                    if quote_s_buy >= 2.50 * MARKET_PARAMS["STRAWBERRY"]["base"]:
-                        want = max(want, 8)
                 if want <= 0:
                     continue
                 spec = CROPS[crop]
@@ -2232,8 +2220,7 @@ class KaggricultureAgent(object):
                     continue
                 have = int(st.seeds.get(crop, 0) or 0)
                 standing = int(st.crops_alive.get(crop, 0) or 0)
-                seed_cap = 8 if (crop == "STRAWBERRY" and want >= 8) else 6
-                need = max(0, min(want, seed_cap) - have - standing)
+                need = max(0, min(want, 6) - have - standing)
                 cost = SEED_COST[crop]
                 keep = 400
                 afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
@@ -2347,9 +2334,7 @@ class KaggricultureAgent(object):
                 elif crop == "STRAWBERRY":
                     # 34 strawberry seeds at $100 left seed 9051 with $9 and 7 hands.
                     keep = 400
-                    quote_s_buy = Econ.price(
-                        "STRAWBERRY", st.inventory.get("STRAWBERRY", MARKET_I0))
-                    need = min(need, 8 if quote_s_buy >= 2.50 * MARKET_PARAMS["STRAWBERRY"]["base"] else 6)
+                    need = min(need, 6)
                 afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
                 if afford > 0:
                     budget = _spend(seeds, ["BUY_SEED", crop, afford], afford * cost)
