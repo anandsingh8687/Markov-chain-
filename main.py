@@ -1859,10 +1859,7 @@ def build_tasks(st, plan):
         bi += 1
     for _ in range(min(max(0, need_past), max(0, len(build_empties) - bi))):
         add({"pos": build_empties[bi], "op": ["BUILD_PASTURE"], "kind": "BUILD",
-             # Dual: 0.4 * milk * days ≈ $1440, tying melon sow. 0.30
-             # lets nearby WATER/sow win; inflight=1 still reserved the
-             # tiles and paved empty sheds. Value only, same reserve.
-             "value": 0.30 * plan.price_hint.get("MILK", 160) * max(1, days_left - 8)})
+             "value": 0.4 * plan.price_hint.get("MILK", 160) * max(1, days_left - 8)})
         bi += 1
 
     st._empties = empties
@@ -1987,7 +1984,10 @@ class KaggricultureAgent(object):
                 abs(workers[k][0] - s[0]) + abs(workers[k][1] - s[1]) for s in shed_tiles))
             wpos = workers[i]
             dst, _ = self._nearest(wpos, shed_tiles)
-            n = int(min(8, need_wheat, st.shed.get("WHEAT", 0)))
+            # Dual: 12-unit pickup stole sow. 8 is keep. 7 leaves one
+            # wheat in the shed for a second feeder instead of loading
+            # the nearest walker to the cap.
+            n = int(min(7, need_wheat, st.shed.get("WHEAT", 0)))
             actions[i] = self._goto_or(wpos, dst, ["PICKUP", "WHEAT", n])
             free_idx = [k for k in free_idx if k != i]
 
