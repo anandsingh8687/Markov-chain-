@@ -2183,10 +2183,7 @@ class KaggricultureAgent(object):
         short = max(short, 3 * (herd + 2) - st.wheat_held())
         if short > 0 and (herd > 0 or plan.animal_targets.get("GOOSE", 0) > 0):
             price = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
-            # Pickup 12 and COLLECT 0.55 stole sow walks. Buy a bit more
-            # market wheat (16→20) so the herd eats without extra field
-            # trips. Keep $400 float.
-            afford = int(min(max(short, 1), max(0.0, budget - 400) // max(1.0, price), 20))
+            afford = int(min(max(short, 1), max(0.0, budget - 400) // max(1.0, price), 16))
             if afford > 0:
                 budget = _spend(core, ["BUY_PRODUCT", "WHEAT", afford], afford * price)
                 pending_wheat = afford
