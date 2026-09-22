@@ -1962,14 +1962,19 @@ class KaggricultureAgent(object):
                     if d <= 3:
                         actions[i] = self._goto_or(wpos, dst, ["FERTILIZE"])
                         continue
-            produce = sum(int(v or 0) for k, v in inv.items()
-                          if k in PRODUCTS)
+            # Wheat/fertilizer in PRODUCTS used to count toward produce>=4, so
+            # an 8-wheat pickup immediately walked back to DROP and bounced
+            # the ration. Harvest goods still drop at 4; hour>=18 still
+            # dumps everything (hands wipe at EOD).
+            harvest = sum(int(v or 0) for k, v in inv.items()
+                          if k in PRODUCTS and k not in ("WHEAT", "FERTILIZER"))
+            cargo = harvest + int(inv.get("WHEAT", 0) or 0) + int(inv.get("FERTILIZER", 0) or 0)
             near_crit = any(
                 abs(t["pos"][0] - wpos[0]) + abs(t["pos"][1] - wpos[1]) <= 1
                 and t["value"] >= CRITICAL for t in tasks)
-            deliver = (produce >= 4 or st.hour >= 18 or self.gate.armed
+            deliver = (harvest >= 4 or st.hour >= 18 or self.gate.armed
                        or st.shed_total > SHED_CAPACITY * 0.80)
-            if produce > 0 and deliver and not near_crit:
+            if cargo > 0 and deliver and not near_crit:
                 dst, _ = self._nearest(wpos, shed_tiles)
                 actions[i] = self._goto_or(wpos, dst, ["DROP"])
                 continue
@@ -2110,12 +2115,6 @@ class KaggricultureAgent(object):
                     # from dumping this premium, sell our lot first.
                     if st.opp_imminent.get(prod, 0) > 0:
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
-                    # 9068 stood 4 sheep into wool $189. Sheep-below-base cap
-                    # never bound (the 4th head was already placed). Dump the
-                    # oversupplied lot to the bank; scarce wool stays at *2.
-                    quote = Econ.price(prod, inv)
-                    if prod == "WOOL" and quote < MARKET_PARAMS["WOOL"]["base"]:
-                        n = int(min(held, sellable or held, max(n, 6)))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
             if n > 0:
