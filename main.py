@@ -2071,7 +2071,9 @@ class KaggricultureAgent(object):
         # selling the log-curve staple and the till died. Keep the
         # 2-per-head ration.
 
-        cash_tight = st.money < 1400 or (
+        # 1400 left mid-cash on the table while cows waited. Dump staples
+        # into the till below 1800; wheat reserve still holds n_animals*3.
+        cash_tight = st.money < 1800 or (
             st.next_land_cost is not None and st.money < st.next_land_cost + 300)
         orders = []
         for prod in PRODUCTS:
@@ -2183,9 +2185,7 @@ class KaggricultureAgent(object):
         short = max(short, 3 * (herd + 2) - st.wheat_held())
         if short > 0 and (herd > 0 or plan.animal_targets.get("GOOSE", 0) > 0):
             price = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
-            # Cap 16 saturates market wheat. 12 still covers the living
-            # herd; leftover wheat seeds stay the replant stock.
-            afford = int(min(max(short, 1), max(0.0, budget - 400) // max(1.0, price), 12))
+            afford = int(min(max(short, 1), max(0.0, budget - 400) // max(1.0, price), 16))
             if afford > 0:
                 budget = _spend(core, ["BUY_PRODUCT", "WHEAT", afford], afford * price)
                 pending_wheat = afford
