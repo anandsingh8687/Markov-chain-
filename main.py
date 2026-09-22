@@ -1235,10 +1235,7 @@ class MPCRevenueEngine:
             elif cap_c <= 0:
                 p.animal_targets.pop("COW", None)
             if wool_ok:
-                # 4th sheep needs a spare pasture after cows are up.
-                # Floor-only was a no-op; sheep-before-cow delayed milk
-                # (9017 14→10 cows, floor $55.2k, self-play $37k).
-                sh_floor = min(4, cap_sh)
+                sh_floor = min(3, cap_sh)
                 sh_hi = cap_sh
                 # Wool often printed +oversupply at $116–$189 while strawberry
                 # sat −400 at $300. Cap sheep at 4 unless the quote is still
@@ -1652,6 +1649,8 @@ def build_tasks(st, plan):
     empties = []
     animals_unfed = 0
     on_board = {c: 0 for c in CROPS}
+    fert_held = sum(int(inv.get("FERTILIZER", 0) or 0)
+                    for inv in (st.inventories or []))
 
     for y, row in enumerate(st.tiles):
         for x, tile in enumerate(row):
@@ -1753,7 +1752,12 @@ def build_tasks(st, plan):
                 if units_now > 0:
                     add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                          "value": units_now * price})
-                if tile.get("fertilizer_available"):
+                if tile.get("fertilizer_available") and fert_held < 1:
+                    # Always-on COLLECT at 0.85 is keep; hour-gating dried
+                    # the till. Adjacent COLLECT ($85) beats far WATER
+                    # (~$66 after GAMMA^4). Skip once a worker already
+                    # carries fertilizer so the extra trip does not steal
+                    # 9017 wheat water.
                     add({"pos": pos, "op": ["COLLECT_FERTILIZER"], "kind": "COLLECT",
                          "value": 0.85 * plan.price_hint.get("FERTILIZER", 100)})
                 continue
@@ -1793,14 +1797,6 @@ def build_tasks(st, plan):
         st.wheat_held() >= 2 or shed_p > 0 or st.n_animals >= 2)
     if not can_stock_pasture and shed_p <= 0:
         need_past = 0
-    sheep_n = st.animals_alive.get("SHEEP", 0) + int(st.shed.get("SHEEP", 0) or 0)
-    cow_n = st.animals_alive.get("COW", 0) + int(st.shed.get("COW", 0) or 0)
-    # Cow-first fills every pasture, then empty_for=0 skips the 4th sheep.
-    # Sheep-before-cow (1d592e5) delayed milk. After 12 cows, pave one
-    # spare so the keep cap of 4 can land. 9017 already has 4 — no-op there.
-    if (sheep_n < 4 and cow_n >= 12 and empty_past < 1 and can_stock_pasture
-            and target_s >= 3):
-        need_past = max(need_past, 1)
     reserve_n = min(need_coops + need_past, len(empties))
     # Build next to the shed. Last-empties on a 75-tile board are SW, a
     # 9-step walk, so a dusk DROP used to bounce the cow and pave 15 sheds.
