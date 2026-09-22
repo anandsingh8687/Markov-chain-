@@ -951,10 +951,7 @@ class MPCRevenueEngine:
     """
 
     REPLAN_EVERY = 8
-    # Dual: raise KKT mu floor. BISECT 20 was no-op vs starter (EXPAND
-    # floors dominate) but dipped PR1. opp-flow 0.80 was starter/scaler/PR1
-    # identical (self-play only). Collapse family never bound.
-    MU_LO, MU_HI = 1.0, 4000.0
+    MU_LO, MU_HI = 0.5, 4000.0
     BISECT = 26
 
     def __init__(self, elasticity):
@@ -1147,7 +1144,10 @@ class MPCRevenueEngine:
         # local-optima agent starves itself of cash and never buys land.
         # Premium goods keep the KKT reserve so we do not walk them to $1.
         staple_frac = {
-            "WHEAT": 0.40, "CARROT": 0.40, "EGG": 0.40, "FERTILIZER": 0.45,
+            # Dual: wheat sell floor 0.40→0.35. MU_LO 1.0 / BISECT 20 /
+            # collapse / opp-flow never bound vs these opponents. Quotes
+            # sit ~$50 so this only fires if the log book actually dips.
+            "WHEAT": 0.35, "CARROT": 0.40, "EGG": 0.40, "FERTILIZER": 0.45,
             "TOMATO": 0.50,
         }
         for prod in PRODUCTS:
