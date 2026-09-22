@@ -1316,6 +1316,12 @@ class MPCRevenueEngine:
                 have_w = int(p.crop_mix.get("WHEAT", 0) or 0)
                 p.crop_mix["WHEAT"] = have_w + left
 
+        if p.phase == "HARVEST" and days_left >= 5:
+            # Morning trickle plants from crop_mix. Force a wheat hole so the
+            # two idle tiles are feed (log absorb), not leftover carrot onto
+            # the starter book.
+            p.crop_mix["WHEAT"] = max(int(p.crop_mix.get("WHEAT", 0) or 0), 2)
+
         if not p.crop_mix and not p.animal_targets and days_left >= 4:
             fallback = "WHEAT" if product_contested(st, "CARROT") else "CARROT"
             p.crop_mix[fallback] = max(1, st.usable_tiles // 2)
@@ -1808,11 +1814,19 @@ def build_tasks(st, plan):
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
-    if plan.phase in ("HARVEST", "LIQUIDATE"):
-        # Late sow is how 36 melon became 26 weeds after harvest on seed 9051.
-        # Re-enabled HARVEST wheat sow (693afb2) cut median $65k → $58k with
-        # 6–8 end weeds. Keep the field as of turn 500.
+    if plan.phase == "LIQUIDATE":
         spare = 0
+    elif plan.phase == "HARVEST":
+        # Ungated HARVEST sow made 6–8 end weeds. A weeds==0 trickle never
+        # bound (mid already 1–4 weeds). Fill wheat/carrot holes only after
+        # today's plants are watered, before hour 12, two tiles — idle
+        # tile-days after turn 500 are the remaining book, not extra labour
+        # stolen from dawn WATER.
+        if (st.n_unwatered == 0 and st.hour <= 12 and st.n_weeds < 8
+                and days_left >= 5):
+            spare = max(0, min(2, sow_this_hour, plant_slots(st) - st.n_plants))
+        else:
+            spare = 0
     plant_empties = plant_empties[:spare]
 
     # crop_mix is a standing target, not a per-turn quota. Replanting the
