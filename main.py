@@ -952,10 +952,7 @@ class MPCRevenueEngine:
 
     REPLAN_EVERY = 8
     MU_LO, MU_HI = 0.5, 4000.0
-    # Dual: T-6 flatten and STAGES 8 never bound (shed already empty).
-    # Coarser KKT (26→20) can shift the water-fill mix. REPLAN_EVERY
-    # stays 8. Noon replan is not retried.
-    BISECT = 20
+    BISECT = 26
 
     def __init__(self, elasticity):
         self.el = elasticity
@@ -1253,7 +1250,7 @@ class MPCRevenueEngine:
                 int(p.animal_targets.get("COW", 0) or 0)
                 + int(p.animal_targets.get("SHEEP", 0) or 0)
             )
-            g_lo = min(4 if pasture_on else 8, cap_g)
+            g_lo = min(3 if pasture_on else 8, cap_g)
             g_hi = min(6 if pasture_on else 12, cap_g)
             p.animal_targets["GOOSE"] = min(
                 max(int(p.animal_targets.get("GOOSE", 0) or 0), g_lo), g_hi)
@@ -1357,7 +1354,7 @@ class MPCRevenueEngine:
                 + int(p.animal_targets.get("SHEEP", 0) or 0)
             )
             cap_g = goose_cap(st)
-            g_lo = min(4 if pasture_on else 8, cap_g)
+            g_lo = min(3 if pasture_on else 8, cap_g)
             if overflow > 0:
                 have_g = int(p.animal_targets.get("GOOSE", 0) or 0)
                 take = min(overflow, max(0, have_g - g_lo))
