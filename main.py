@@ -588,7 +588,10 @@ class BayesianElasticityFilter:
     """
 
     WINDOW = 12
-    COLLAPSE_FRAC = 0.15
+    # Dual: 15%→20% so a noisy 12-turn drop does not vacate a still-alive
+    # book. Wheat-holder FEED-first dropped every starter seed (floor
+    # $53.9k); holders still take feed_left + field_tasks.
+    COLLAPSE_FRAC = 0.20
 
     def __init__(self):
         self.mu = {p: 0.0 for p in PRODUCTS}
@@ -2041,15 +2044,7 @@ class KaggricultureAgent(object):
                 claimed.add(id(t))
                 actions[i] = self._goto_or(workers[i], t["pos"], t["op"])
 
-        # Dual: wheat holders take FEED first so melon HARVEST ($1500)
-        # cannot leave unfed animals assigned to empty-handed workers
-        # (those PASSed). Off-window WATER 0.50 crashed 9000 −$10.8k;
-        # WATER stays quote / 0.35.
-        _apply(holders, feed_left)
-        leftover_h = [i for i in holders if actions[i] == ["PASS"]]
-        for i in leftover_h:
-            actions[i] = None
-        _apply(leftover_h, field_tasks)
+        _apply(holders, feed_left + field_tasks)
         remain = [t for t in field_tasks if id(t) not in claimed]
         _apply(others, remain)
 
