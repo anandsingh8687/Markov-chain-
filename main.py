@@ -1051,7 +1051,7 @@ class MPCRevenueEngine:
                 # most starter seeds.
                 if shops_w.get("STRAWBERRY", 0) >= 1 or quote_s >= 0.85 * MARKET_PARAMS["STRAWBERRY"]["base"]:
                     candidates.append("STRAWBERRY")
-                if phase == "COMPOUND" and shops_w.get("TOMATO", 0) >= 2 and days_left >= 13:
+                if phase == "COMPOUND" and shops_w.get("TOMATO", 0) >= 3 and days_left >= 13:
                     candidates.append("TOMATO")
         for prod in candidates:
             if prod in ("WHEAT", "EGG"):
@@ -1393,7 +1393,7 @@ class MPCRevenueEngine:
             + int(p.animal_targets.get("SHEEP", 0) or 0)
             + int(st.n_animals or 0)
         )
-        p.wheat_reserve = max(herd * 1, st.n_animals * 2)
+        p.wheat_reserve = max(herd * 2, st.n_animals * 3)
 
         # Cap crop mix to plants we can actually water.
         slots = plant_slots(st)
@@ -2066,7 +2066,7 @@ class KaggricultureAgent(object):
         days_left = max(0, DAYS - st.day)
         herd = st.n_animals
         reserve_wheat = plan.wheat_reserve if not self.gate.armed else 0
-        reserve_wheat = max(reserve_wheat, herd * 1)
+        reserve_wheat = max(reserve_wheat, herd * (1 if self.gate.armed else 2))
         # herd*5 reserve (ca910d7) collapsed 9017 to $9.5k: we stopped
         # selling the log-curve staple and the till died. Keep the
         # 2-per-head ration.
