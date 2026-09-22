@@ -1432,10 +1432,6 @@ class MPCRevenueEngine:
         # 12 hires/day costs fib(0..11) ≈ 376. 18/day costs ≈ 6765.
         # Full intended crew (a7d18c0) cut 9034 $73.9k → $57.5k (cows 14→9).
         p.target_hands = intended_crew(st) - 1
-        # HARVEST does not sow. 11 dawn HIREs take the same 10-order
-        # slots skip-BUY_SEED (995f785) freed for rest_sells. Cap 8.
-        if p.phase in ("HARVEST", "LIQUIDATE"):
-            p.target_hands = min(int(p.target_hands or 0), 8)
         return p
 
 
@@ -1771,7 +1767,9 @@ def build_tasks(st, plan):
     target_p = target_c + target_s
     # Structures lead living animals by at most 2. Targeting 24 geese and
     # reserving `target - n_coops` paved 19 empty sheds on seed 9000.
-    inflight = 2
+    # A second empty shed is a WATER walk we already cannot spare
+    # (HARVEST-hire-cap-8 died from lost field labor). Lead by 1.
+    inflight = 1
     shed_g = int(st.shed.get("GOOSE", 0) or 0)
     shed_p = int(st.shed.get("COW", 0) or 0) + int(st.shed.get("SHEEP", 0) or 0)
     alive_g = st.animals_alive["GOOSE"]
