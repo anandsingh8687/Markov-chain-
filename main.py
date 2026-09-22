@@ -412,8 +412,7 @@ def live_buy_land(st, plan=None):
     days_left = max(0, DAYS - int(getattr(st, "day", 0) or 0))
     if cost <= 1000:
         flagged = True if plan is None else bool(getattr(plan, "buy_land", False))
-        # 7–10 weeds on NE buy left DIG to steal the new 25. Wait.
-        return flagged and hands >= 4 and weeds <= 6 and money > cost + 400
+        return flagged and hands >= 4 and weeds <= 10 and money > cost + 400
     if cost <= 2000:
         # Dawn/pack SW vs starter never fired (four CI runs locked=50).
         # Vs scaler it bought and sat empty: 58 empties, $40k→$37k.
@@ -951,7 +950,9 @@ class MPCRevenueEngine:
     Turn 650+    LIQUIDATE : gateway owns the book; field work is harvest/drop.
     """
 
-    REPLAN_EVERY = 8
+    # 4 overfit the mid-book and nicked the floor. 10 holds the mix
+    # two extra hours so KKT does not flip leftover carrot/wheat.
+    REPLAN_EVERY = 10
     MU_LO, MU_HI = 0.5, 4000.0
     BISECT = 26
 
@@ -1421,7 +1422,7 @@ class MPCRevenueEngine:
             if next_cost <= 1000:
                 p.buy_land = (
                     hands >= 4
-                    and getattr(st, "n_weeds", 0) <= 6
+                    and getattr(st, "n_weeds", 0) <= 10
                     and cashish > next_cost + 400
                 )
             elif next_cost <= 2000:
