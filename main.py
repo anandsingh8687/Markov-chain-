@@ -1989,30 +1989,28 @@ class KaggricultureAgent(object):
             free_idx = [k for k in free_idx if k != i]
 
         pending_animals = []
-        if any(k == "PASTURE" for _, k in empty_structs):
-            if st.shed.get("COW", 0):
-                pending_animals.append("COW")
-            if st.shed.get("SHEEP", 0):
-                pending_animals.append("SHEEP")
-        if st.shed.get("GOOSE", 0):
-            pending_animals.append("GOOSE")
+        # Dawn pickup sent a walker to the shed during the sow/WATER burst
+        # (nearest-shed 04d460e: 9051 -$4.8k, scaler 9000 -$22k). Animals
+        # bought last turn wait in the shed; first-yield is days, not hours.
+        if st.hour > 4:
+            if any(k == "PASTURE" for _, k in empty_structs):
+                if st.shed.get("COW", 0):
+                    pending_animals.append("COW")
+                if st.shed.get("SHEEP", 0):
+                    pending_animals.append("SHEEP")
+            if st.shed.get("GOOSE", 0):
+                pending_animals.append("GOOSE")
         for pending_animal in pending_animals:
             if not free_idx:
                 break
             want = ANIMAL_STRUCTURE[pending_animal]
             if not any(k == want for _, k in empty_structs):
                 continue
-            # Wheat pickup already takes the worker closest to the shed.
-            # free_idx[0] was often the farmer across the field, a 6–8 step
-            # walk while a hand stood next to the shed. Shorter trip, not
-            # an extra one.
-            i = min(free_idx, key=lambda k: min(
-                abs(workers[k][0] - s[0]) + abs(workers[k][1] - s[1])
-                for s in shed_tiles))
+            i = free_idx[0]
             wpos = workers[i]
             dst, _ = self._nearest(wpos, shed_tiles)
             actions[i] = self._goto_or(wpos, dst, ["PICKUP", pending_animal, 1])
-            free_idx = [k for k in free_idx if k != i]
+            free_idx = free_idx[1:]
 
         if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 10
                 and plan.phase in ("EXPAND", "COMPOUND")):
