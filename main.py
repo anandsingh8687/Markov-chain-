@@ -951,7 +951,10 @@ class MPCRevenueEngine:
     """
 
     REPLAN_EVERY = 8
-    MU_LO, MU_HI = 0.5, 4000.0
+    # Dual: raise KKT mu floor. BISECT 20 was no-op vs starter (EXPAND
+    # floors dominate) but dipped PR1. opp-flow 0.80 was starter/scaler/PR1
+    # identical (self-play only). Collapse family never bound.
+    MU_LO, MU_HI = 1.0, 4000.0
     BISECT = 26
 
     def __init__(self, elasticity):
@@ -2089,11 +2092,8 @@ class KaggricultureAgent(object):
                     opp_imminent=st.opp_imminent.get(prod, 0.0))
             else:
                 floor = plan.reserve.get(prod, 1.0)
-                # Dual: dump a bit more into a book they already occupy.
-                # Collapse WINDOW 8 / FRAC 0.20 never bound. vs starter
-                # opp premium flow is often 0; this is for scaler/PR1.
                 if st.opp_flow.get(prod, 0) > 0 and prod in PREMIUM:
-                    floor *= 0.80
+                    floor *= 0.88
                 if st.stance == "LOCK" and prod in PREMIUM:
                     floor *= 1.08
                 elif st.stance == "CONTEST" and prod in PREMIUM:
