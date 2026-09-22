@@ -1804,7 +1804,7 @@ def build_tasks(st, plan):
     labor = effective_labor(st)
     hours_left = max(0, 22 - st.hour)
     sow_this_hour = max(0, labor // 2) if st.hour <= 16 else 0
-    if st.hour <= 12 and len(empties) >= 8:
+    if st.hour <= 12 and len(empties) >= 6:
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
