@@ -1316,12 +1316,6 @@ class MPCRevenueEngine:
                 have_w = int(p.crop_mix.get("WHEAT", 0) or 0)
                 p.crop_mix["WHEAT"] = have_w + left
 
-        if p.phase == "HARVEST" and days_left >= 5:
-            # Morning trickle plants from crop_mix. Force a wheat hole so the
-            # two idle tiles are feed (log absorb), not leftover carrot onto
-            # the starter book.
-            p.crop_mix["WHEAT"] = max(int(p.crop_mix.get("WHEAT", 0) or 0), 2)
-
         if not p.crop_mix and not p.animal_targets and days_left >= 4:
             fallback = "WHEAT" if product_contested(st, "CARROT") else "CARROT"
             p.crop_mix[fallback] = max(1, st.usable_tiles // 2)
@@ -1814,19 +1808,11 @@ def build_tasks(st, plan):
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
-    if plan.phase == "LIQUIDATE":
+    if plan.phase in ("HARVEST", "LIQUIDATE"):
+        # Late sow is how 36 melon became 26 weeds after harvest on seed 9051.
+        # Re-enabled HARVEST wheat sow (693afb2) cut median $65k → $58k with
+        # 6–8 end weeds. Keep the field as of turn 500.
         spare = 0
-    elif plan.phase == "HARVEST":
-        # Ungated HARVEST sow made 6–8 end weeds. A weeds==0 trickle never
-        # bound (mid already 1–4 weeds). Fill wheat/carrot holes only after
-        # today's plants are watered, before hour 12, two tiles — idle
-        # tile-days after turn 500 are the remaining book, not extra labour
-        # stolen from dawn WATER.
-        if (st.n_unwatered == 0 and st.hour <= 12 and st.n_weeds < 8
-                and days_left >= 5):
-            spare = max(0, min(2, sow_this_hour, plant_slots(st) - st.n_plants))
-        else:
-            spare = 0
     plant_empties = plant_empties[:spare]
 
     # crop_mix is a standing target, not a per-turn quota. Replanting the
@@ -2217,10 +2203,14 @@ class KaggricultureAgent(object):
             land_now = False
 
         if not staff_first:
+            # HARVEST/LIQUIDATE do not sow. Core BUY_SEED still spent a
+            # 10-order slot on unused wheat while standing crops came off
+            # the field, crowding rest_sells in the dump window.
+            sow_seeds = plan.phase not in ("HARVEST", "LIQUIDATE")
             # $56k floor seeds had 4 wheat on 24 animals: strawberry/melon
             # seeds took the 10-order cap. Feed seeds first.
             want_w = int(plan.crop_mix.get("WHEAT", 0) or 0)
-            if want_w >= 2:
+            if sow_seeds and want_w >= 2:
                 have_w = int(st.seeds.get("WHEAT", 0) or 0) + int(st.crops_alive.get("WHEAT", 0) or 0)
                 # Egg dump was bit-identical (staples already sell).
                 # 9017 mid wheat is 6; want is 12. Seed cap 16 can
@@ -2231,7 +2221,7 @@ class KaggricultureAgent(object):
                 if afford_w > 0:
                     budget = _spend(core, ["BUY_SEED", "WHEAT", afford_w], afford_w * cost_w)
 
-            for crop in ("STRAWBERRY", "MELON"):
+            for crop in ("STRAWBERRY", "MELON") if sow_seeds else ():
                 want = int(plan.crop_mix.get(crop, 0) or 0)
                 if want <= 0:
                     continue
@@ -2336,7 +2326,7 @@ class KaggricultureAgent(object):
                 budget = _spend(core, ["BUY_LAND"], st.next_land_cost)
 
             seed_order = ("STRAWBERRY", "MELON", "WHEAT", "CARROT", "TOMATO")
-            for crop in seed_order:
+            for crop in seed_order if sow_seeds else ():
                 want = plan.crop_mix.get(crop, 0)
                 spec = CROPS[crop]
                 need_days = 11 if crop == "MELON" else spec["max_day"] + 1
