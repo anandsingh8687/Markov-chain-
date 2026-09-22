@@ -2092,10 +2092,7 @@ class KaggricultureAgent(object):
                 if st.opp_flow.get(prod, 0) > 0 and prod in PREMIUM:
                     floor *= 0.88
                 if st.stance == "LOCK" and prod in PREMIUM:
-                    # CONTEST 0.85 never fired vs starter (we are ahead).
-                    # 1.08 held premium while the score is bank coins.
-                    # 1.04 still protects the book without the shop-tick hold.
-                    floor *= 1.04
+                    floor *= 1.08
                 elif st.stance == "CONTEST" and prod in PREMIUM:
                     floor *= 0.78
                 if cash_tight and prod in STAPLES:
@@ -2232,7 +2229,9 @@ class KaggricultureAgent(object):
                 standing = int(st.crops_alive.get(crop, 0) or 0)
                 need = max(0, min(want, 6) - have - standing)
                 cost = SEED_COST[crop]
-                keep = 400
+                # 400 let melon/straw seeds spend the last cow float.
+                # 500 still fills a 4-tile block and leaves a BUY_ANIMAL.
+                keep = 500
                 afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
                 if afford > 0:
                     budget = _spend(core, ["BUY_SEED", crop, afford], afford * cost)
@@ -2337,13 +2336,13 @@ class KaggricultureAgent(object):
                 if need <= 0:
                     continue
                 cost = SEED_COST[crop]
-                keep = 400
+                keep = 500
                 if crop == "MELON":
                     geese_need = max(0, goose_buy_cap(st, plan) - st.animals_alive.get("GOOSE", 0))
                     keep = max(keep, 250 + 300 * min(2, geese_need))
                 elif crop == "STRAWBERRY":
                     # 34 strawberry seeds at $100 left seed 9051 with $9 and 7 hands.
-                    keep = 400
+                    keep = 500
                     need = min(need, 6)
                 afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
                 if afford > 0:
