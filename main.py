@@ -259,7 +259,10 @@ def effective_labor(st):
     arrived = 1 + len(getattr(st, "hands", []) or [])
     hour = int(getattr(st, "hour", 0) or 0)
     intended = intended_crew(st)
-    if hour <= 3 and arrived < intended:
+    # Dual: keep planning the mix off the crew that is still landing
+    # through hour 4. Dist cap 8 crushed self-play $51k→$42k and peak
+    # $74.2k→$67.6k; assignment GAMMA stays uncapped at LOOKAHEAD*4.
+    if hour <= 4 and arrived < intended:
         return intended
     return max(1, arrived)
 
@@ -890,10 +893,7 @@ class LaborAssigner:
             for t in tasks:
                 tx, ty = t["pos"]
                 dist = abs(tx - wx) + abs(ty - wy)
-                # Dual: LOOKAHEAD*4=12 never binds on NE (diameter ~9–10).
-                # LOOKAHEAD 4 was bit-identical. Cap at 8 so far WATER/HARVEST
-                # is not double-penalised. COMPOUND-at-220 cut 9000/9068 ~$7k.
-                row.append(-t["value"] * (self.GAMMA ** min(dist, 8)))
+                row.append(-t["value"] * (self.GAMMA ** min(dist, self.LOOKAHEAD * 4)))
             row.extend([0.0] * (m - len(tasks)))
             cost.append(row)
         try:
@@ -910,7 +910,7 @@ class LaborAssigner:
                 if i in taken:
                     continue
                 d = abs(t["pos"][0] - wx) + abs(t["pos"][1] - wy)
-                score = t["value"] * (self.GAMMA ** min(d, 8))
+                score = t["value"] * (self.GAMMA ** min(d, 12))
                 if best is None or score > best:
                     best, best_i = score, i
             if best_i >= 0:
