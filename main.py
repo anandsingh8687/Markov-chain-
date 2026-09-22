@@ -1735,10 +1735,10 @@ def build_tasks(st, plan):
                     # Blanket 2*price*3 stole WATER: 9051 wheat 13→6,
                     # weeds 1→7, floor $59.1k→$53.3k. 9085 jumped +$7k.
                     # Raise CARE only after today's plants are watered.
-                    if animal == "GOOSE":
-                        # Egg CARE at 0.95×base (~$47) still beats far
-                        # WATER after GAMMA^4. Goose-CARE-after-water was
-                        # a boost that failed; skip the cheap trip.
+                    # Skip-all goose CARE (a85c60d) dried mid-cash $10k→$0.4–2k.
+                    # Skip goose CARE only while plants are dry; keep 0.95×
+                    # once watered (no boost — goose-CARE-after-water failed).
+                    if animal == "GOOSE" and st.n_unwatered > 0:
                         care_val = None
                     elif animal == "COW" and st.n_unwatered == 0:
                         care_val = 2.0 * price * 3.0
