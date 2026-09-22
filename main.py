@@ -1240,7 +1240,11 @@ class MPCRevenueEngine:
                 # Wool often printed +oversupply at $116–$189 while strawberry
                 # sat −400 at $300. Cap sheep at 4 unless the quote is still
                 # 1.25× base; those tiles go to strawberry/wheat leftovers.
-                if quote_wo < 1.25 * MARKET_PARAMS["WOOL"]["base"]:
+                # 9068 keep stood 4 sheep into wool $189 (below base). Do not
+                # buy the 4th head once the book is already oversupplied.
+                if quote_wo < MARKET_PARAMS["WOOL"]["base"]:
+                    sh_hi = min(3, cap_sh)
+                elif quote_wo < 1.25 * MARKET_PARAMS["WOOL"]["base"]:
                     sh_hi = min(4, cap_sh)
                 p.animal_targets["SHEEP"] = min(
                     max(int(p.animal_targets.get("SHEEP", 0) or 0), sh_floor), sh_hi)
@@ -2010,17 +2014,12 @@ class KaggricultureAgent(object):
 
         if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 10
                 and plan.phase in ("EXPAND", "COMPOUND")):
-            # free_idx[0] is often the far farmer, so d<=2 never fires and
-            # shed fertilizer sits while a hand stands next to the shed.
-            # Only steal a worker already within 2 (not 04d460e nearest-anywhere).
-            i = min(free_idx, key=lambda k: min(
-                abs(workers[k][0] - s[0]) + abs(workers[k][1] - s[1])
-                for s in shed_tiles))
+            i = free_idx[0]
             wpos = workers[i]
             dst, d = self._nearest(wpos, shed_tiles)
             if d <= 2:
                 actions[i] = self._goto_or(wpos, dst, ["PICKUP", "FERTILIZER", 1])
-                free_idx = [k for k in free_idx if k != i]
+                free_idx = free_idx[1:]
 
         field_tasks = [t for t in tasks if t.get("need") != "WHEAT"]
         feed_left = [t for t in tasks if t.get("need") == "WHEAT"]
