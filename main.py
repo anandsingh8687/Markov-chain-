@@ -1707,25 +1707,11 @@ def build_tasks(st, plan):
                         # still harvests immediately.
                         at_peak = (crop == "MELON" and (units_now >= 6 or age >= 12)) or (
                             crop != "MELON" and age >= spec["max_day"])
-                        fertilized = int(tile.get("fertilized_until_day", -1) or -1) >= st.day
-                        cap = spec["max_yield"] if fertilized else PLAIN_CAP.get(
-                            crop, spec["max_yield"])
-                        # Peak HARVEST ($216 wheat / $1500 melon) outbids the
-                        # same-day WATER that still prints the last unit.
-                        # Wait for watered_today or the cap. Hour>=14 wheat
-                        # hold starved the herd (floor $56k→$53.5k).
-                        wait_water = (
-                            at_peak
-                            and not watered
-                            and unwatered == 0
-                            and units_now < cap
-                            and age <= spec["max_day"]
-                            and days_left > 1
-                            and plan.phase != "LIQUIDATE"
-                            and not (crop == "WHEAT" and st.hour >= 14)
-                        )
-                        if (at_peak or age > spec["max_day"] or days_left <= 1
-                                or plan.phase == "LIQUIDATE") and not wait_water:
+                        if at_peak or age > spec["max_day"] or days_left <= 1 or plan.phase == "LIQUIDATE":
+                            # Holding ripe wheat after hour 14 cut the
+                            # starter floor $56k → $53.5k: seed 9051 milk
+                            # died at $175 (cows ate shed wheat we refused
+                            # to replenish) and weeds rose on 9017/9068.
                             urg = 1.7 if age > spec["max_day"] else 1.0
                             add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                                  "value": units_now * price * urg})
@@ -1765,8 +1751,19 @@ def build_tasks(st, plan):
                     add({"pos": pos, "op": ["CARE"], "kind": "CARE",
                          "value": care_val})
                 if units_now > 0:
-                    add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
-                         "value": units_now * price})
+                    # First pulse is 1 unit. CARE then stacks the interval
+                    # bonus on the vine. Picking the singleton spends a
+                    # worker-turn that could WATER; wait for 2. Goose
+                    # interval is 1 and eggs are cheap — leave those.
+                    hold_pulse = (
+                        animal in ("COW", "SHEEP")
+                        and units_now < 2
+                        and days_left > 2
+                        and plan.phase != "LIQUIDATE"
+                    )
+                    if not hold_pulse:
+                        add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
+                             "value": units_now * price})
                 if tile.get("fertilizer_available"):
                     add({"pos": pos, "op": ["COLLECT_FERTILIZER"], "kind": "COLLECT",
                          "value": 0.85 * plan.price_hint.get("FERTILIZER", 100)})
