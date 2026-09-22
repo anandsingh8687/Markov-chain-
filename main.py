@@ -1853,25 +1853,14 @@ def build_tasks(st, plan):
                  "value": max(1.0, net)})
 
     bi = 0
-    # Coops took the nearest shed tiles. Cows then walked farther.
-    # Hotter-pasture-first (bf51bc9) is a keep; give pastures the close
-    # slots when we need any.
-    n_past = min(max(0, need_past), len(build_empties))
-    n_coop = min(max(0, need_coops), max(0, len(build_empties) - n_past))
-    if need_past > 0:
-        for _ in range(n_past):
-            add({"pos": build_empties[bi], "op": ["BUILD_PASTURE"], "kind": "BUILD",
-                 "value": 0.4 * plan.price_hint.get("MILK", 160) * max(1, days_left - 8)})
-            bi += 1
-        for _ in range(n_coop):
-            add({"pos": build_empties[bi], "op": ["BUILD_COOP"], "kind": "BUILD",
-                 "value": 500 + 0.6 * plan.price_hint.get("EGG", 50) * max(1, days_left - 4)})
-            bi += 1
-    else:
-        for _ in range(min(max(0, need_coops), len(build_empties))):
-            add({"pos": build_empties[bi], "op": ["BUILD_COOP"], "kind": "BUILD",
-                 "value": 500 + 0.6 * plan.price_hint.get("EGG", 50) * max(1, days_left - 4)})
-            bi += 1
+    for _ in range(min(max(0, need_coops), len(build_empties))):
+        add({"pos": build_empties[bi], "op": ["BUILD_COOP"], "kind": "BUILD",
+             "value": 500 + 0.6 * plan.price_hint.get("EGG", 50) * max(1, days_left - 4)})
+        bi += 1
+    for _ in range(min(max(0, need_past), max(0, len(build_empties) - bi))):
+        add({"pos": build_empties[bi], "op": ["BUILD_PASTURE"], "kind": "BUILD",
+             "value": 0.4 * plan.price_hint.get("MILK", 160) * max(1, days_left - 8)})
+        bi += 1
 
     st._empties = empties
     st._animals_unfed = animals_unfed
@@ -2275,7 +2264,11 @@ class KaggricultureAgent(object):
 
             wheat_next = st.wheat_held() + pending_wheat
             g_cap_buy = goose_buy_cap(st, plan)
-            for animal in ("GOOSE", "COW", "SHEEP"):
+            # HARVEST already skips BUY_SEED (995f785). Sheep first=6 and
+            # goose first=4 still clear days_left<=first+2 at turn 500, so
+            # $300–$500 buys plus a core slot kept crowding rest_sells.
+            buy_animals = sow_seeds
+            for animal in ("GOOSE", "COW", "SHEEP") if buy_animals else ():
                 target = plan.animal_targets.get(animal, 0)
                 alive = st.animals_alive.get(animal, 0)
                 in_shed = int(st.shed.get(animal, 0) or 0)
