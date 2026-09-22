@@ -972,10 +972,7 @@ class MPCRevenueEngine:
             carrot_opp = int(peak.get("CARROT", 0) or 0)
         # A carrot-only opponent occupies that book from day 0. Leave
         # bootstrap as soon as the first carrot cycle has printed cash.
-        # Dual: vs starter leave BOOTSTRAP 8 turns earlier (72→64) so
-        # geese/cows start printing a third-day sooner. risk_lambda ±0.4
-        # crashed the floor (9051 −$4.7k, 9034 −$9k); clip stays ±0.6.
-        expand_from = 48 if carrot_opp >= 12 else 64
+        expand_from = 48 if carrot_opp >= 12 else 72
         if turn >= expand_from:
             return "EXPAND"
         return "BOOTSTRAP"
@@ -1121,7 +1118,10 @@ class MPCRevenueEngine:
             p.animal_targets = {}
             p.shadow_td = 20.0
             p.action_value = 8.0
-            p.target_hands = 8
+            # Dual: one extra dawn hire in BOOTSTRAP (fib(8)≈$34). Leaving
+            # EXPAND at turn 64 crashed 9000/9017/9034 (floor $51.4k);
+            # expand_from stays 72. This is carrot labour, not EXPAND rate.
+            p.target_hands = 9
             p.wheat_reserve = 0
             p.buy_land = False
             p.stance = "NEUTRAL"
