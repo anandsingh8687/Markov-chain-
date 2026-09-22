@@ -1967,7 +1967,10 @@ class KaggricultureAgent(object):
             near_crit = any(
                 abs(t["pos"][0] - wpos[0]) + abs(t["pos"][1] - wpos[1]) <= 1
                 and t["value"] >= CRITICAL for t in tasks)
-            deliver = (produce >= 4 or st.hour >= 18 or self.gate.armed
+            # DROP at 6 (c1efe1d) held walkers and cut the floor. 3 units
+            # is the other direction: milk/wool from watered CARE reach
+            # the shed one trip earlier. Still not a same-turn sell pack.
+            deliver = (produce >= 3 or st.hour >= 18 or self.gate.armed
                        or st.shed_total > SHED_CAPACITY * 0.80)
             if produce > 0 and deliver and not near_crit:
                 dst, _ = self._nearest(wpos, shed_tiles)
@@ -2221,11 +2224,6 @@ class KaggricultureAgent(object):
                 want = int(plan.crop_mix.get(crop, 0) or 0)
                 if want <= 0:
                     continue
-                # Melon has no shop. Buying more seed into inv>I0 restocks
-                # a book that already prints +12–+18. Live sow-skip crashed;
-                # this only skips the buy. Existing seeds still plant.
-                if crop == "MELON" and st.inventory.get("MELON", MARKET_I0) > MARKET_I0:
-                    continue
                 spec = CROPS[crop]
                 need_days = 11 if crop == "MELON" else spec["max_day"] + 1
                 if need_days > days_left:
@@ -2332,8 +2330,6 @@ class KaggricultureAgent(object):
                 spec = CROPS[crop]
                 need_days = 11 if crop == "MELON" else spec["max_day"] + 1
                 if want <= 0 or need_days > days_left:
-                    continue
-                if crop == "MELON" and st.inventory.get("MELON", MARKET_I0) > MARKET_I0:
                     continue
                 have = int(st.seeds.get(crop, 0) or 0)
                 standing = int(st.crops_alive.get(crop, 0) or 0)
