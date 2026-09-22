@@ -1853,14 +1853,25 @@ def build_tasks(st, plan):
                  "value": max(1.0, net)})
 
     bi = 0
-    for _ in range(min(max(0, need_coops), len(build_empties))):
-        add({"pos": build_empties[bi], "op": ["BUILD_COOP"], "kind": "BUILD",
-             "value": 500 + 0.6 * plan.price_hint.get("EGG", 50) * max(1, days_left - 4)})
-        bi += 1
-    for _ in range(min(max(0, need_past), max(0, len(build_empties) - bi))):
-        add({"pos": build_empties[bi], "op": ["BUILD_PASTURE"], "kind": "BUILD",
-             "value": 0.4 * plan.price_hint.get("MILK", 160) * max(1, days_left - 8)})
-        bi += 1
+    # Coops took the nearest shed tiles. Cows then walked farther.
+    # Hotter-pasture-first (bf51bc9) is a keep; give pastures the close
+    # slots when we need any.
+    n_past = min(max(0, need_past), len(build_empties))
+    n_coop = min(max(0, need_coops), max(0, len(build_empties) - n_past))
+    if need_past > 0:
+        for _ in range(n_past):
+            add({"pos": build_empties[bi], "op": ["BUILD_PASTURE"], "kind": "BUILD",
+                 "value": 0.4 * plan.price_hint.get("MILK", 160) * max(1, days_left - 8)})
+            bi += 1
+        for _ in range(n_coop):
+            add({"pos": build_empties[bi], "op": ["BUILD_COOP"], "kind": "BUILD",
+                 "value": 500 + 0.6 * plan.price_hint.get("EGG", 50) * max(1, days_left - 4)})
+            bi += 1
+    else:
+        for _ in range(min(max(0, need_coops), len(build_empties))):
+            add({"pos": build_empties[bi], "op": ["BUILD_COOP"], "kind": "BUILD",
+                 "value": 500 + 0.6 * plan.price_hint.get("EGG", 50) * max(1, days_left - 4)})
+            bi += 1
 
     st._empties = empties
     st._animals_unfed = animals_unfed
@@ -1956,14 +1967,9 @@ class KaggricultureAgent(object):
                                 and not CROPS.get(tile.get("crop"), {}).get("ongoing", True)
                                 and int(tile.get("fertilized_until_day", -1) or -1) < st.day
                                 and _age(st, tile) < CROPS[tile["crop"]]["max_day"]):
-                            fert_tiles.append((x, y, tile.get("crop")))
+                            fert_tiles.append((x, y))
                 if fert_tiles:
-                    # Skip-wheat-FERTILIZE died. Prefer melon/carrot when
-                    # both are in range; wheat still gets the stay otherwise.
-                    prefer = [(x, y) for x, y, c in fert_tiles if c != "WHEAT"]
-                    dst, d = self._nearest(wpos, prefer) if prefer else (None, 99)
-                    if dst is None or d > 3:
-                        dst, d = self._nearest(wpos, [(x, y) for x, y, _ in fert_tiles])
+                    dst, d = self._nearest(wpos, fert_tiles)
                     if d <= 3:
                         actions[i] = self._goto_or(wpos, dst, ["FERTILIZE"])
                         continue
