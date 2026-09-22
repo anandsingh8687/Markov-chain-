@@ -291,19 +291,7 @@ def goose_buy_cap(st, plan=None):
             int(plan.animal_targets.get("COW", 0) or 0)
             + int(plan.animal_targets.get("SHEEP", 0) or 0)
         ) > 0
-    cap = min(6 if pasture else 12, cap)
-    # Dual: stop adding geese once the living herd outruns the ration.
-    # Raising goose 6–8 added mouths and died. This freezes at 4 when
-    # wheat < 2 per head so cow FEED keeps the wheat field.
-    herd = int(getattr(st, "n_animals", 0) or 0)
-    wheat = 0
-    try:
-        wheat = int(st.wheat_held())
-    except Exception:
-        wheat = int((getattr(st, "shed", None) or {}).get("WHEAT", 0) or 0)
-    if herd >= 8 and wheat < 2 * herd:
-        cap = min(cap, 4)
-    return cap
+    return min(6 if pasture else 12, cap)
 
 
 def book_tiles(st, prod, frac=0.50):
@@ -1871,7 +1859,10 @@ def build_tasks(st, plan):
         bi += 1
     for _ in range(min(max(0, need_past), max(0, len(build_empties) - bi))):
         add({"pos": build_empties[bi], "op": ["BUILD_PASTURE"], "kind": "BUILD",
-             "value": 0.4 * plan.price_hint.get("MILK", 160) * max(1, days_left - 8)})
+             # Dual: 0.4 * milk * days ≈ $1440, tying melon sow. 0.30
+             # lets nearby WATER/sow win; inflight=1 still reserved the
+             # tiles and paved empty sheds. Value only, same reserve.
+             "value": 0.30 * plan.price_hint.get("MILK", 160) * max(1, days_left - 8)})
         bi += 1
 
     st._empties = empties
