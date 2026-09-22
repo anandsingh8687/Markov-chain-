@@ -1274,6 +1274,12 @@ class MPCRevenueEngine:
             # farm had 3 tiles at $347. Cap 6; leftover is not a dump.
             # max(kkt, 4) kept the KKT dump: scaler 9051 stood 25 straw.
             cap_s = min(6, book_tiles(st, "STRAWBERRY", 0.70))
+            # book_tiles ignores town regen, so an I0 fill looks like 2–3
+            # tiles. 9085 then stands 3 straw at $353. Floor 4 while the
+            # quote is alive; leftover still fills to cap_s. Do not raise
+            # the sow-order wheat quota (0e9a2f6 stole 9051 feed).
+            if cap_s > 0:
+                cap_s = max(cap_s, 4)
             if (cap_s > 0 and days_left >= 14 and quote_s >= 0.85 * MARKET_PARAMS["STRAWBERRY"]["base"]
                     and not product_contested(st, "STRAWBERRY")):
                 have_s = int(p.crop_mix.get("STRAWBERRY", 0) or 0)
@@ -1816,15 +1822,8 @@ def build_tasks(st, plan):
     planted = {c: 0 for c in CROPS}
     # Wheat harvests leave empties; price_hint then sows strawberry into
     # the feed block (3 wheat / 12 straw, 12 cows starving). Feed first.
-    # Wheat-only first also starves establishment: 9085 mid had 3 straw
-    # at $353 because every spare empty went back to wheat. Leave 2
-    # slots for strawberry until 4 stand, without cutting this-hour sow.
-    wheat_quota = want["WHEAT"]
-    if (days_left >= 14 and want.get("STRAWBERRY", 0) > 0
-            and on_board.get("STRAWBERRY", 0) < 4
-            and int(st.seeds.get("STRAWBERRY", 0) or 0) > 0
-            and spare >= 3):
-        wheat_quota = min(want["WHEAT"], max(2, spare - 2))
+    # Reserving this-hour wheat (0e9a2f6) cut 9051 wheat 13→8 and the
+    # floor $60.1k→$53.3k. 9085 straw stayed at 3 (plan cap, not sow).
     _sow_order = ["WHEAT"] + sorted(
         (k for k in want if k != "WHEAT"),
         key=lambda k: -plan.price_hint.get(k, 0),
@@ -1834,8 +1833,6 @@ def build_tasks(st, plan):
             crop = None
             for c in _sow_order:
                 if want[c] <= 0:
-                    continue
-                if c == "WHEAT" and planted["WHEAT"] >= wheat_quota:
                     continue
                 spec = CROPS[c]
                 need_days = 11 if c == "MELON" else (spec["max_day"] + 1 if not spec["ongoing"]
