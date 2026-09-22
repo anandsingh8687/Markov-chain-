@@ -1238,13 +1238,9 @@ class MPCRevenueEngine:
                 sh_floor = min(3, cap_sh)
                 sh_hi = cap_sh
                 # Wool often printed +oversupply at $116–$189 while strawberry
-                # sat −400 at $300. Cap at 4 below 1.25× still bought a 4th
-                # head at I0 (quote==base) and 9068/9085 finished oversupplied.
-                # Hold the 4th until wool is actually above base; leftover
-                # goes to straw/wheat. Do not unsell standing sheep.
-                if quote_wo < 1.05 * MARKET_PARAMS["WOOL"]["base"]:
-                    sh_hi = min(3, cap_sh)
-                elif quote_wo < 1.25 * MARKET_PARAMS["WOOL"]["base"]:
+                # sat −400 at $300. Cap sheep at 4 unless the quote is still
+                # 1.25× base; those tiles go to strawberry/wheat leftovers.
+                if quote_wo < 1.25 * MARKET_PARAMS["WOOL"]["base"]:
                     sh_hi = min(4, cap_sh)
                 p.animal_targets["SHEEP"] = min(
                     max(int(p.animal_targets.get("SHEEP", 0) or 0), sh_floor), sh_hi)
@@ -2114,7 +2110,10 @@ class KaggricultureAgent(object):
                     # from dumping this premium, sell our lot first.
                     if st.opp_imminent.get(prod, 0) > 0:
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
-                if st.shed_total > SHED_CAPACITY * 0.75:
+                # 0.75 dumped premiums on a 76-unit harvest pulse. Hold
+                # to 80 so the forced 12-lot waits for a real jam. Live,
+                # no extra cash, no extra walks.
+                if st.shed_total > SHED_CAPACITY * 0.80:
                     n = max(n, min(held, 12))
             if n > 0:
                 orders.append(["SELL", prod, int(n)])
