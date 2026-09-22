@@ -2327,7 +2327,9 @@ class KaggricultureAgent(object):
 
             # Density already bought melon into core (cap 6, mix at most 4).
             # Leftover MELON on the same snapshot is unused seed cash.
-            seed_order = ("STRAWBERRY", "WHEAT", "CARROT", "TOMATO")
+            # Tomato leftover is the same: density never buys it, and the
+            # mix rarely plants tomato vs starter.
+            seed_order = ("STRAWBERRY", "WHEAT", "CARROT")
             for crop in seed_order if sow_seeds else ():
                 want = plan.crop_mix.get(crop, 0)
                 spec = CROPS[crop]
