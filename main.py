@@ -1804,7 +1804,7 @@ def build_tasks(st, plan):
     labor = effective_labor(st)
     hours_left = max(0, 22 - st.hour)
     sow_this_hour = max(0, labor // 2) if st.hour <= 16 else 0
-    if st.hour <= 12 and len(empties) >= 8:
+    if st.hour <= 13 and len(empties) >= 8:
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
@@ -1959,7 +1959,7 @@ class KaggricultureAgent(object):
                             fert_tiles.append((x, y))
                 if fert_tiles:
                     dst, d = self._nearest(wpos, fert_tiles)
-                    if d <= 2:
+                    if d <= 3:
                         actions[i] = self._goto_or(wpos, dst, ["FERTILIZE"])
                         continue
             produce = sum(int(v or 0) for k, v in inv.items()
