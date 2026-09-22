@@ -1051,10 +1051,7 @@ class MPCRevenueEngine:
                 # most starter seeds.
                 if shops_w.get("STRAWBERRY", 0) >= 1 or quote_s >= 0.85 * MARKET_PARAMS["STRAWBERRY"]["base"]:
                     candidates.append("STRAWBERRY")
-                # HARVEST at 560 bought 13 geese after mid (9017 $59.8k→$41.4k).
-                # One pizza shop drains tomato. Requiring two shops left
-                # tomato off the KKT board on most seeds.
-                if phase == "COMPOUND" and shops_w.get("TOMATO", 0) >= 1 and days_left >= 13:
+                if phase == "COMPOUND" and shops_w.get("TOMATO", 0) >= 2 and days_left >= 13:
                     candidates.append("TOMATO")
         for prod in candidates:
             if prod in ("WHEAT", "EGG"):
@@ -2003,7 +2000,10 @@ class KaggricultureAgent(object):
             actions[i] = self._goto_or(wpos, dst, ["PICKUP", pending_animal, 1])
             free_idx = free_idx[1:]
 
-        if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 10
+        # Tomato-at-1-shop was bit-identical. BUY bags stole FEED.
+        # Collected bags sit in the shed after hour 10. Hour 14 still
+        # leaves WATER/sow the afternoon. Do not add a second walker.
+        if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 14
                 and plan.phase in ("EXPAND", "COMPOUND")):
             i = free_idx[0]
             wpos = workers[i]
