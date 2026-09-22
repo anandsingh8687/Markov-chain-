@@ -962,7 +962,10 @@ class MPCRevenueEngine:
     def phase_of(self, turn, st=None):
         if turn >= LIQUIDATION_TURN:
             return "LIQUIDATE"
-        if turn >= 500:
+        # 560 bought extra geese and cut the floor. 500 zeros sow at
+        # the mid snapshot (hour 20, empties 4–8). Dual: 520 so day-21
+        # dawn can still refill harvested wheat. HARVEST sow stays off.
+        if turn >= 520:
             return "HARVEST"
         if turn >= 240:
             return "COMPOUND"
@@ -2110,11 +2113,8 @@ class KaggricultureAgent(object):
                     # from dumping this premium, sell our lot first.
                     if st.opp_imminent.get(prod, 0) > 0:
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
-                # 0.80 held the pulse and crashed 9085. Keep the 75%
-                # trigger; ship 8 not 12 so one jam does not dump a
-                # full premium stack onto the book.
                 if st.shed_total > SHED_CAPACITY * 0.75:
-                    n = max(n, min(held, 8))
+                    n = max(n, min(held, 12))
             if n > 0:
                 orders.append(["SELL", prod, int(n)])
         orders.sort(key=lambda o: -Econ.price(o[1], st.inventory.get(o[1], MARKET_I0)) * o[2])
