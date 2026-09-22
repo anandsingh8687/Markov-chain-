@@ -1838,13 +1838,11 @@ def build_tasks(st, plan):
                 if want[c] <= 0:
                     continue
                 spec = CROPS[c]
-                need_days = 11 if c == "MELON" else (spec["max_day"] + 1 if not spec["ongoing"]
+                # Hold-melon-to-cap waits until age 12. need_days 11
+                # planted melons that never reached the cap.
+                need_days = 13 if c == "MELON" else (spec["max_day"] + 1 if not spec["ongoing"]
                                                      else spec["first"] + 3)
                 if need_days > days_left:
-                    continue
-                # Afternoon carrot misses same-day water more than wheat.
-                # Sow wheat/melon/straw until 16; plant carrot in the morning.
-                if c == "CARROT" and st.hour > 12:
                     continue
                 if st.seeds.get(c, 0) <= planted[c]:
                     continue
@@ -2239,7 +2237,7 @@ class KaggricultureAgent(object):
                 if want <= 0:
                     continue
                 spec = CROPS[crop]
-                need_days = 11 if crop == "MELON" else spec["max_day"] + 1
+                need_days = 13 if crop == "MELON" else spec["max_day"] + 1
                 if need_days > days_left:
                     continue
                 have = int(st.seeds.get(crop, 0) or 0)
@@ -2344,7 +2342,7 @@ class KaggricultureAgent(object):
             for crop in seed_order if sow_seeds else ():
                 want = plan.crop_mix.get(crop, 0)
                 spec = CROPS[crop]
-                need_days = 11 if crop == "MELON" else spec["max_day"] + 1
+                need_days = 13 if crop == "MELON" else spec["max_day"] + 1
                 if want <= 0 or need_days > days_left:
                     continue
                 have = int(st.seeds.get(crop, 0) or 0)
