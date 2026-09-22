@@ -874,11 +874,7 @@ def linear_assignment(cost, n, m):
 
 
 class LaborAssigner:
-    # Fertilizer pickup hour 14 was a no-op. Nearby CARE still beats
-    # distant melon after 0.72^d (cedbdb5 harvest urg stole FEED).
-    # 0.80^6 = 0.26 vs 0.72^6 = 0.14, so a peak melon can beat
-    # default CARE without raising harvest value.
-    GAMMA = 0.80
+    GAMMA = 0.72
     LOOKAHEAD = 3
 
     def assign(self, workers, tasks):
@@ -1749,8 +1745,12 @@ def build_tasks(st, plan):
                     add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                          "value": units_now * price})
                 if tile.get("fertilizer_available"):
+                    # GAMMA 0.80 stole 9034 wheat 15→7 ($74.1k→$47.2k).
+                    # Always-on COLLECT is a keep; 0.85*100 loses to CARE
+                    # on the same pasture. Price collect above default
+                    # CARE so bags land without BUY (9e52ae9 stole FEED).
                     add({"pos": pos, "op": ["COLLECT_FERTILIZER"], "kind": "COLLECT",
-                         "value": 0.85 * plan.price_hint.get("FERTILIZER", 100)})
+                         "value": 400.0})
                 continue
 
     # Structures first: planting every empty tile is how a goose target of 8
