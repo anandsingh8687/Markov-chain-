@@ -1694,14 +1694,8 @@ def build_tasks(st, plan):
                         in_window = (not spec["ongoing"]) and start <= age <= spec["max_day"]
                         # Daily water is cheap labour and protects the bonus.
                         bonus = price if in_window or spec["ongoing"] else 0.35 * price
-                        val = max(bonus, 0.3 * plan.action_value)
-                        # Young melon (0.35×$250) beat in-window wheat ($50)
-                        # and the feed block dried. Beat young melon only;
-                        # ripe melon WATER ($250) and dry CARE (~$285) stay first.
-                        if crop == "WHEAT":
-                            val = max(val, 1.15 * 0.35 * plan.price_hint.get("MELON", 250))
                         add({"pos": pos, "op": ["WATER"], "kind": "WATER",
-                             "value": val})
+                             "value": max(bonus, 0.3 * plan.action_value)})
 
                 if units_now > 0 and age >= spec["first"]:
                     if spec["ongoing"]:
@@ -2122,6 +2116,11 @@ class KaggricultureAgent(object):
                     # from dumping this premium, sell our lot first.
                     if st.opp_imminent.get(prod, 0) > 0:
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
+                    # Trickle left ripe melon in the shed (score is bank
+                    # only). Dump while the shop-less book is still near base.
+                    if (prod == "MELON"
+                            and Econ.price(prod, inv) >= 0.95 * MARKET_PARAMS["MELON"]["base"]):
+                        n = int(min(held, 40))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
             if n > 0:
