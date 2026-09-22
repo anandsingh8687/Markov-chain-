@@ -874,7 +874,11 @@ def linear_assignment(cost, n, m):
 
 
 class LaborAssigner:
-    GAMMA = 0.72
+    # Fertilizer pickup hour 14 was a no-op. Nearby CARE still beats
+    # distant melon after 0.72^d (cedbdb5 harvest urg stole FEED).
+    # 0.80^6 = 0.26 vs 0.72^6 = 0.14, so a peak melon can beat
+    # default CARE without raising harvest value.
+    GAMMA = 0.80
     LOOKAHEAD = 3
 
     def assign(self, workers, tasks):
@@ -2000,10 +2004,7 @@ class KaggricultureAgent(object):
             actions[i] = self._goto_or(wpos, dst, ["PICKUP", pending_animal, 1])
             free_idx = free_idx[1:]
 
-        # Tomato-at-1-shop was bit-identical. BUY bags stole FEED.
-        # Collected bags sit in the shed after hour 10. Hour 14 still
-        # leaves WATER/sow the afternoon. Do not add a second walker.
-        if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 14
+        if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 10
                 and plan.phase in ("EXPAND", "COMPOUND")):
             i = free_idx[0]
             wpos = workers[i]
