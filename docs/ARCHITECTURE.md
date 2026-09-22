@@ -367,6 +367,44 @@ thousand, and four separate candidates this session looked like clear wins at
 that sample size and reversed at 44-48 episodes. Nothing below roughly 8% on
 a 44+ episode sample should be treated as a result.
 
+## 6e. What the real ladder actually looks like
+
+Everything above this section was measured against agents in this repository.
+Pulling real episode replays off the competition (`kaggle competitions
+episodes <submission_id>`, then the replay API) changes several assumptions,
+so the findings are recorded here rather than inferred.
+
+**The top of the leaderboard is a monoculture.** In episode 111876587 two
+different teams -- "Anand Singh" and "Li Li" -- played *byte-identically*:
+same bank, same hand count, same tile count and the same crop mix at every
+sampled day, finishing in an exact tie at **$97,247 each**. Many teams are
+running near-identical forks of one shared public agent, which is why the
+rating band is so tight and ties are so common.
+
+**That agent reaches $97k, and its opening is the difference.** Day 0 it
+already owns two cows and two sheep, six melon and one wheat, with five
+hands. From day 1 it sells fertilizer continuously -- the shared book shows
++6, +16, +38, +72, +122, +180 by day 12. One fertilizer per animal per day,
+on the only curve the town never draws from, is the compounding stream that
+funds the rest of the ramp. It reaches 50 tiles by day 6 and 75 by day 11,
+and never buys the SE quadrant.
+
+Its closing book is worth reading too: milk finishes **+76 at a $1 quote**
+and fertilizer **+492 at $2** -- both crushed to the floor -- while egg sits
+338 short at $70 and strawberry 76 short at $193. So it is not optimal
+either; it simply out-ramps.
+
+**Two submissions stay active at a time**, and a new one deactivates the
+oldest. Verified from episode timestamps: frontier_v7 and frontier_v6 were
+still playing, while frontier_v4 stopped the minute v6 landed and
+frontier_v3 stopped when v5 landed. That matters because frontier_v3 scored
+**2767.6**, the best this account has ever had, and it is already retired.
+
+**Local bank does not cleanly predict ladder rating.** A submission in this
+repo's line ("v16 ... local ~83-89k") rated **529.4**, which is bottom-third
+of a 9,792-team field. Either that agent failed on the eval host or the local
+proxy is weak; `tools/cloud_verify.py` exists to rule out the first.
+
 ## 7. Hypotheses that were tested and lost
 
 Recorded so they are not re-tried. All measured the same way: eight seeds,
@@ -403,6 +441,18 @@ sides swapped, against the incumbent.
   for the same book — it **lost 7-9**. Section 3b is why: yielding ground in a
   market that still clears above base just moves production to a worse crop.
   Kept as `OPP_PIPE`, pinned at 0.
+* **Buying capital in a fixed order.** Not a hypothesis so much as a bug, and
+  it shipped for several revisions: seed every free tile, then buy animals
+  with the remainder. On day 0 that spends $2,484 of a $3,000 bank on melon
+  seed, leaves $258 -- under the operating runway -- and the herd cannot start
+  until the melon harvest lands on day 11. A cow is worth ~$305/tile-day at
+  that point against ~$144 for a melon tile. Fixed by ranking the two
+  (`CAPITAL_ORDER`), and by capping a single seed order at `SEED_CAP` tiles
+  rather than buying for the whole board at once, which keeps cash liquid for
+  wheat, hires and stock. Held-out over 32 episodes the mean is unchanged
+  ($76,236 vs $77,014) but **the worst episode improves from $29,797 to
+  $54,510**. On a win/loss ladder a catastrophic episode is a loss, so the
+  floor is worth more than the mean.
 * **Pricing wheat at the shadow price of feed.** Instrumenting the livestock
   purchase caps shows feed -- not land, labour or the town's draw -- is what
   holds the herd down all season, and a cared cow is worth ~$375/tile-day

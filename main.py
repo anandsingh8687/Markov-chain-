@@ -100,6 +100,7 @@ _P = {
     "SELL_SLOTS": 9, "CARRY_DROP": 11, "WHEAT_BUF": 2.4, "HARVEST_MARGIN": 2.0,
     "FEED_SHADOW": 0.0,
     "PLACE_FIX": 1, "FERT_USE": 1, "ONGOING_FIT": 1, "RANK_ANIMALS": 0,
+    "CAPITAL_ORDER": 1, "SEED_CAP": 22,
     # measured and rejected; kept so they are not re-tried (docs section 7)
     "OPP_PIPE": 0.0,        # price the opponent's visible supply into the book
     "DISC": 0.0,            # discount the allocator to the payoff date
@@ -708,7 +709,7 @@ def _decide(obs, config=None):
         if len(orders) < maxord:
             orders.append(["SELL", it, q])
 
-    cash = money
+    cash = [money]
     work_tiles = len(plants) + n_animals + min(len(empties) + len(weeds), 34)
     need_act = (len(plants) * P["ACT_CROP"] + n_animals * P["ACT_ANIMAL"]
                 + min(len(empties) + len(weeds), 34) * 1.2) * P["MOVE"]
@@ -721,60 +722,61 @@ def _decide(obs, config=None):
         for _ in range(max(0, hire_target - done_today)):
             if len(orders) < maxord:
                 orders.append(["HIRE"])
-        cash -= max(0.0, FIBCUM[hire_target] - FIBCUM[min(done_today, P["MAX_HANDS"])])
+        cash[0] -= max(0.0, FIBCUM[hire_target] - FIBCUM[min(done_today, P["MAX_HANDS"])])
 
     hire_ref = FIBCUM[min(P["MAX_HANDS"],
                           max(hire_target,
                               int(math.ceil(work_tiles * 1.6 * P["MOVE"] / 23.0))))]
     runway = (hire_ref + n_animals * wheat_buy + 20.0) * P["RUNWAY"] + 150.0
 
-    shed_used = sum(shed.values())
+    shed_used = [sum(shed.values())]
     if not final_day and days_left > 1.5:
         # (1) feed -- never optional
         if n_animals > 0 and len(orders) < maxord:
             have = shed.get("WHEAT", 0) + carried.get("WHEAT", 0)
             want = int(n_animals * P["WHEAT_BUF"] + 5) - have
-            buy = min(want, shed_cap - shed_used - 4,
-                      int(max(0.0, cash - 40) // max(1.0, wheat_buy)), 50)
+            buy = min(want, shed_cap - shed_used[0] - 4,
+                      int(max(0.0, cash[0] - 40) // max(1.0, wheat_buy)), 50)
             if buy > 0:
                 orders.append(["BUY_PRODUCT", "WHEAT", buy])
-                cash -= wheat_buy * buy
-                shed_used += buy
-        # (2) seed the free tiles
-        if best_crop and len(orders) < maxord:
+                cash[0] -= wheat_buy * buy
+                shed_used[0] += buy
+        # (2) and (3): seed and livestock, in marginal-value order.
+        #
+        # This used to be a fixed order -- seed every free tile, then buy
+        # animals with whatever was left. On day 0 that spends $2,484 of a
+        # $3,000 bank on melon seed and leaves $258, which is below the
+        # operating runway, so the herd cannot start until the melon harvest
+        # lands on day 11. A cow is worth ~$305/tile-day at that point against
+        # ~$144 for a melon tile, so the fixed order was buying the cheaper
+        # asset first purely because it came first in the code.
+        #
+        # It matters more than the ranking suggests, because an animal is also
+        # the only early source of fertilizer: one per animal per day, on a
+        # curve the town never draws from, which is the compounding stream
+        # that pays for the rest of the ramp.
+        def _buy_seed():
+            if not best_crop or len(orders) >= maxord:
+                return
             free = len(empties) + len(weeds)
             cst = CROPS[best_crop]["seed"]
-            want_n = min(free + 6, 40) - seeds.get(best_crop, 0)
-            want_n = min(want_n, int(max(0.0, cash - 40) // cst))
+            want_n = min(free + 6, P["SEED_CAP"]) - seeds.get(best_crop, 0)
+            want_n = min(want_n, int(max(0.0, cash[0] - 40) // cst))
             if want_n > 0:
                 orders.append(["BUY_SEED", best_crop, want_n])
-                cash -= cst * want_n
-        invest = max(0.0, cash - runway)
-        # (3) land -- only once the farm is saturated and we can staff the
-        #     extra 25 tiles; an idle tile just breeds weeds.
-        nx = len(farm["unlocked_quadrants"]) - 1
-        if (nx < 3 and len(orders) < maxord and days_left > 6
-                and open_tiles <= P["LAND_OPEN"]):
-            cost = LAND_PRICES[nx]
-            staff = FIBCUM[min(P["MAX_HANDS"],
-                               int(math.ceil((work_tiles + 25) * 1.6 * P["MOVE"] / 23.0)))]
-            if invest >= cost and cash >= cost + staff * P["LAND_LABOR"] * P["RUNWAY"]:
-                orders.append(["BUY_LAND"])
-                cash -= cost
-                invest -= cost
-        # (4) livestock -- gated on a free structure, on labour, on feed and on
-        #     the town's own draw for the product.
-        if want_animal and len(orders) < maxord:
-            qd = dict((a, shed.get(a, 0) + carried.get(a, 0)) for a in ANIMALS)
+                cash[0] -= cst * want_n
+
+        def _buy_animals():
+            if not want_animal or len(orders) >= maxord:
+                return
+            invest = max(0.0, cash[0] - runway)
+            qd = dict((a2, shed.get(a2, 0) + carried.get(a2, 0)) for a2 in ANIMALS)
             qtot = sum(qd.values())
             cap_labor = int(((nu + max(hire_target, 1)) * 23
                              - len(plants) * P["ACT_CROP"] * P["MOVE"])
                             / (P["ACT_ANIMAL"] * P["MOVE"]))
-            # Feed does not have to be pre-funded for the whole remaining
-            # season: an animal covers its own wheat inside a day, so the
-            # requirement is a funding window, not the full horizon.
             fund_days = max(1.0, min(days_left, P["FEED_DAYS"]))
-            cap_feed = int(max(0.0, invest) / max(1.0, wheat_buy * fund_days))
+            cap_feed = int(invest / max(1.0, wheat_buy * fund_days))
             cap_feed += int(sum(PLAN["WHEAT"][1] / float(PLAN["WHEAT"][2])
                                 for _, t in plants if t["crop"] == "WHEAT"))
             a = best_animal
@@ -784,10 +786,30 @@ def _decide(obs, config=None):
                        len(structs) + len(empties) - qtot)
             cst = ANIMALS[a]["cost"]
             wantn = min(int(invest // cst), max(0, room), P["BUY_RATE"])
-            if wantn > 0 and shed_used + wantn <= shed_cap - 6:
+            if wantn > 0 and shed_used[0] + wantn <= shed_cap - 6:
                 orders.append(["BUY_ANIMAL", a, wantn])
-                cash -= cst * wantn
-                shed_used += wantn
+                cash[0] -= cst * wantn
+                shed_used[0] += wantn
+
+        if P["CAPITAL_ORDER"] and want_animal and animal_best > crop_best:
+            _buy_animals()
+            _buy_seed()
+        else:
+            _buy_seed()
+            _buy_animals()
+
+        invest = max(0.0, cash[0] - runway)
+        # (4) land -- only once the farm is saturated and we can staff the
+        #     extra 25 tiles; an idle tile just breeds weeds.
+        nx = len(farm["unlocked_quadrants"]) - 1
+        if (nx < 3 and len(orders) < maxord and days_left > 6
+                and open_tiles <= P["LAND_OPEN"]):
+            cost = LAND_PRICES[nx]
+            staff = FIBCUM[min(P["MAX_HANDS"],
+                               int(math.ceil((work_tiles + 25) * 1.6 * P["MOVE"] / 23.0)))]
+            if invest >= cost and cash[0] >= cost + staff * P["LAND_LABOR"] * P["RUNWAY"]:
+                orders.append(["BUY_LAND"])
+                cash[0] -= cost
 
     return {"farmer": acts[0] if acts else ["PASS"],
             "hands": [a if a else ["PASS"] for a in acts[1:]],

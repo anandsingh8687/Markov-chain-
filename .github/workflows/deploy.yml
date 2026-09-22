@@ -199,18 +199,36 @@ jobs:
 
       - name: Check credentials are present
         env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
-          if [ -z "$KAGGLE_USERNAME" ] || [ -z "$KAGGLE_KEY" ]; then
-            echo "::error::KAGGLE_USERNAME / KAGGLE_KEY are not set on this repository."
-            echo "Add them under Settings -> Secrets and variables -> Actions."
+          # A modern `KGAT_...` token authenticates ONLY via KAGGLE_API_TOKEN.
+          # The legacy KAGGLE_USERNAME/KAGGLE_KEY pair is the old kaggle.json
+          # username+hex-key form and is rejected outright for a KGAT token --
+          # verified against the live API, where the legacy pair returns
+          # "Authentication required to call the Kaggle API".
+          if [ -n "$KAGGLE_API_TOKEN" ]; then
+            echo "using KAGGLE_API_TOKEN"
+          elif [ -n "$KAGGLE_USERNAME" ] && [ -n "$KAGGLE_KEY" ]; then
+            case "$KAGGLE_KEY" in
+              KGAT_*)
+                echo "::error::KAGGLE_KEY holds a KGAT_ token. That is an API"
+                echo "token, not the legacy hex key, and will not authenticate"
+                echo "in this form. Store it as the secret KAGGLE_API_TOKEN."
+                exit 1 ;;
+            esac
+            echo "using legacy KAGGLE_USERNAME/KAGGLE_KEY"
+          else
+            echo "::error::no Kaggle credentials on this repository."
+            echo "Add KAGGLE_API_TOKEN under Settings -> Secrets and variables -> Actions."
             exit 1
           fi
 
       - name: Daily quota preflight
         id: quota
         env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |

@@ -117,8 +117,15 @@ without any chance of leaking into a submission.
 
 ## Credentials
 
-Kaggle credentials are **not** stored in this repository. Add `KAGGLE_USERNAME`
-and `KAGGLE_KEY` as GitHub Actions repository secrets
+**A `KGAT_...` token authenticates only via `KAGGLE_API_TOKEN`.** The legacy
+`KAGGLE_USERNAME` + `KAGGLE_KEY` pair is the old kaggle.json username/hex-key
+form and is rejected outright for a KGAT token -- verified against the live
+API, where it returns "Authentication required to call the Kaggle API". The
+workflow now checks for this and fails with a clear message rather than
+burning a run.
+
+Kaggle credentials are **not** stored in this repository. Add `KAGGLE_API_TOKEN`
+as a GitHub Actions repository secret
 (Settings → Secrets and variables → Actions). Submission runs only from `main`,
 or from a `workflow_dispatch` with `submit: true`, and only after the gates
 pass.
