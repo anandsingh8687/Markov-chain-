@@ -1955,7 +1955,9 @@ class KaggricultureAgent(object):
                 fert_tiles = []
                 for y, row in enumerate(st.tiles):
                     for x, tile in enumerate(row):
+                        # Carrot 3→4 is not feed. Wheat/melon FERTILIZE is.
                         if (isinstance(tile, dict) and tile.get("kind") == "PLANT"
+                                and tile.get("crop") != "CARROT"
                                 and not CROPS.get(tile.get("crop"), {}).get("ongoing", True)
                                 and int(tile.get("fertilized_until_day", -1) or -1) < st.day
                                 and _age(st, tile) < CROPS[tile["crop"]]["max_day"]):
@@ -2314,10 +2316,6 @@ class KaggricultureAgent(object):
                     if need <= 0:
                         continue
                     if quote_m < 1.05 * MARKET_PARAMS["MILK"]["base"] and (alive + in_shed) >= 10:
-                        continue
-                    # 13th–14th cow into a $168–$200 book overproduced milk
-                    # (end quotes often still printed a negative book).
-                    if quote_m < 1.25 * MARKET_PARAMS["MILK"]["base"] and (alive + in_shed) >= 12:
                         continue
                     cap = 1 if (alive + in_shed) >= 12 else 2
                 elif (animal == "GOOSE" and not pasture_wanted
