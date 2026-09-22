@@ -2206,11 +2206,7 @@ class KaggricultureAgent(object):
             # HARVEST/LIQUIDATE do not sow. Core BUY_SEED still spent a
             # 10-order slot on unused wheat while standing crops came off
             # the field, crowding rest_sells in the dump window.
-            # Market resolves after farm actions, so hour>=16 buys cannot
-            # be planted until tomorrow (sow window is hour<=16).
-            sow_seeds = (
-                plan.phase not in ("HARVEST", "LIQUIDATE") and st.hour <= 15
-            )
+            sow_seeds = plan.phase not in ("HARVEST", "LIQUIDATE")
             # $56k floor seeds had 4 wheat on 24 animals: strawberry/melon
             # seeds took the 10-order cap. Feed seeds first.
             want_w = int(plan.crop_mix.get("WHEAT", 0) or 0)
@@ -2359,8 +2355,10 @@ class KaggricultureAgent(object):
         # Sells first so HIRE has cash. Hires before cows so seed 9051
         # cannot print $0 / 4 hands (cows ate the till after a failed dawn hire).
         # Shipping orders[1] after core (a9e2b62) dried mid-cash: 9034
-        # $10.6k→$5.6k and the floor $59.2k→$57.4k.
-        packed = cash_sells[:1] + hires + core + rest_sells + seeds
+        # $10.6k→$5.6k and the floor $59.2k→$57.4k. HARVEST core no longer
+        # carries BUY_SEED, so the second sell fits in the dump window.
+        lead = 2 if plan.phase in ("HARVEST", "LIQUIDATE") else 1
+        packed = cash_sells[:lead] + hires + core + rest_sells + seeds
         return packed[:MAX_MARKET_ORDERS]
 
 
