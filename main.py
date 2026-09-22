@@ -813,10 +813,7 @@ class DirectionCalibrator:
         ddx, ddy = tx - sx, ty - sy
         if ddx == 0 and ddy == 0:
             return None
-        # Dual: sow hour 15 crashed 9034. Same tasks, same range: on a
-        # diagonal prefer Y first (was X). Shed is (4,4); NE fields are
-        # often equal |dx|=|dy|. Hour-13/16 sow windows stay.
-        prefer_x = abs(ddx) > abs(ddy)
+        prefer_x = abs(ddx) > abs(ddy) or (abs(ddx) == abs(ddy) and ddx != 0)
         order = [(ddx, 0), (0, ddy)] if prefer_x else [(0, ddy), (ddx, 0)]
         for want_dx, want_dy in order:
             if want_dx == 0 and want_dy == 0:
@@ -987,6 +984,7 @@ class MPCRevenueEngine:
                or phase != self.plan.phase
                or st.stance != self.plan.stance
                or st.hour == 0
+               or st.hour == 12
                or len(st.hands) != getattr(self, "_hands", -1)
                or st.usable_tiles != getattr(self, "_usable", -1))
         if not due:
