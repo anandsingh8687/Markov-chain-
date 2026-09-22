@@ -291,7 +291,19 @@ def goose_buy_cap(st, plan=None):
             int(plan.animal_targets.get("COW", 0) or 0)
             + int(plan.animal_targets.get("SHEEP", 0) or 0)
         ) > 0
-    return min(6 if pasture else 12, cap)
+    cap = min(6 if pasture else 12, cap)
+    # Dual: stop adding geese once the living herd outruns the ration.
+    # Raising goose 6–8 added mouths and died. This freezes at 4 when
+    # wheat < 2 per head so cow FEED keeps the wheat field.
+    herd = int(getattr(st, "n_animals", 0) or 0)
+    wheat = 0
+    try:
+        wheat = int(st.wheat_held())
+    except Exception:
+        wheat = int((getattr(st, "shed", None) or {}).get("WHEAT", 0) or 0)
+    if herd >= 8 and wheat < 2 * herd:
+        cap = min(cap, 4)
+    return cap
 
 
 def book_tiles(st, prod, frac=0.50):
@@ -1728,11 +1740,7 @@ def build_tasks(st, plan):
                 if not fed:
                     animals_unfed += 1
                     future = (max(0, days_left - 1) / float(spec["interval"])) * price
-                    # *2 ≈ cow $300, already loses to melon HARVEST $1500
-                    # and watered CARE $960. *1.5 ≈ $225 so nearby melon
-                    # WATER ($247) wins; the cow is CRITICAL tomorrow.
-                    # Raising this (0.01×CRITICAL) stole sow. Dual: lower.
-                    val = (CRITICAL + future) if unfed >= 1 else (price / float(spec["interval"])) * 1.5
+                    val = (CRITICAL + future) if unfed >= 1 else (price / float(spec["interval"])) * 2.0
                     add({"pos": pos, "op": ["FEED"], "kind": "FEED",
                          "value": val, "need": "WHEAT"})
                 if fed and not cared and days_left > spec["interval"]:
