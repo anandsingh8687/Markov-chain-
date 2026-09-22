@@ -1738,6 +1738,9 @@ def build_tasks(st, plan):
                     # Blanket 2*price*3 stole WATER: 9051 wheat 13→6,
                     # weeds 1→7, floor $59.1k→$53.3k. 9085 jumped +$7k.
                     # Raise CARE only after today's plants are watered.
+                    # Dry cow/sheep CARE at 0.95× (~$152–$190) still beat
+                    # wheat WATER ($50) and young melon WATER ($87).
+                    # Goose CARE stays; skip the pasture 0.95 while dry.
                     if animal == "COW" and st.n_unwatered == 0:
                         care_val = 2.0 * price * 3.0
                     elif animal == "SHEEP" and st.n_unwatered == 0:
@@ -1746,10 +1749,13 @@ def build_tasks(st, plan):
                         # Blanket CARE stole WATER; this stays off while
                         # plants are dry.
                         care_val = 2.0 * price * 2.0
-                    else:
+                    elif animal == "GOOSE" or st.n_unwatered == 0:
                         care_val = price * 0.95
-                    add({"pos": pos, "op": ["CARE"], "kind": "CARE",
-                         "value": care_val})
+                    else:
+                        care_val = None
+                    if care_val is not None:
+                        add({"pos": pos, "op": ["CARE"], "kind": "CARE",
+                             "value": care_val})
                 if units_now > 0:
                     add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                          "value": units_now * price})
@@ -1816,10 +1822,6 @@ def build_tasks(st, plan):
         # Re-enabled HARVEST wheat sow (693afb2) cut median $65k → $58k with
         # 6–8 end weeds. Keep the field as of turn 500.
         spare = 0
-        # Phase says no new long-cycle assets. Empty sheds in the dump
-        # window steal HARVEST/CARE; hold-melon-to-cap is a keep.
-        need_coops = 0
-        need_past = 0
     plant_empties = plant_empties[:spare]
 
     # crop_mix is a standing target, not a per-turn quota. Replanting the
