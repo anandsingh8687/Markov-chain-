@@ -1299,9 +1299,10 @@ class MPCRevenueEngine:
                 if extra:
                     p.crop_mix["STRAWBERRY"] = have_s + extra
                     left -= extra
-            if left > 0 and days_left >= 5 and st.usable_tiles >= 75:
-                # SW's new 25 tiles must be wheat, not leftover carrot.
-                # Occupancy SW (0de5859) sat empty and cut the median to $45k.
+            if left > 0 and days_left >= 5:
+                # usable>=75 never fires: SW is off, NE is 50. Leftover
+                # carrot took the rest while 9017/9051 mid wheat is 4–6
+                # against 14 cows. Feed leftover before carrot leftover.
                 have_w = int(p.crop_mix.get("WHEAT", 0) or 0)
                 p.crop_mix["WHEAT"] = have_w + left
                 left = 0
@@ -2180,11 +2181,7 @@ class KaggricultureAgent(object):
 
         short = reserve_wheat - st.wheat_held()
         # Feed the living herd plus the next few buys, not the 24-head target.
-        # HARVEST spare=0, so 3*(herd+2) market wheat is unused feed cash
-        # and a core slot that crowds rest_sells in the dump window
-        # (same 10-order waste as HARVEST BUY_SEED). Keep the shed reserve.
-        if plan.phase not in ("HARVEST", "LIQUIDATE"):
-            short = max(short, 3 * (herd + 2) - st.wheat_held())
+        short = max(short, 3 * (herd + 2) - st.wheat_held())
         if short > 0 and (herd > 0 or plan.animal_targets.get("GOOSE", 0) > 0):
             price = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
             afford = int(min(max(short, 1), max(0.0, budget - 400) // max(1.0, price), 16))
