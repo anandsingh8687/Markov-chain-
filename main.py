@@ -1663,12 +1663,12 @@ def build_tasks(st, plan):
             kind = tile.get("kind")
 
             if kind == "WEED":
-                # DIG at 4 and 6 stole sow (9000 −$12k, 9017 −$3.2k).
-                # Gate 8 may still fire on an 8–9 weed pulse and pull
-                # a planter. Dual: boost only at 10. Soft DIG stays
-                # 2×action so a lone weed is not ignored.
+                # DIG at 4 weeds cut median $68k → $63k: seed 9000 lost
+                # $12k because diggers stole morning sow (wheat 11 → 4).
+                # 9017's 6–7 weeds still lose to FEED/missed WATER at
+                # full CRITICAL. Leave the gate at 8.
                 add({"pos": pos, "op": ["DIG"], "kind": "DIG",
-                     "value": (CRITICAL * 0.05 if st.n_weeds >= 10
+                     "value": (CRITICAL * 0.05 if st.n_weeds >= 8
                                else 2.0 * plan.action_value)})
                 continue
 
@@ -2071,7 +2071,10 @@ class KaggricultureAgent(object):
         # selling the log-curve staple and the till died. Keep the
         # 2-per-head ration.
 
-        cash_tight = st.money < 1400 or (
+        # 1400 dumped staples in the $1300–$1400 pre-NE window
+        # (land slack is already 1300). Dual: 1200 so that band
+        # waits for the land clause. Slack-0 after NE was a no-op.
+        cash_tight = st.money < 1200 or (
             st.next_land_cost is not None and st.money < st.next_land_cost + 300)
         orders = []
         for prod in PRODUCTS:
