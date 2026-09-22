@@ -1293,10 +1293,7 @@ class MPCRevenueEngine:
                 st.usable_tiles - used_now,
                 plant_slots(st) - sum(p.crop_mix.values()),
             ))
-            # Floor straw still at days_left>=14. Extra 4→6 only when the
-            # first+3 window still has slack. Cutting extra always crashed
-            # 9051 (77992f7); this only skips the last two days of that window.
-            if left > 0 and cap_s > 0 and days_left >= 16 and not product_contested(st, "STRAWBERRY"):
+            if left > 0 and cap_s > 0 and days_left >= 14 and not product_contested(st, "STRAWBERRY"):
                 have_s = int(p.crop_mix.get("STRAWBERRY", 0) or 0)
                 extra = min(left, max(0, cap_s - have_s))
                 if extra:
@@ -1955,7 +1952,11 @@ class KaggricultureAgent(object):
                 fert_tiles = []
                 for y, row in enumerate(st.tiles):
                     for x, tile in enumerate(row):
+                        # Melon FERTILIZE is load-bearing (fc16dcb). Wheat
+                        # yield is bought on the log book; walking fert onto
+                        # it steals a melon/carrot stay. Skip wheat only.
                         if (isinstance(tile, dict) and tile.get("kind") == "PLANT"
+                                and tile.get("crop") != "WHEAT"
                                 and not CROPS.get(tile.get("crop"), {}).get("ongoing", True)
                                 and int(tile.get("fertilized_until_day", -1) or -1) < st.day
                                 and _age(st, tile) < CROPS[tile["crop"]]["max_day"]):
