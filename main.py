@@ -1432,6 +1432,10 @@ class MPCRevenueEngine:
         # 12 hires/day costs fib(0..11) ≈ 376. 18/day costs ≈ 6765.
         # Full intended crew (a7d18c0) cut 9034 $73.9k → $57.5k (cows 14→9).
         p.target_hands = intended_crew(st) - 1
+        # HARVEST does not sow. 11 dawn HIREs take the same 10-order
+        # slots skip-BUY_SEED (995f785) freed for rest_sells. Cap 8.
+        if p.phase in ("HARVEST", "LIQUIDATE"):
+            p.target_hands = min(int(p.target_hands or 0), 8)
         return p
 
 
@@ -1948,8 +1952,8 @@ class KaggricultureAgent(object):
                         actions[i] = self._goto_or(wpos, dst, ["FEED"])
                         tasks = [t for t in tasks if not (t.get("need") == "WHEAT" and t["pos"] == dst)]
                         continue
-            fert_tiles = []
             if inv.get("FERTILIZER", 0) > 0:
+                fert_tiles = []
                 for y, row in enumerate(st.tiles):
                     for x, tile in enumerate(row):
                         if (isinstance(tile, dict) and tile.get("kind") == "PLANT"
@@ -1970,13 +1974,6 @@ class KaggricultureAgent(object):
             deliver = (produce >= 4 or st.hour >= 18 or self.gate.armed
                        or st.shed_total > SHED_CAPACITY * 0.80)
             if produce > 0 and deliver and not near_crit:
-                # Wheat/melon FERTILIZE are load-bearing. DROP dumps the
-                # carried unit back to the shed (staple SELL). Keep it
-                # when a one-time plant still wants it; dusk/gate still dump.
-                if (fert_tiles and st.hour < 18 and not self.gate.armed
-                        and st.shed_total <= SHED_CAPACITY * 0.80):
-                    free_idx.append(i)
-                    continue
                 dst, _ = self._nearest(wpos, shed_tiles)
                 actions[i] = self._goto_or(wpos, dst, ["DROP"])
                 continue
