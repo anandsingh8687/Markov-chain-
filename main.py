@@ -2105,10 +2105,7 @@ class KaggricultureAgent(object):
                     if n == 0:
                         n = int(min(held, sellable))
                 else:
-                    # rate*2 dumped a harvest pulse onto milk/wool in one
-                    # tick. 1.5 still clears the shed before liquidation
-                    # without the 12-lot jam (lot-8 / 80% already failed).
-                    n = int(min(held, sellable, math.ceil(rate * 1.5)))
+                    n = int(min(held, sellable, math.ceil(rate * 2.0)))
                     # Beat their harvest onto the book: if they are 0-2 days
                     # from dumping this premium, sell our lot first.
                     if st.opp_imminent.get(prod, 0) > 0:
@@ -2167,7 +2164,10 @@ class KaggricultureAgent(object):
         # Seed 9051 printed $0 and 4 hands: 3 HIREs then cows spent the till.
         # Four HIREs until 8 are living or landing this pack; cows wait.
         # Fib(0..7) ≈ $54.
-        per_turn = min(need_hands, hire_slots, 4 if not staffed_now else (3 if need_pasture_buy else 4))
+        # 3 HIREs + a cow on a 10-order pack still crowds wheat.
+        # Two HIREs when a pasture buy is pending leaves a slot and
+        # the $400 float. 12th hire and float $600 are not retried.
+        per_turn = min(need_hands, hire_slots, 4 if not staffed_now else (2 if need_pasture_buy else 4))
         float_cash = 400.0
         queued = 0
         for _ in range(per_turn):
