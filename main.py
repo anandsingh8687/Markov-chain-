@@ -412,10 +412,7 @@ def live_buy_land(st, plan=None):
     days_left = max(0, DAYS - int(getattr(st, "day", 0) or 0))
     if cost <= 1000:
         flagged = True if plan is None else bool(getattr(plan, "buy_land", False))
-        # Dawn-only NE. Afternoon $1000 leaves leftover wheat no hours
-        # to fill the new 25 tiles. hour<=3 already counts intended
-        # crew; 4 still has that morning's HIREs living.
-        return flagged and hour <= 4 and hands >= 4 and weeds <= 10 and money > cost + 400
+        return flagged and hands >= 4 and weeds <= 10 and money > cost + 400
     if cost <= 2000:
         # Dawn/pack SW vs starter never fired (four CI runs locked=50).
         # Vs scaler it bought and sat empty: 58 empties, $40k→$37k.
@@ -1967,8 +1964,10 @@ class KaggricultureAgent(object):
                         continue
             produce = sum(int(v or 0) for k, v in inv.items()
                           if k in PRODUCTS)
+            # d<=1 let a worker walk past a dry plant to DROP. Two
+            # steps still beats a shed trip; this is not DROP-at-6.
             near_crit = any(
-                abs(t["pos"][0] - wpos[0]) + abs(t["pos"][1] - wpos[1]) <= 1
+                abs(t["pos"][0] - wpos[0]) + abs(t["pos"][1] - wpos[1]) <= 2
                 and t["value"] >= CRITICAL for t in tasks)
             deliver = (produce >= 4 or st.hour >= 18 or self.gate.armed
                        or st.shed_total > SHED_CAPACITY * 0.80)
