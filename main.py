@@ -2092,12 +2092,12 @@ class KaggricultureAgent(object):
                 if st.opp_flow.get(prod, 0) > 0 and prod in PREMIUM:
                     floor *= 0.88
                 if st.stance == "LOCK" and prod in PREMIUM:
-                    floor *= 1.08
+                    # CONTEST 0.85 never fired vs starter (we are ahead).
+                    # 1.08 held premium while the score is bank coins.
+                    # 1.04 still protects the book without the shop-tick hold.
+                    floor *= 1.04
                 elif st.stance == "CONTEST" and prod in PREMIUM:
-                    # 0.78 walked a contested milk book to the crush
-                    # gate on scaler 9000 when we also dumped wheat.
-                    # 0.85 still undercuts a peer without the 0.25× dump.
-                    floor *= 0.85
+                    floor *= 0.78
                 if cash_tight and prod in STAPLES:
                     floor = min(floor, 0.35 * MARKET_PARAMS[prod]["base"])
                 sellable = Econ.units_until(prod, inv, max(1.0, floor))
