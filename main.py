@@ -377,7 +377,10 @@ def product_contested(st, prod):
     flow = float(st.opp_flow.get(prod, 0.0) or 0.0)
     if prod == "MELON" and (tiles >= 1 or flow > 0):
         return True
-    if price >= 0.90 * params["base"]:
+    # Dual: vacate only when the quote is 0.88× base, not 0.90×. Wheat
+    # sell floor 0.35 / MU_LO / collapse / opp-flow never bound vs these
+    # opponents. Healthy books stay ours; dying ones still get walked.
+    if price >= 0.88 * params["base"]:
         return False
     if tiles >= 10:
         return True
@@ -1144,10 +1147,7 @@ class MPCRevenueEngine:
         # local-optima agent starves itself of cash and never buys land.
         # Premium goods keep the KKT reserve so we do not walk them to $1.
         staple_frac = {
-            # Dual: wheat sell floor 0.40→0.35. MU_LO 1.0 / BISECT 20 /
-            # collapse / opp-flow never bound vs these opponents. Quotes
-            # sit ~$50 so this only fires if the log book actually dips.
-            "WHEAT": 0.35, "CARROT": 0.40, "EGG": 0.40, "FERTILIZER": 0.45,
+            "WHEAT": 0.40, "CARROT": 0.40, "EGG": 0.40, "FERTILIZER": 0.45,
             "TOMATO": 0.50,
         }
         for prod in PRODUCTS:
