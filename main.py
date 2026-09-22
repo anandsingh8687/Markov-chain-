@@ -1751,11 +1751,8 @@ def build_tasks(st, plan):
                     add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                          "value": units_now * price})
                 if tile.get("fertilizer_available"):
-                    # $400 COLLECT (a253042) stole sow (9000 wheat 12→3).
-                    # 0.85 still wins mid-range walks. 0.55 keeps adjacent
-                    # collect and loses to sow/WATER a few tiles away.
                     add({"pos": pos, "op": ["COLLECT_FERTILIZER"], "kind": "COLLECT",
-                         "value": 0.55 * plan.price_hint.get("FERTILIZER", 100)})
+                         "value": 0.85 * plan.price_hint.get("FERTILIZER", 100)})
                 continue
 
     # Structures first: planting every empty tile is how a goose target of 8
@@ -2186,7 +2183,10 @@ class KaggricultureAgent(object):
         short = max(short, 3 * (herd + 2) - st.wheat_held())
         if short > 0 and (herd > 0 or plan.animal_targets.get("GOOSE", 0) > 0):
             price = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
-            afford = int(min(max(short, 1), max(0.0, budget - 400) // max(1.0, price), 16))
+            # Pickup 12 and COLLECT 0.55 stole sow walks. Buy a bit more
+            # market wheat (16→20) so the herd eats without extra field
+            # trips. Keep $400 float.
+            afford = int(min(max(short, 1), max(0.0, budget - 400) // max(1.0, price), 20))
             if afford > 0:
                 budget = _spend(core, ["BUY_PRODUCT", "WHEAT", afford], afford * price)
                 pending_wheat = afford
