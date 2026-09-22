@@ -2334,13 +2334,13 @@ class KaggricultureAgent(object):
                 need_days = 11 if crop == "MELON" else spec["max_day"] + 1
                 if want <= 0 or need_days > days_left:
                     continue
+                # BOOTSTRAP is 100% carrot and leftover is how those seeds
+                # are bought. After EXPAND the leftover carrot pass replants
+                # onto the starter book; wheat leftover stays (69d9a28).
+                if crop == "CARROT" and plan.phase != "BOOTSTRAP":
+                    continue
                 have = int(st.seeds.get(crop, 0) or 0)
                 standing = int(st.crops_alive.get(crop, 0) or 0)
-                # Mix floors strawberry at 4; leftover on a stale snapshot
-                # double-buys once four tiles already stand. 9085 is at 3 so
-                # leftover still fills. Density can still buy up to 6.
-                if crop == "STRAWBERRY" and standing >= 4:
-                    continue
                 need = max(0, min(int(want), st.usable_tiles) - have - standing)
                 if need <= 0:
                     continue
