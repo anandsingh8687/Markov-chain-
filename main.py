@@ -1948,15 +1948,11 @@ class KaggricultureAgent(object):
                         actions[i] = self._goto_or(wpos, dst, ["FEED"])
                         tasks = [t for t in tasks if not (t.get("need") == "WHEAT" and t["pos"] == dst)]
                         continue
+            fert_tiles = []
             if inv.get("FERTILIZER", 0) > 0:
-                fert_tiles = []
                 for y, row in enumerate(st.tiles):
                     for x, tile in enumerate(row):
-                        # Melon FERTILIZE is load-bearing (fc16dcb). Wheat
-                        # yield is bought on the log book; walking fert onto
-                        # it steals a melon/carrot stay. Skip wheat only.
                         if (isinstance(tile, dict) and tile.get("kind") == "PLANT"
-                                and tile.get("crop") != "WHEAT"
                                 and not CROPS.get(tile.get("crop"), {}).get("ongoing", True)
                                 and int(tile.get("fertilized_until_day", -1) or -1) < st.day
                                 and _age(st, tile) < CROPS[tile["crop"]]["max_day"]):
@@ -1974,6 +1970,13 @@ class KaggricultureAgent(object):
             deliver = (produce >= 4 or st.hour >= 18 or self.gate.armed
                        or st.shed_total > SHED_CAPACITY * 0.80)
             if produce > 0 and deliver and not near_crit:
+                # Wheat/melon FERTILIZE are load-bearing. DROP dumps the
+                # carried unit back to the shed (staple SELL). Keep it
+                # when a one-time plant still wants it; dusk/gate still dump.
+                if (fert_tiles and st.hour < 18 and not self.gate.armed
+                        and st.shed_total <= SHED_CAPACITY * 0.80):
+                    free_idx.append(i)
+                    continue
                 dst, _ = self._nearest(wpos, shed_tiles)
                 actions[i] = self._goto_or(wpos, dst, ["DROP"])
                 continue
