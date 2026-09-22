@@ -1989,17 +1989,13 @@ class KaggricultureAgent(object):
             free_idx = [k for k in free_idx if k != i]
 
         pending_animals = []
-        # Dawn pickup sent a walker to the shed during the sow/WATER burst
-        # (nearest-shed 04d460e: 9051 -$4.8k, scaler 9000 -$22k). Animals
-        # bought last turn wait in the shed; first-yield is days, not hours.
-        if st.hour > 4:
-            if any(k == "PASTURE" for _, k in empty_structs):
-                if st.shed.get("COW", 0):
-                    pending_animals.append("COW")
-                if st.shed.get("SHEEP", 0):
-                    pending_animals.append("SHEEP")
-            if st.shed.get("GOOSE", 0):
-                pending_animals.append("GOOSE")
+        if any(k == "PASTURE" for _, k in empty_structs):
+            if st.shed.get("COW", 0):
+                pending_animals.append("COW")
+            if st.shed.get("SHEEP", 0):
+                pending_animals.append("SHEEP")
+        if st.shed.get("GOOSE", 0):
+            pending_animals.append("GOOSE")
         for pending_animal in pending_animals:
             if not free_idx:
                 break
@@ -2014,12 +2010,17 @@ class KaggricultureAgent(object):
 
         if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 10
                 and plan.phase in ("EXPAND", "COMPOUND")):
-            i = free_idx[0]
+            # free_idx[0] is often the far farmer, so d<=2 never fires and
+            # shed fertilizer sits while a hand stands next to the shed.
+            # Only steal a worker already within 2 (not 04d460e nearest-anywhere).
+            i = min(free_idx, key=lambda k: min(
+                abs(workers[k][0] - s[0]) + abs(workers[k][1] - s[1])
+                for s in shed_tiles))
             wpos = workers[i]
             dst, d = self._nearest(wpos, shed_tiles)
             if d <= 2:
                 actions[i] = self._goto_or(wpos, dst, ["PICKUP", "FERTILIZER", 1])
-                free_idx = free_idx[1:]
+                free_idx = [k for k in free_idx if k != i]
 
         field_tasks = [t for t in tasks if t.get("need") != "WHEAT"]
         feed_left = [t for t in tasks if t.get("need") == "WHEAT"]
