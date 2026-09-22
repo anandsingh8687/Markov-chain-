@@ -1144,7 +1144,7 @@ class MPCRevenueEngine:
         # local-optima agent starves itself of cash and never buys land.
         # Premium goods keep the KKT reserve so we do not walk them to $1.
         staple_frac = {
-            "WHEAT": 0.40, "CARROT": 0.40, "EGG": 0.45, "FERTILIZER": 0.45,
+            "WHEAT": 0.40, "CARROT": 0.40, "EGG": 0.40, "FERTILIZER": 0.45,
             "TOMATO": 0.50,
         }
         for prod in PRODUCTS:
@@ -2080,6 +2080,11 @@ class KaggricultureAgent(object):
                 held = max(0, held - reserve_wheat)
             if held <= 0:
                 continue
+            if prod == "FERTILIZER" and not self.gate.armed:
+                # Staple dump sells fert COLLECT just brought in. Keep
+                # field stock unless the shed is jammed.
+                if st.shed_total <= SHED_CAPACITY * 0.75:
+                    continue
             inv = st.inventory.get(prod, MARKET_I0)
             drain = self.el.drain_rate.get(prod, 0.0)
             if self.gate.armed:
