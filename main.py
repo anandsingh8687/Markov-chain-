@@ -1274,12 +1274,6 @@ class MPCRevenueEngine:
             # farm had 3 tiles at $347. Cap 6; leftover is not a dump.
             # max(kkt, 4) kept the KKT dump: scaler 9051 stood 25 straw.
             cap_s = min(6, book_tiles(st, "STRAWBERRY", 0.70))
-            # book_tiles ignores town regen, so an I0 fill looks like 2–3
-            # tiles. 9085 then stands 3 straw at $353. Floor 4 while the
-            # quote is alive; leftover still fills to cap_s. Do not raise
-            # the sow-order wheat quota (0e9a2f6 stole 9051 feed).
-            if cap_s > 0:
-                cap_s = max(cap_s, 4)
             if (cap_s > 0 and days_left >= 14 and quote_s >= 0.85 * MARKET_PARAMS["STRAWBERRY"]["base"]
                     and not product_contested(st, "STRAWBERRY")):
                 have_s = int(p.crop_mix.get("STRAWBERRY", 0) or 0)
@@ -2350,7 +2344,10 @@ class KaggricultureAgent(object):
         rest_sells = orders[2:]
         # Sells first so HIRE has cash. Hires before cows so seed 9051
         # cannot print $0 / 4 hands (cows ate the till after a failed dawn hire).
-        packed = cash_sells[:1] + hires + core + rest_sells + seeds
+        # cash_sells[:1] + rest_sells dropped orders[1] — the second-best
+        # sell never shipped. Keep one lead sell for hire cash; append the
+        # rest after core so dawn HIRE slots stay intact.
+        packed = cash_sells[:1] + hires + core + cash_sells[1:] + rest_sells + seeds
         return packed[:MAX_MARKET_ORDERS]
 
 
