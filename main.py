@@ -1959,11 +1959,7 @@ class KaggricultureAgent(object):
             near_crit = any(
                 abs(t["pos"][0] - wpos[0]) + abs(t["pos"][1] - wpos[1]) <= 1
                 and t["value"] >= CRITICAL for t in tasks)
-            # Pickup-12 committed the walker to FEED (9000 melon 2→0,
-            # 9017 wheat 6→3, floor $49.9k). Keep the 8-wheat trip.
-            # Hold 4–5 harvested units so the same worker stays on
-            # WATER/FEED instead of walking to the shed at mid-day.
-            deliver = (produce >= 6 or st.hour >= 18 or self.gate.armed
+            deliver = (produce >= 4 or st.hour >= 18 or self.gate.armed
                        or st.shed_total > SHED_CAPACITY * 0.80)
             if produce > 0 and deliver and not near_crit:
                 dst, _ = self._nearest(wpos, shed_tiles)
@@ -2108,6 +2104,14 @@ class KaggricultureAgent(object):
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
+                elif (prod in PREMIUM and not self.gate.armed
+                      and (st.turn % 4) != 1
+                      and st.opp_imminent.get(prod, 0) <= 0):
+                    # Shop consume is every 4 turns. Off-tick premium
+                    # sales walk the quote before town drain. Staples
+                    # still sell (hire cash). DROP>=6 stole wheat
+                    # (9051 $60.1k→$53.9k).
+                    n = 0
             if n > 0:
                 orders.append(["SELL", prod, int(n)])
         orders.sort(key=lambda o: -Econ.price(o[1], st.inventory.get(o[1], MARKET_I0)) * o[2])
