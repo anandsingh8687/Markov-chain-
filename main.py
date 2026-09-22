@@ -1956,9 +1956,14 @@ class KaggricultureAgent(object):
                                 and not CROPS.get(tile.get("crop"), {}).get("ongoing", True)
                                 and int(tile.get("fertilized_until_day", -1) or -1) < st.day
                                 and _age(st, tile) < CROPS[tile["crop"]]["max_day"]):
-                            fert_tiles.append((x, y))
+                            fert_tiles.append((x, y, tile.get("crop")))
                 if fert_tiles:
-                    dst, d = self._nearest(wpos, fert_tiles)
+                    # Skip-wheat-FERTILIZE died. Prefer melon/carrot when
+                    # both are in range; wheat still gets the stay otherwise.
+                    prefer = [(x, y) for x, y, c in fert_tiles if c != "WHEAT"]
+                    dst, d = self._nearest(wpos, prefer) if prefer else (None, 99)
+                    if dst is None or d > 3:
+                        dst, d = self._nearest(wpos, [(x, y) for x, y, _ in fert_tiles])
                     if d <= 3:
                         actions[i] = self._goto_or(wpos, dst, ["FERTILIZE"])
                         continue
