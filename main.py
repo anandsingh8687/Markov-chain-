@@ -1728,7 +1728,11 @@ def build_tasks(st, plan):
                 if not fed:
                     animals_unfed += 1
                     future = (max(0, days_left - 1) / float(spec["interval"])) * price
-                    val = (CRITICAL + future) if unfed >= 1 else (price / float(spec["interval"])) * 2.0
+                    # Shop-tick premium hold cut mid-cash (9051 $7.5k→$3.5k,
+                    # floor $52.9k). Soft same-day FEED was ~$107, so melon
+                    # HARVEST ($1500) and CARE stole the first feed. Price
+                    # it above those, still far below starving/unwatered.
+                    val = (CRITICAL + future) if unfed >= 1 else CRITICAL * 0.01
                     add({"pos": pos, "op": ["FEED"], "kind": "FEED",
                          "value": val, "need": "WHEAT"})
                 if fed and not cared and days_left > spec["interval"]:
@@ -2104,14 +2108,6 @@ class KaggricultureAgent(object):
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
-                elif (prod in PREMIUM and not self.gate.armed
-                      and (st.turn % 4) != 1
-                      and st.opp_imminent.get(prod, 0) <= 0):
-                    # Shop consume is every 4 turns. Off-tick premium
-                    # sales walk the quote before town drain. Staples
-                    # still sell (hire cash). DROP>=6 stole wheat
-                    # (9051 $60.1k→$53.9k).
-                    n = 0
             if n > 0:
                 orders.append(["SELL", prod, int(n)])
         orders.sort(key=lambda o: -Econ.price(o[1], st.inventory.get(o[1], MARKET_I0)) * o[2])
