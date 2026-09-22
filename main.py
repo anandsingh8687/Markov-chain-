@@ -1767,7 +1767,9 @@ def build_tasks(st, plan):
     target_p = target_c + target_s
     # Structures lead living animals by at most 2. Targeting 24 geese and
     # reserving `target - n_coops` paved 19 empty sheds on seed 9000.
-    inflight = 2
+    # Dual: lead by 1 so a dusk DROP cannot bounce a cow into a second
+    # empty pasture. 15 empty pastures on 9000 were inflight=2 + DROP.
+    inflight = 1
     shed_g = int(st.shed.get("GOOSE", 0) or 0)
     shed_p = int(st.shed.get("COW", 0) or 0) + int(st.shed.get("SHEEP", 0) or 0)
     alive_g = st.animals_alive["GOOSE"]
@@ -2165,10 +2167,7 @@ class KaggricultureAgent(object):
         # Four HIREs until 8 are living or landing this pack; cows wait.
         # Fib(0..7) ≈ $54.
         per_turn = min(need_hands, hire_slots, 4 if not staffed_now else (3 if need_pasture_buy else 4))
-        # 400 let the 9th–11th HIRE spend the last wheat/cow float.
-        # 12th hire (full crew) already died 9034. Hold $600 after 8
-        # living so the till can still buy wheat that hour.
-        float_cash = 600.0
+        float_cash = 400.0
         queued = 0
         for _ in range(per_turn):
             c = fib(n)
