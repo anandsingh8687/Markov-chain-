@@ -2114,16 +2114,7 @@ class KaggricultureAgent(object):
                     n = max(n, min(held, 12))
             if n > 0:
                 orders.append(["SELL", prod, int(n)])
-        # One guaranteed sell slot (cash_sells[:1]). Melon often wins it
-        # on raw revenue (6×$250) while milk/straw/wool sit in orders[1]
-        # and get dropped. Prefer those three; do not add a second sell
-        # (a9e2b62 dried mid-cash) and do not raise per-product n.
-        def _sell_key(o):
-            prod = o[1]
-            rev = Econ.price(prod, st.inventory.get(prod, MARKET_I0)) * o[2]
-            rank = 0 if prod in ("MILK", "STRAWBERRY", "WOOL") else 1
-            return (rank, -rev)
-        orders.sort(key=_sell_key)
+        orders.sort(key=lambda o: -Econ.price(o[1], st.inventory.get(o[1], MARKET_I0)) * o[2])
 
         if self.gate.armed:
             return orders[:MAX_MARKET_ORDERS]
