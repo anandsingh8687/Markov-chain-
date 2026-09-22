@@ -1293,16 +1293,13 @@ class MPCRevenueEngine:
                 st.usable_tiles - used_now,
                 plant_slots(st) - sum(p.crop_mix.values()),
             ))
-            if left > 0 and cap_s > 0 and days_left >= 14 and not product_contested(st, "STRAWBERRY"):
-                have_s = int(p.crop_mix.get("STRAWBERRY", 0) or 0)
-                extra = min(left, max(0, cap_s - have_s))
-                if extra:
-                    p.crop_mix["STRAWBERRY"] = have_s + extra
-                    left -= extra
-            if left > 0 and days_left >= 5:
-                # usable>=75 never fires: SW is off, NE is 50. Leftover
-                # carrot took the rest while 9017/9051 mid wheat is 4–6
-                # against 14 cows. Feed leftover before carrot leftover.
+            # Floor strawberry at 4. Extra 4→6 stole leftover carrot tiles;
+            # NE leftover-wheat (7cd483a) proved leftover carrot on NE is
+            # load-bearing (9017 −$4k). Leave leftover for carrot.
+
+            if left > 0 and days_left >= 5 and st.usable_tiles >= 75:
+                # SW's new 25 tiles must be wheat, not leftover carrot.
+                # Occupancy SW (0de5859) sat empty and cut the median to $45k.
                 have_w = int(p.crop_mix.get("WHEAT", 0) or 0)
                 p.crop_mix["WHEAT"] = have_w + left
                 left = 0
