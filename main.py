@@ -1663,12 +1663,12 @@ def build_tasks(st, plan):
             kind = tile.get("kind")
 
             if kind == "WEED":
-                # DIG at 4 weeds cut median $68k → $63k: seed 9000 lost
-                # $12k because diggers stole morning sow (wheat 11 → 4).
-                # 9017's 6–7 weeds still lose to FEED/missed WATER at
-                # full CRITICAL. Leave the gate at 8.
+                # DIG at 4 and 6 stole sow (9000 −$12k, 9017 −$3.2k).
+                # Gate 8 may still fire on an 8–9 weed pulse and pull
+                # a planter. Dual: boost only at 10. Soft DIG stays
+                # 2×action so a lone weed is not ignored.
                 add({"pos": pos, "op": ["DIG"], "kind": "DIG",
-                     "value": (CRITICAL * 0.05 if st.n_weeds >= 8
+                     "value": (CRITICAL * 0.05 if st.n_weeds >= 10
                                else 2.0 * plan.action_value)})
                 continue
 
@@ -1767,9 +1767,7 @@ def build_tasks(st, plan):
     target_p = target_c + target_s
     # Structures lead living animals by at most 2. Targeting 24 geese and
     # reserving `target - n_coops` paved 19 empty sheds on seed 9000.
-    # Dual: lead by 1 so a dusk DROP cannot bounce a cow into a second
-    # empty pasture. 15 empty pastures on 9000 were inflight=2 + DROP.
-    inflight = 1
+    inflight = 2
     shed_g = int(st.shed.get("GOOSE", 0) or 0)
     shed_p = int(st.shed.get("COW", 0) or 0) + int(st.shed.get("SHEEP", 0) or 0)
     alive_g = st.animals_alive["GOOSE"]
