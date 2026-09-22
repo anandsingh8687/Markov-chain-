@@ -412,7 +412,8 @@ def live_buy_land(st, plan=None):
     days_left = max(0, DAYS - int(getattr(st, "day", 0) or 0))
     if cost <= 1000:
         flagged = True if plan is None else bool(getattr(plan, "buy_land", False))
-        return flagged and hands >= 4 and weeds <= 10 and money > cost + 400
+        # 7–10 weeds on NE buy left DIG to steal the new 25. Wait.
+        return flagged and hands >= 4 and weeds <= 6 and money > cost + 400
     if cost <= 2000:
         # Dawn/pack SW vs starter never fired (four CI runs locked=50).
         # Vs scaler it bought and sat empty: 58 empties, $40k→$37k.
@@ -1420,7 +1421,7 @@ class MPCRevenueEngine:
             if next_cost <= 1000:
                 p.buy_land = (
                     hands >= 4
-                    and getattr(st, "n_weeds", 0) <= 10
+                    and getattr(st, "n_weeds", 0) <= 6
                     and cashish > next_cost + 400
                 )
             elif next_cost <= 2000:
@@ -1838,9 +1839,7 @@ def build_tasks(st, plan):
                 if want[c] <= 0:
                     continue
                 spec = CROPS[c]
-                # Hold-melon-to-cap waits until age 12. need_days 11
-                # planted melons that never reached the cap.
-                need_days = 13 if c == "MELON" else (spec["max_day"] + 1 if not spec["ongoing"]
+                need_days = 11 if c == "MELON" else (spec["max_day"] + 1 if not spec["ongoing"]
                                                      else spec["first"] + 3)
                 if need_days > days_left:
                     continue
@@ -2237,7 +2236,7 @@ class KaggricultureAgent(object):
                 if want <= 0:
                     continue
                 spec = CROPS[crop]
-                need_days = 13 if crop == "MELON" else spec["max_day"] + 1
+                need_days = 11 if crop == "MELON" else spec["max_day"] + 1
                 if need_days > days_left:
                     continue
                 have = int(st.seeds.get(crop, 0) or 0)
@@ -2342,7 +2341,7 @@ class KaggricultureAgent(object):
             for crop in seed_order if sow_seeds else ():
                 want = plan.crop_mix.get(crop, 0)
                 spec = CROPS[crop]
-                need_days = 13 if crop == "MELON" else spec["max_day"] + 1
+                need_days = 11 if crop == "MELON" else spec["max_day"] + 1
                 if want <= 0 or need_days > days_left:
                     continue
                 have = int(st.seeds.get(crop, 0) or 0)
