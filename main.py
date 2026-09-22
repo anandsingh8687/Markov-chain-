@@ -1731,17 +1731,14 @@ def build_tasks(st, plan):
                     val = (CRITICAL + future) if unfed >= 1 else (price / float(spec["interval"])) * 2.0
                     add({"pos": pos, "op": ["FEED"], "kind": "FEED",
                          "value": val, "need": "WHEAT"})
-                if fed and not cared and days_left > spec["interval"]:
-                    # Blanket 2*price*3 stole WATER: 9051 wheat 13→6,
-                    # weeds 1→7, floor $59.1k→$53.3k. 9085 jumped +$7k.
-                    # Raise CARE only after today's plants are watered.
-                    if animal == "COW" and st.n_unwatered == 0:
+                if (fed and not cared and days_left > spec["interval"]
+                        and st.n_unwatered == 0):
+                    # 0.95*price CARE still stole distant WATER while the
+                    # boost was gated. Skip the task entirely until the
+                    # board is wet. Not the peak-melon CARE skip (failed).
+                    if animal == "COW":
                         care_val = 2.0 * price * 3.0
-                    elif animal == "SHEEP" and st.n_unwatered == 0:
-                        # Same watered-first gate as cows. Weaker than the
-                        # cow boost so melon HARVEST ($1500) still wins nearby.
-                        # Blanket CARE stole WATER; this stays off while
-                        # plants are dry.
+                    elif animal == "SHEEP":
                         care_val = 2.0 * price * 2.0
                     else:
                         care_val = price * 0.95
@@ -1804,7 +1801,7 @@ def build_tasks(st, plan):
     labor = effective_labor(st)
     hours_left = max(0, 22 - st.hour)
     sow_this_hour = max(0, labor // 2) if st.hour <= 16 else 0
-    if st.hour <= 12 and len(empties) >= 6:
+    if st.hour <= 12 and len(empties) >= 8:
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
