@@ -2327,9 +2327,7 @@ class KaggricultureAgent(object):
 
             # Density already bought melon into core (cap 6, mix at most 4).
             # Leftover MELON on the same snapshot is unused seed cash.
-            # Tomato leftover is the same: density never buys it, and the
-            # mix rarely plants tomato vs starter.
-            seed_order = ("STRAWBERRY", "WHEAT", "CARROT")
+            seed_order = ("STRAWBERRY", "WHEAT", "CARROT", "TOMATO")
             for crop in seed_order if sow_seeds else ():
                 want = plan.crop_mix.get(crop, 0)
                 spec = CROPS[crop]
@@ -2338,6 +2336,11 @@ class KaggricultureAgent(object):
                     continue
                 have = int(st.seeds.get(crop, 0) or 0)
                 standing = int(st.crops_alive.get(crop, 0) or 0)
+                # Mix floors strawberry at 4; leftover on a stale snapshot
+                # double-buys once four tiles already stand. 9085 is at 3 so
+                # leftover still fills. Density can still buy up to 6.
+                if crop == "STRAWBERRY" and standing >= 4:
+                    continue
                 need = max(0, min(int(want), st.usable_tiles) - have - standing)
                 if need <= 0:
                     continue
