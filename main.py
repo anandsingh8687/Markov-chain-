@@ -1293,10 +1293,12 @@ class MPCRevenueEngine:
                 st.usable_tiles - used_now,
                 plant_slots(st) - sum(p.crop_mix.values()),
             ))
-            # Floor strawberry at 4. Extra 4→6 stole leftover carrot tiles;
-            # NE leftover-wheat (7cd483a) proved leftover carrot on NE is
-            # load-bearing (9017 −$4k). Leave leftover for carrot.
-
+            if left > 0 and cap_s > 0 and days_left >= 14 and not product_contested(st, "STRAWBERRY"):
+                have_s = int(p.crop_mix.get("STRAWBERRY", 0) or 0)
+                extra = min(left, max(0, cap_s - have_s))
+                if extra:
+                    p.crop_mix["STRAWBERRY"] = have_s + extra
+                    left -= extra
             if left > 0 and days_left >= 5 and st.usable_tiles >= 75:
                 # SW's new 25 tiles must be wheat, not leftover carrot.
                 # Occupancy SW (0de5859) sat empty and cut the median to $45k.
@@ -1950,7 +1952,10 @@ class KaggricultureAgent(object):
                 fert_tiles = []
                 for y, row in enumerate(st.tiles):
                     for x, tile in enumerate(row):
+                        # Melon PLAIN_CAP is already 6. FERTILIZE cannot
+                        # raise it and steals the walker from wheat/carrot.
                         if (isinstance(tile, dict) and tile.get("kind") == "PLANT"
+                                and tile.get("crop") != "MELON"
                                 and not CROPS.get(tile.get("crop"), {}).get("ongoing", True)
                                 and int(tile.get("fertilized_until_day", -1) or -1) < st.day
                                 and _age(st, tile) < CROPS[tile["crop"]]["max_day"]):
