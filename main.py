@@ -946,7 +946,7 @@ class MPCRevenueEngine:
     Turns 240-500 COMPOUND : KKT water-fill — equalise revenue per tile-day
                              subject to remaining book capacity minus opponent
                              pipeline plus town regeneration.
-    Turns 490-650 HARVEST  : no new long-cycle assets.
+    Turns 500-650 HARVEST  : no new long-cycle assets.
     Turn 650+    LIQUIDATE : gateway owns the book; field work is harvest/drop.
     """
 
@@ -962,7 +962,7 @@ class MPCRevenueEngine:
     def phase_of(self, turn, st=None):
         if turn >= LIQUIDATION_TURN:
             return "LIQUIDATE"
-        if turn >= 490:
+        if turn >= 500:
             return "HARVEST"
         if turn >= 240:
             return "COMPOUND"
@@ -2165,7 +2165,9 @@ class KaggricultureAgent(object):
         # Four HIREs until 8 are living or landing this pack; cows wait.
         # Fib(0..7) ≈ $54.
         per_turn = min(need_hands, hire_slots, 4 if not staffed_now else (3 if need_pasture_buy else 4))
-        float_cash = 400.0
+        # After 8 living, hold a cow+float so the 9th–11th HIRE cannot
+        # print $0 and stall cows (9051). 400 left that band on the table.
+        float_cash = 500.0
         queued = 0
         for _ in range(per_turn):
             c = fib(n)
