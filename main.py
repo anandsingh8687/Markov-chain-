@@ -2080,11 +2080,6 @@ class KaggricultureAgent(object):
                 held = max(0, held - reserve_wheat)
             if held <= 0:
                 continue
-            if prod == "FERTILIZER" and not self.gate.armed:
-                # Staple dump sells fert COLLECT just brought in. Keep
-                # field stock unless the shed is jammed.
-                if st.shed_total <= SHED_CAPACITY * 0.75:
-                    continue
             inv = st.inventory.get(prod, MARKET_I0)
             drain = self.el.drain_rate.get(prod, 0.0)
             if self.gate.armed:
