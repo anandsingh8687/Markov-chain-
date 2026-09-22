@@ -2096,11 +2096,6 @@ class KaggricultureAgent(object):
                     n = int(min(held, max(sellable, held if cash_tight else 0), 40))
                     if n == 0:
                         n = int(min(held, sellable))
-                    # COLLECT at $400 stole sow (9000 wheat 12→3, empties
-                    # 5→18). Eggs absorb on the log curve. Dump the lot
-                    # without touching field labour.
-                    if prod == "EGG":
-                        n = int(min(held, 40))
                 else:
                     n = int(min(held, sellable, math.ceil(rate * 2.0)))
                     # Beat their harvest onto the book: if they are 0-2 days
@@ -2205,7 +2200,10 @@ class KaggricultureAgent(object):
             want_w = int(plan.crop_mix.get("WHEAT", 0) or 0)
             if want_w >= 2:
                 have_w = int(st.seeds.get("WHEAT", 0) or 0) + int(st.crops_alive.get("WHEAT", 0) or 0)
-                need_w = max(0, min(want_w, 16) - have_w)
+                # Egg dump was bit-identical (staples already sell).
+                # 9017 mid wheat is 6; want is 12. Seed cap 16 can
+                # starve replants after harvest. Buy up to 24.
+                need_w = max(0, min(want_w, 24) - have_w)
                 cost_w = SEED_COST["WHEAT"]
                 afford_w = int(min(need_w, max(0.0, budget - 400) // cost_w)) if cost_w else 0
                 if afford_w > 0:
