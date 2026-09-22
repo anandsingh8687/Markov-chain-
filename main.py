@@ -377,10 +377,7 @@ def product_contested(st, prod):
     flow = float(st.opp_flow.get(prod, 0.0) or 0.0)
     if prod == "MELON" and (tiles >= 1 or flow > 0):
         return True
-    # Dual: vacate only when the quote is 0.88× base, not 0.90×. Wheat
-    # sell floor 0.35 / MU_LO / collapse / opp-flow never bound vs these
-    # opponents. Healthy books stay ours; dying ones still get walked.
-    if price >= 0.88 * params["base"]:
+    if price >= 0.90 * params["base"]:
         return False
     if tiles >= 10:
         return True
@@ -961,6 +958,10 @@ class MPCRevenueEngine:
         self.el = elasticity
         self.plan = Plan()
         self._last = -999
+        # Latches once milk prints 1.80× so the melon-at-2 floor is not
+        # stuck behind REPLAN_EVERY. Noon / every-4 replans thrashed the
+        # mix; this fires once per crossing, not every hour.
+        self._hot_milk = False
 
     def phase_of(self, turn, st=None):
         if turn >= LIQUIDATION_TURN:
@@ -982,13 +983,19 @@ class MPCRevenueEngine:
 
     def maybe_replan(self, st):
         phase = self.phase_of(st.turn, st)
+        quote_m = Econ.price("MILK", st.inventory.get("MILK", MARKET_I0))
+        hot_milk = quote_m >= 1.80 * MARKET_PARAMS["MILK"]["base"]
+        milk_crossed = hot_milk and not self._hot_milk
+        if hot_milk:
+            self._hot_milk = True
         due = (st.turn - self._last >= self.REPLAN_EVERY
                or not self.plan.crop_mix
                or phase != self.plan.phase
                or st.stance != self.plan.stance
                or st.hour == 0
                or len(st.hands) != getattr(self, "_hands", -1)
-               or st.usable_tiles != getattr(self, "_usable", -1))
+               or st.usable_tiles != getattr(self, "_usable", -1)
+               or milk_crossed)
         if not due:
             return self.plan
         self._last = st.turn
