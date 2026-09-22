@@ -1803,7 +1803,9 @@ def build_tasks(st, plan):
     # water new plants before EOD (consecutive_unwatered starts at 1).
     labor = effective_labor(st)
     hours_left = max(0, 22 - st.hour)
-    sow_this_hour = max(0, labor // 2) if st.hour <= 16 else 0
+    # hour<=15 (cut) crashed 9034 -$17k. Evening harvest of wheat leaves
+    # empties that sat until dawn; hour<=18 still has water_left = labor*4.
+    sow_this_hour = max(0, labor // 2) if st.hour <= 18 else 0
     if st.hour <= 12 and len(empties) >= 8:
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
     water_left = max(0, labor * hours_left - st.n_unwatered)
@@ -1828,7 +1830,7 @@ def build_tasks(st, plan):
         (k for k in want if k != "WHEAT"),
         key=lambda k: -plan.price_hint.get(k, 0),
     )
-    if st.hour <= 16 and days_left >= 3:
+    if st.hour <= 18 and days_left >= 3:
         for pos in plant_empties:
             crop = None
             for c in _sow_order:
@@ -1962,19 +1964,14 @@ class KaggricultureAgent(object):
                     if d <= 3:
                         actions[i] = self._goto_or(wpos, dst, ["FERTILIZE"])
                         continue
-            # Wheat/fertilizer in PRODUCTS used to count toward produce>=4, so
-            # an 8-wheat pickup immediately walked back to DROP and bounced
-            # the ration. Harvest goods still drop at 4; hour>=18 still
-            # dumps everything (hands wipe at EOD).
-            harvest = sum(int(v or 0) for k, v in inv.items()
-                          if k in PRODUCTS and k not in ("WHEAT", "FERTILIZER"))
-            cargo = harvest + int(inv.get("WHEAT", 0) or 0) + int(inv.get("FERTILIZER", 0) or 0)
+            produce = sum(int(v or 0) for k, v in inv.items()
+                          if k in PRODUCTS)
             near_crit = any(
                 abs(t["pos"][0] - wpos[0]) + abs(t["pos"][1] - wpos[1]) <= 1
                 and t["value"] >= CRITICAL for t in tasks)
-            deliver = (harvest >= 4 or st.hour >= 18 or self.gate.armed
+            deliver = (produce >= 4 or st.hour >= 18 or self.gate.armed
                        or st.shed_total > SHED_CAPACITY * 0.80)
-            if cargo > 0 and deliver and not near_crit:
+            if produce > 0 and deliver and not near_crit:
                 dst, _ = self._nearest(wpos, shed_tiles)
                 actions[i] = self._goto_or(wpos, dst, ["DROP"])
                 continue
