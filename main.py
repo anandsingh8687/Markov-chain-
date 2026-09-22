@@ -311,9 +311,7 @@ def book_tiles(st, prod, frac=0.50):
     head = Econ.units_until(prod, inv, floor)
     days = max(1, DAYS - int(getattr(st, "day", 0) or 0))
     rate = FLOW_PER_TILE_DAY.get(prod, 1.0)
-    denom = max(1.0, rate * float(days))
-    extra = float(days) if prod == "MELON" else 0.0
-    return max(0, int(math.floor((head + extra) / denom)))
+    return max(0, int(math.floor(head / max(1.0, rate * float(days)))))
 
 
 def pasture_cap(st, product):
@@ -1665,12 +1663,12 @@ def build_tasks(st, plan):
             kind = tile.get("kind")
 
             if kind == "WEED":
-                # DIG at 4 weeds cut median $68k → $63k: seed 9000 lost
-                # $12k because diggers stole morning sow (wheat 11 → 4).
-                # 9017's 6–7 weeds still lose to FEED/missed WATER at
-                # full CRITICAL. Leave the gate at 8.
+                # DIG at 4 stole morning sow (9000 wheat 11→4, −$12k).
+                # Gate 8 never fires on 9017's 6–7 weeds. Dual: boost
+                # at 6 so those boards get a digger without the blanket
+                # 4-weed walk. FEED at full CRITICAL still wins.
                 add({"pos": pos, "op": ["DIG"], "kind": "DIG",
-                     "value": (CRITICAL * 0.05 if st.n_weeds >= 8
+                     "value": (CRITICAL * 0.05 if st.n_weeds >= 6
                                else 2.0 * plan.action_value)})
                 continue
 
