@@ -1842,6 +1842,10 @@ def build_tasks(st, plan):
                                                      else spec["first"] + 3)
                 if need_days > days_left:
                     continue
+                # Afternoon carrot misses same-day water more than wheat.
+                # Sow wheat/melon/straw until 16; plant carrot in the morning.
+                if c == "CARROT" and st.hour > 12:
+                    continue
                 if st.seeds.get(c, 0) <= planted[c]:
                     continue
                 crop = c
@@ -1955,9 +1959,7 @@ class KaggricultureAgent(object):
                 fert_tiles = []
                 for y, row in enumerate(st.tiles):
                     for x, tile in enumerate(row):
-                        # Carrot 3→4 is not feed. Wheat/melon FERTILIZE is.
                         if (isinstance(tile, dict) and tile.get("kind") == "PLANT"
-                                and tile.get("crop") != "CARROT"
                                 and not CROPS.get(tile.get("crop"), {}).get("ongoing", True)
                                 and int(tile.get("fertilized_until_day", -1) or -1) < st.day
                                 and _age(st, tile) < CROPS[tile["crop"]]["max_day"]):
