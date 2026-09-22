@@ -1750,7 +1750,9 @@ def build_tasks(st, plan):
                 if units_now > 0:
                     add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                          "value": units_now * price})
-                if tile.get("fertilizer_available"):
+                if tile.get("fertilizer_available") and st.hour <= 12:
+                    # Always-on COLLECT walks stole afternoon WATER/HARVEST.
+                    # Pickup is already hour<=10. Keep the 0.85 value.
                     add({"pos": pos, "op": ["COLLECT_FERTILIZER"], "kind": "COLLECT",
                          "value": 0.85 * plan.price_hint.get("FERTILIZER", 100)})
                 continue
@@ -1804,7 +1806,7 @@ def build_tasks(st, plan):
     labor = effective_labor(st)
     hours_left = max(0, 22 - st.hour)
     sow_this_hour = max(0, labor // 2) if st.hour <= 16 else 0
-    if st.hour <= 13 and len(empties) >= 8:
+    if st.hour <= 12 and len(empties) >= 8:
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
     water_left = max(0, labor * hours_left - st.n_unwatered)
     spare = max(0, min(plant_slots(st) - st.n_plants, sow_this_hour, water_left))
