@@ -2101,9 +2101,7 @@ class KaggricultureAgent(object):
                 turns_to_gate = max(1, LIQUIDATION_TURN - st.turn)
                 rate = max(drain, held / float(turns_to_gate), 1.0)
                 if prod in STAPLES:
-                    # 40/turn left surplus on the log book. egg dump raise
-                    # was bit-identical; this raises every staple, not eggs.
-                    n = int(min(held, max(sellable, held if cash_tight else 0), 48))
+                    n = int(min(held, max(sellable, held if cash_tight else 0), 40))
                     if n == 0:
                         n = int(min(held, sellable))
                 else:
@@ -2113,7 +2111,10 @@ class KaggricultureAgent(object):
                     if st.opp_imminent.get(prod, 0) > 0:
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
                 if st.shed_total > SHED_CAPACITY * 0.75:
-                    n = max(n, min(held, 12))
+                    # 12 left surplus in a packed shed. Cap 40 never
+                    # bound (1293576); this only fires when the shed
+                    # is actually full.
+                    n = max(n, min(held, 16))
             if n > 0:
                 orders.append(["SELL", prod, int(n)])
         orders.sort(key=lambda o: -Econ.price(o[1], st.inventory.get(o[1], MARKET_I0)) * o[2])
