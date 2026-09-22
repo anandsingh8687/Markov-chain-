@@ -259,10 +259,7 @@ def effective_labor(st):
     arrived = 1 + len(getattr(st, "hands", []) or [])
     hour = int(getattr(st, "hour", 0) or 0)
     intended = intended_crew(st)
-    # Dual: keep planning the mix off the crew that is still landing
-    # through hour 4. Dist cap 8 crushed self-play $51k→$42k and peak
-    # $74.2k→$67.6k; assignment GAMMA stays uncapped at LOOKAHEAD*4.
-    if hour <= 4 and arrived < intended:
+    if hour <= 3 and arrived < intended:
         return intended
     return max(1, arrived)
 
@@ -1696,7 +1693,11 @@ def build_tasks(st, plan):
                         start = Econ.bonus_start(crop)
                         in_window = (not spec["ongoing"]) and start <= age <= spec["max_day"]
                         # Daily water is cheap labour and protects the bonus.
-                        bonus = price if in_window or spec["ongoing"] else 0.35 * price
+                        # Dual: off-window one-time WATER 0.35→0.50. In-window
+                        # 1.2× made melon beat dry CARE and crashed 9000;
+                        # this stays below CARE. Hour<=4 labor only moved
+                        # 9000 (−$1.1k); dawn window stays 3.
+                        bonus = price if in_window or spec["ongoing"] else 0.50 * price
                         add({"pos": pos, "op": ["WATER"], "kind": "WATER",
                              "value": max(bonus, 0.3 * plan.action_value)})
 
