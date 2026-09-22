@@ -1803,9 +1803,7 @@ def build_tasks(st, plan):
     # water new plants before EOD (consecutive_unwatered starts at 1).
     labor = effective_labor(st)
     hours_left = max(0, 22 - st.hour)
-    # hour<=15 (cut) crashed 9034 -$17k. Evening harvest of wheat leaves
-    # empties that sat until dawn; hour<=18 still has water_left = labor*4.
-    sow_this_hour = max(0, labor // 2) if st.hour <= 18 else 0
+    sow_this_hour = max(0, labor // 2) if st.hour <= 16 else 0
     if st.hour <= 12 and len(empties) >= 8:
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
     water_left = max(0, labor * hours_left - st.n_unwatered)
@@ -1830,7 +1828,7 @@ def build_tasks(st, plan):
         (k for k in want if k != "WHEAT"),
         key=lambda k: -plan.price_hint.get(k, 0),
     )
-    if st.hour <= 18 and days_left >= 3:
+    if st.hour <= 16 and days_left >= 3:
         for pos in plant_empties:
             crop = None
             for c in _sow_order:
@@ -2282,7 +2280,7 @@ class KaggricultureAgent(object):
                 empty_for = sum(1 for _, k in st.empty_structs if k == want)
                 if empty_for <= 0 and housed >= max(target, 1):
                     continue
-                if wheat_next < 2:
+                if wheat_next < 3:
                     price = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
                     afford = int(min(4, max(0.0, budget - 400) // max(1.0, price), 8))
                     if afford > 0:
