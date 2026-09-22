@@ -1745,12 +1745,8 @@ def build_tasks(st, plan):
                     add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                          "value": units_now * price})
                 if tile.get("fertilizer_available"):
-                    # GAMMA 0.80 stole 9034 wheat 15→7 ($74.1k→$47.2k).
-                    # Always-on COLLECT is a keep; 0.85*100 loses to CARE
-                    # on the same pasture. Price collect above default
-                    # CARE so bags land without BUY (9e52ae9 stole FEED).
                     add({"pos": pos, "op": ["COLLECT_FERTILIZER"], "kind": "COLLECT",
-                         "value": 400.0})
+                         "value": 0.85 * plan.price_hint.get("FERTILIZER", 100)})
                 continue
 
     # Structures first: planting every empty tile is how a goose target of 8
@@ -2100,6 +2096,11 @@ class KaggricultureAgent(object):
                     n = int(min(held, max(sellable, held if cash_tight else 0), 40))
                     if n == 0:
                         n = int(min(held, sellable))
+                    # COLLECT at $400 stole sow (9000 wheat 12→3, empties
+                    # 5→18). Eggs absorb on the log curve. Dump the lot
+                    # without touching field labour.
+                    if prod == "EGG":
+                        n = int(min(held, 40))
                 else:
                     n = int(min(held, sellable, math.ceil(rate * 2.0)))
                     # Beat their harvest onto the book: if they are 0-2 days
