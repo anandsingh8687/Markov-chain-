@@ -1051,7 +1051,7 @@ class MPCRevenueEngine:
                 # most starter seeds.
                 if shops_w.get("STRAWBERRY", 0) >= 1 or quote_s >= 0.85 * MARKET_PARAMS["STRAWBERRY"]["base"]:
                     candidates.append("STRAWBERRY")
-                if phase == "COMPOUND" and shops_w.get("TOMATO", 0) >= 2 and days_left >= 14:
+                if phase == "COMPOUND" and shops_w.get("TOMATO", 0) >= 2 and days_left >= 13:
                     candidates.append("TOMATO")
         for prod in candidates:
             if prod in ("WHEAT", "EGG"):
@@ -1811,8 +1811,14 @@ def build_tasks(st, plan):
     if plan.phase in ("HARVEST", "LIQUIDATE"):
         # Late sow is how 36 melon became 26 weeds after harvest on seed 9051.
         # Re-enabled HARVEST wheat sow (693afb2) cut median $65k → $58k with
-        # 6–8 end weeds. Keep the field as of turn 500.
+        # 6–8 end weeds. Keep the field as of turn 500 except a 2-tile
+        # morning wheat trickle while the board is already clean.
         spare = 0
+        if (plan.phase == "HARVEST"
+                and st.n_weeds == 0
+                and st.n_unwatered == 0
+                and st.hour <= 8):
+            spare = min(2, sow_this_hour, max(0, plant_slots(st) - st.n_plants))
     plant_empties = plant_empties[:spare]
 
     # crop_mix is a standing target, not a per-turn quota. Replanting the
