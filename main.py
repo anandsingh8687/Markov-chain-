@@ -946,7 +946,7 @@ class MPCRevenueEngine:
     Turns 240-500 COMPOUND : KKT water-fill — equalise revenue per tile-day
                              subject to remaining book capacity minus opponent
                              pipeline plus town regeneration.
-    Turns 500-650 HARVEST  : no new long-cycle assets.
+    Turns 490-650 HARVEST  : no new long-cycle assets.
     Turn 650+    LIQUIDATE : gateway owns the book; field work is harvest/drop.
     """
 
@@ -962,7 +962,7 @@ class MPCRevenueEngine:
     def phase_of(self, turn, st=None):
         if turn >= LIQUIDATION_TURN:
             return "LIQUIDATE"
-        if turn >= 500:
+        if turn >= 490:
             return "HARVEST"
         if turn >= 240:
             return "COMPOUND"
@@ -2071,9 +2071,7 @@ class KaggricultureAgent(object):
         # selling the log-curve staple and the till died. Keep the
         # 2-per-head ration.
 
-        # 1400 left mid-cash on the table while cows waited. Dump staples
-        # into the till below 1800; wheat reserve still holds n_animals*3.
-        cash_tight = st.money < 1800 or (
+        cash_tight = st.money < 1400 or (
             st.next_land_cost is not None and st.money < st.next_land_cost + 300)
         orders = []
         for prod in PRODUCTS:
