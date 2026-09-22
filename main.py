@@ -1816,6 +1816,10 @@ def build_tasks(st, plan):
         # Re-enabled HARVEST wheat sow (693afb2) cut median $65k → $58k with
         # 6–8 end weeds. Keep the field as of turn 500.
         spare = 0
+        # Phase says no new long-cycle assets. Empty sheds in the dump
+        # window steal HARVEST/CARE; hold-melon-to-cap is a keep.
+        need_coops = 0
+        need_past = 0
     plant_empties = plant_empties[:spare]
 
     # crop_mix is a standing target, not a per-turn quota. Replanting the
