@@ -1959,7 +1959,11 @@ class KaggricultureAgent(object):
             near_crit = any(
                 abs(t["pos"][0] - wpos[0]) + abs(t["pos"][1] - wpos[1]) <= 1
                 and t["value"] >= CRITICAL for t in tasks)
-            deliver = (produce >= 4 or st.hour >= 18 or self.gate.armed
+            # Pickup-12 committed the walker to FEED (9000 melon 2→0,
+            # 9017 wheat 6→3, floor $49.9k). Keep the 8-wheat trip.
+            # Hold 4–5 harvested units so the same worker stays on
+            # WATER/FEED instead of walking to the shed at mid-day.
+            deliver = (produce >= 6 or st.hour >= 18 or self.gate.armed
                        or st.shed_total > SHED_CAPACITY * 0.80)
             if produce > 0 and deliver and not near_crit:
                 dst, _ = self._nearest(wpos, shed_tiles)
@@ -1976,11 +1980,7 @@ class KaggricultureAgent(object):
                 abs(workers[k][0] - s[0]) + abs(workers[k][1] - s[1]) for s in shed_tiles))
             wpos = workers[i]
             dst, _ = self._nearest(wpos, shed_tiles)
-            # Skip-all-CARE on peak melon cut 9000 $66.8k→$57.4k
-            # (wheat 12→7, weeds 3→7). One walker, 12 wheat: feed the
-            # 14-cow herd in one trip without a second pickup stealing
-            # WATER. Do not add mouths or cut sow.
-            n = int(min(12, need_wheat, st.shed.get("WHEAT", 0)))
+            n = int(min(8, need_wheat, st.shed.get("WHEAT", 0)))
             actions[i] = self._goto_or(wpos, dst, ["PICKUP", "WHEAT", n])
             free_idx = [k for k in free_idx if k != i]
 
