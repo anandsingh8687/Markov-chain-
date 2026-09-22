@@ -673,10 +673,7 @@ class BayesianElasticityFilter:
 class LiquidationGateway:
     """Hard-armed at turn 650. Unsold stock at 720 is worth zero, so V(T, q>0) = -inf."""
 
-    # Dual: opp_imminent 0.25 never bound vs starter. Coarser liquidation
-    # DP (10→8 stages) changes our own dump after 650. Race 0.35 and
-    # 1.5× drain are not retried.
-    STAGES = 8
+    STAGES = 10
     BUCKETS = 20
     NEG = -1e12
 
@@ -701,7 +698,10 @@ class LiquidationGateway:
         turns_left = max(1, HORIZON - turn)
         if held <= 0:
             return 0
-        if turns_left <= 4:
+        # Dual: STAGES 8 was bit-identical. Flatten remaining stock from
+        # turn 714 (was 716) so unsold goods are not still in the shed at
+        # 720. STAGES stays 10. 1.5× drain is not retried.
+        if turns_left <= 6:
             return int(held)
         # Race an imminent premium dump: sell a third now, do not wait.
         race = 0
