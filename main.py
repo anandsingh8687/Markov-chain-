@@ -1737,6 +1737,12 @@ def build_tasks(st, plan):
                     # Raise CARE only after today's plants are watered.
                     if animal == "COW" and st.n_unwatered == 0:
                         care_val = 2.0 * price * 3.0
+                    elif animal == "SHEEP" and st.n_unwatered == 0:
+                        # Same watered-first gate as cows. Weaker than the
+                        # cow boost so melon HARVEST ($1500) still wins nearby.
+                        # Blanket CARE stole WATER; this stays off while
+                        # plants are dry.
+                        care_val = 2.0 * price * 2.0
                     else:
                         care_val = price * 0.95
                     add({"pos": pos, "op": ["CARE"], "kind": "CARE",
@@ -2344,10 +2350,9 @@ class KaggricultureAgent(object):
         rest_sells = orders[2:]
         # Sells first so HIRE has cash. Hires before cows so seed 9051
         # cannot print $0 / 4 hands (cows ate the till after a failed dawn hire).
-        # cash_sells[:1] + rest_sells dropped orders[1] — the second-best
-        # sell never shipped. Keep one lead sell for hire cash; append the
-        # rest after core so dawn HIRE slots stay intact.
-        packed = cash_sells[:1] + hires + core + cash_sells[1:] + rest_sells + seeds
+        # Shipping orders[1] after core (a9e2b62) dried mid-cash: 9034
+        # $10.6k→$5.6k and the floor $59.2k→$57.4k.
+        packed = cash_sells[:1] + hires + core + rest_sells + seeds
         return packed[:MAX_MARKET_ORDERS]
 
 
