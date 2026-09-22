@@ -1694,8 +1694,14 @@ def build_tasks(st, plan):
                         in_window = (not spec["ongoing"]) and start <= age <= spec["max_day"]
                         # Daily water is cheap labour and protects the bonus.
                         bonus = price if in_window or spec["ongoing"] else 0.35 * price
+                        val = max(bonus, 0.3 * plan.action_value)
+                        # Young melon (0.35×$250) beat in-window wheat ($50)
+                        # and the feed block dried. Beat young melon only;
+                        # ripe melon WATER ($250) and dry CARE (~$285) stay first.
+                        if crop == "WHEAT":
+                            val = max(val, 1.15 * 0.35 * plan.price_hint.get("MELON", 250))
                         add({"pos": pos, "op": ["WATER"], "kind": "WATER",
-                             "value": max(bonus, 0.3 * plan.action_value)})
+                             "value": val})
 
                 if units_now > 0 and age >= spec["first"]:
                     if spec["ongoing"]:
@@ -2264,11 +2270,7 @@ class KaggricultureAgent(object):
 
             wheat_next = st.wheat_held() + pending_wheat
             g_cap_buy = goose_buy_cap(st, plan)
-            # HARVEST already skips BUY_SEED (995f785). Sheep first=6 and
-            # goose first=4 still clear days_left<=first+2 at turn 500, so
-            # $300–$500 buys plus a core slot kept crowding rest_sells.
-            buy_animals = sow_seeds
-            for animal in ("GOOSE", "COW", "SHEEP") if buy_animals else ():
+            for animal in ("GOOSE", "COW", "SHEEP"):
                 target = plan.animal_targets.get(animal, 0)
                 alive = st.animals_alive.get(animal, 0)
                 in_shed = int(st.shed.get(animal, 0) or 0)
