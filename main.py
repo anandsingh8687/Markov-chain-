@@ -30,7 +30,7 @@ import time
 TURNS_PER_DAY = 24
 DAYS = 30
 HORIZON = TURNS_PER_DAY * DAYS
-LIQUIDATION_TURN = 640
+LIQUIDATION_TURN = 650
 BOARD = 10
 QUADRANT = 5
 SHED_CAPACITY = 100
@@ -946,8 +946,8 @@ class MPCRevenueEngine:
     Turns 240-500 COMPOUND : KKT water-fill — equalise revenue per tile-day
                              subject to remaining book capacity minus opponent
                              pipeline plus town regeneration.
-    Turns 500-640 HARVEST  : no new long-cycle assets.
-    Turn 640+    LIQUIDATE : gateway owns the book; field work is harvest/drop.
+    Turns 500-650 HARVEST  : no new long-cycle assets.
+    Turn 650+    LIQUIDATE : gateway owns the book; field work is harvest/drop.
     """
 
     REPLAN_EVERY = 8
@@ -1051,7 +1051,7 @@ class MPCRevenueEngine:
                 # most starter seeds.
                 if shops_w.get("STRAWBERRY", 0) >= 1 or quote_s >= 0.85 * MARKET_PARAMS["STRAWBERRY"]["base"]:
                     candidates.append("STRAWBERRY")
-                if phase == "COMPOUND" and shops_w.get("TOMATO", 0) >= 2 and days_left >= 13:
+                if phase == "COMPOUND" and shops_w.get("TOMATO", 0) >= 2 and days_left >= 14:
                     candidates.append("TOMATO")
         for prod in candidates:
             if prod in ("WHEAT", "EGG"):
