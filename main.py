@@ -1767,9 +1767,7 @@ def build_tasks(st, plan):
     target_p = target_c + target_s
     # Structures lead living animals by at most 2. Targeting 24 geese and
     # reserving `target - n_coops` paved 19 empty sheds on seed 9000.
-    # A second empty shed is a WATER walk we already cannot spare
-    # (HARVEST-hire-cap-8 died from lost field labor). Lead by 1.
-    inflight = 1
+    inflight = 2
     shed_g = int(st.shed.get("GOOSE", 0) or 0)
     shed_p = int(st.shed.get("COW", 0) or 0) + int(st.shed.get("SHEEP", 0) or 0)
     alive_g = st.animals_alive["GOOSE"]
@@ -2010,7 +2008,9 @@ class KaggricultureAgent(object):
             actions[i] = self._goto_or(wpos, dst, ["PICKUP", pending_animal, 1])
             free_idx = free_idx[1:]
 
-        if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 10
+        # hour 14 (wider) died. hour<=10 still pulls a worker off WATER
+        # at 9–10. COLLECT and carried FERTILIZE stay. Cut the window.
+        if (st.shed.get("FERTILIZER", 0) > 0 and free_idx and st.hour <= 8
                 and plan.phase in ("EXPAND", "COMPOUND")):
             i = free_idx[0]
             wpos = workers[i]
