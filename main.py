@@ -30,9 +30,7 @@ import time
 TURNS_PER_DAY = 24
 DAYS = 30
 HORIZON = TURNS_PER_DAY * DAYS
-# 640 nicked the floor (dump too early). 660 gives 10 more field
-# turns after hold-melon-to-cap before the gateway owns the book.
-LIQUIDATION_TURN = 660
+LIQUIDATION_TURN = 650
 BOARD = 10
 QUADRANT = 5
 SHED_CAPACITY = 100
@@ -948,8 +946,8 @@ class MPCRevenueEngine:
     Turns 240-500 COMPOUND : KKT water-fill — equalise revenue per tile-day
                              subject to remaining book capacity minus opponent
                              pipeline plus town regeneration.
-    Turns 500-660 HARVEST  : no new long-cycle assets.
-    Turn 660+    LIQUIDATE : gateway owns the book; field work is harvest/drop.
+    Turns 500-650 HARVEST  : no new long-cycle assets.
+    Turn 650+    LIQUIDATE : gateway owns the book; field work is harvest/drop.
     """
 
     REPLAN_EVERY = 8
@@ -1709,11 +1707,25 @@ def build_tasks(st, plan):
                         # still harvests immediately.
                         at_peak = (crop == "MELON" and (units_now >= 6 or age >= 12)) or (
                             crop != "MELON" and age >= spec["max_day"])
-                        if at_peak or age > spec["max_day"] or days_left <= 1 or plan.phase == "LIQUIDATE":
-                            # Holding ripe wheat after hour 14 cut the
-                            # starter floor $56k → $53.5k: seed 9051 milk
-                            # died at $175 (cows ate shed wheat we refused
-                            # to replenish) and weeds rose on 9017/9068.
+                        fertilized = int(tile.get("fertilized_until_day", -1) or -1) >= st.day
+                        cap = spec["max_yield"] if fertilized else PLAIN_CAP.get(
+                            crop, spec["max_yield"])
+                        # Peak HARVEST ($216 wheat / $1500 melon) outbids the
+                        # same-day WATER that still prints the last unit.
+                        # Wait for watered_today or the cap. Hour>=14 wheat
+                        # hold starved the herd (floor $56k→$53.5k).
+                        wait_water = (
+                            at_peak
+                            and not watered
+                            and unwatered == 0
+                            and units_now < cap
+                            and age <= spec["max_day"]
+                            and days_left > 1
+                            and plan.phase != "LIQUIDATE"
+                            and not (crop == "WHEAT" and st.hour >= 14)
+                        )
+                        if (at_peak or age > spec["max_day"] or days_left <= 1
+                                or plan.phase == "LIQUIDATE") and not wait_water:
                             urg = 1.7 if age > spec["max_day"] else 1.0
                             add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                                  "value": units_now * price * urg})
