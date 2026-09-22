@@ -1235,9 +1235,9 @@ class MPCRevenueEngine:
             elif cap_c <= 0:
                 p.animal_targets.pop("COW", None)
             if wool_ok:
-                # sh_floor=3 alone was a no-op: 9000/9034/9051 still finished
-                # at 3 because cows took every pasture and BUY skipped.
-                # Floor 4 plus sheep-before-cow (below) is one dual.
+                # 4th sheep needs a spare pasture after cows are up.
+                # Floor-only was a no-op; sheep-before-cow delayed milk
+                # (9017 14→10 cows, floor $55.2k, self-play $37k).
                 sh_floor = min(4, cap_sh)
                 sh_hi = cap_sh
                 # Wool often printed +oversupply at $116–$189 while strawberry
@@ -1793,6 +1793,14 @@ def build_tasks(st, plan):
         st.wheat_held() >= 2 or shed_p > 0 or st.n_animals >= 2)
     if not can_stock_pasture and shed_p <= 0:
         need_past = 0
+    sheep_n = st.animals_alive.get("SHEEP", 0) + int(st.shed.get("SHEEP", 0) or 0)
+    cow_n = st.animals_alive.get("COW", 0) + int(st.shed.get("COW", 0) or 0)
+    # Cow-first fills every pasture, then empty_for=0 skips the 4th sheep.
+    # Sheep-before-cow (1d592e5) delayed milk. After 12 cows, pave one
+    # spare so the keep cap of 4 can land. 9017 already has 4 — no-op there.
+    if (sheep_n < 4 and cow_n >= 12 and empty_past < 1 and can_stock_pasture
+            and target_s >= 3):
+        need_past = max(need_past, 1)
     reserve_n = min(need_coops + need_past, len(empties))
     # Build next to the shed. Last-empties on a 75-tile board are SW, a
     # 9-step walk, so a dusk DROP used to bounce the cow and pave 15 sheds.
@@ -2257,10 +2265,7 @@ class KaggricultureAgent(object):
 
             wheat_next = st.wheat_held() + pending_wheat
             g_cap_buy = goose_buy_cap(st, plan)
-            # Cow-first filled every pasture; sh_floor=4 then skipped the
-            # 4th sheep (empty_for=0). Buy sheep before extra cows so the
-            # 4th head actually lands. Do not raise sh_hi.
-            for animal in ("GOOSE", "SHEEP", "COW"):
+            for animal in ("GOOSE", "COW", "SHEEP"):
                 target = plan.animal_targets.get(animal, 0)
                 alive = st.animals_alive.get(animal, 0)
                 in_shed = int(st.shed.get(animal, 0) or 0)
