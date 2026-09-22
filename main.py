@@ -1693,11 +1693,7 @@ def build_tasks(st, plan):
                         start = Econ.bonus_start(crop)
                         in_window = (not spec["ongoing"]) and start <= age <= spec["max_day"]
                         # Daily water is cheap labour and protects the bonus.
-                        # Dual: off-window one-time WATER 0.35→0.50. In-window
-                        # 1.2× made melon beat dry CARE and crashed 9000;
-                        # this stays below CARE. Hour<=4 labor only moved
-                        # 9000 (−$1.1k); dawn window stays 3.
-                        bonus = price if in_window or spec["ongoing"] else 0.50 * price
+                        bonus = price if in_window or spec["ongoing"] else 0.35 * price
                         add({"pos": pos, "op": ["WATER"], "kind": "WATER",
                              "value": max(bonus, 0.3 * plan.action_value)})
 
@@ -2045,7 +2041,15 @@ class KaggricultureAgent(object):
                 claimed.add(id(t))
                 actions[i] = self._goto_or(workers[i], t["pos"], t["op"])
 
-        _apply(holders, feed_left + field_tasks)
+        # Dual: wheat holders take FEED first so melon HARVEST ($1500)
+        # cannot leave unfed animals assigned to empty-handed workers
+        # (those PASSed). Off-window WATER 0.50 crashed 9000 −$10.8k;
+        # WATER stays quote / 0.35.
+        _apply(holders, feed_left)
+        leftover_h = [i for i in holders if actions[i] == ["PASS"]]
+        for i in leftover_h:
+            actions[i] = None
+        _apply(leftover_h, field_tasks)
         remain = [t for t in field_tasks if id(t) not in claimed]
         _apply(others, remain)
 
