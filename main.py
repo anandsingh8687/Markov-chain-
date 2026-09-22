@@ -1964,10 +1964,8 @@ class KaggricultureAgent(object):
                         continue
             produce = sum(int(v or 0) for k, v in inv.items()
                           if k in PRODUCTS)
-            # FEED already interrupts at d<=2. DROP at d<=1 still walked
-            # off a missed watering. Same radius as the feed interrupt.
             near_crit = any(
-                abs(t["pos"][0] - wpos[0]) + abs(t["pos"][1] - wpos[1]) <= 2
+                abs(t["pos"][0] - wpos[0]) + abs(t["pos"][1] - wpos[1]) <= 1
                 and t["value"] >= CRITICAL for t in tasks)
             deliver = (produce >= 4 or st.hour >= 18 or self.gate.armed
                        or st.shed_total > SHED_CAPACITY * 0.80)
@@ -1992,10 +1990,16 @@ class KaggricultureAgent(object):
 
         pending_animals = []
         if any(k == "PASTURE" for _, k in empty_structs):
-            if st.shed.get("COW", 0):
-                pending_animals.append("COW")
-            if st.shed.get("SHEEP", 0):
-                pending_animals.append("SHEEP")
+            # Cow-first left sheep in the shed while wool sat above milk.
+            # Place the hotter book first; same pickup trip.
+            quote_m = Econ.price("MILK", st.inventory.get("MILK", MARKET_I0))
+            quote_wo = Econ.price("WOOL", st.inventory.get("WOOL", MARKET_I0))
+            first, second = (("SHEEP", "COW") if quote_wo > quote_m
+                             else ("COW", "SHEEP"))
+            if st.shed.get(first, 0):
+                pending_animals.append(first)
+            if st.shed.get(second, 0):
+                pending_animals.append(second)
         if st.shed.get("GOOSE", 0):
             pending_animals.append("GOOSE")
         for pending_animal in pending_animals:
