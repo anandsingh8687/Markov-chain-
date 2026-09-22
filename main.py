@@ -1693,7 +1693,15 @@ def build_tasks(st, plan):
                         start = Econ.bonus_start(crop)
                         in_window = (not spec["ongoing"]) and start <= age <= spec["max_day"]
                         # Daily water is cheap labour and protects the bonus.
-                        bonus = price if in_window or spec["ongoing"] else 0.35 * price
+                        # Straw at ~$300 outbids young melon (~$250) and
+                        # steals the last unit hold-melon-to-cap waits for.
+                        # Dying straw (unwatered>=1) stays CRITICAL above.
+                        if crop == "STRAWBERRY":
+                            bonus = 0.80 * price
+                        elif in_window or spec["ongoing"]:
+                            bonus = price
+                        else:
+                            bonus = 0.35 * price
                         add({"pos": pos, "op": ["WATER"], "kind": "WATER",
                              "value": max(bonus, 0.3 * plan.action_value)})
 
@@ -2023,10 +2031,7 @@ class KaggricultureAgent(object):
             wpos = workers[i]
             dst, d = self._nearest(wpos, shed_tiles)
             if d <= 2:
-                # Same morning walk. One unit left a second wheat/carrot
-                # tile unfertilized until tomorrow's hour<=10 window.
-                n_fert = int(min(2, st.shed.get("FERTILIZER", 0)))
-                actions[i] = self._goto_or(wpos, dst, ["PICKUP", "FERTILIZER", n_fert])
+                actions[i] = self._goto_or(wpos, dst, ["PICKUP", "FERTILIZER", 1])
                 free_idx = free_idx[1:]
 
         field_tasks = [t for t in tasks if t.get("need") != "WHEAT"]
