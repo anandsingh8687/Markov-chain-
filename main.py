@@ -2071,11 +2071,8 @@ class KaggricultureAgent(object):
         # selling the log-curve staple and the till died. Keep the
         # 2-per-head ration.
 
-        # +300 after NE ($2000) dumped staples whenever cash sat
-        # $2000–$2300. That is extra till, not a jam. Bind only when
-        # we cannot afford the next tile. 1400 still covers pre-NE.
         cash_tight = st.money < 1400 or (
-            st.next_land_cost is not None and st.money < st.next_land_cost)
+            st.next_land_cost is not None and st.money < st.next_land_cost + 300)
         orders = []
         for prod in PRODUCTS:
             held = int(st.shed.get(prod, 0) or 0)
@@ -2168,7 +2165,10 @@ class KaggricultureAgent(object):
         # Four HIREs until 8 are living or landing this pack; cows wait.
         # Fib(0..7) ≈ $54.
         per_turn = min(need_hands, hire_slots, 4 if not staffed_now else (3 if need_pasture_buy else 4))
-        float_cash = 400.0
+        # 400 let the 9th–11th HIRE spend the last wheat/cow float.
+        # 12th hire (full crew) already died 9034. Hold $600 after 8
+        # living so the till can still buy wheat that hour.
+        float_cash = 600.0
         queued = 0
         for _ in range(per_turn):
             c = fib(n)
