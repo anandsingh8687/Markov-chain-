@@ -950,7 +950,7 @@ class MPCRevenueEngine:
     Turn 650+    LIQUIDATE : gateway owns the book; field work is harvest/drop.
     """
 
-    REPLAN_EVERY = 8
+    REPLAN_EVERY = 10
     MU_LO, MU_HI = 0.5, 4000.0
     BISECT = 26
 
@@ -1750,9 +1750,7 @@ def build_tasks(st, plan):
                 if units_now > 0:
                     add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                          "value": units_now * price})
-                if tile.get("fertilizer_available") and st.hour <= 12:
-                    # Always-on COLLECT walks stole afternoon WATER/HARVEST.
-                    # Pickup is already hour<=10. Keep the 0.85 value.
+                if tile.get("fertilizer_available"):
                     add({"pos": pos, "op": ["COLLECT_FERTILIZER"], "kind": "COLLECT",
                          "value": 0.85 * plan.price_hint.get("FERTILIZER", 100)})
                 continue
