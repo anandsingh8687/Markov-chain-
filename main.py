@@ -1816,6 +1816,15 @@ def build_tasks(st, plan):
     planted = {c: 0 for c in CROPS}
     # Wheat harvests leave empties; price_hint then sows strawberry into
     # the feed block (3 wheat / 12 straw, 12 cows starving). Feed first.
+    # Wheat-only first also starves establishment: 9085 mid had 3 straw
+    # at $353 because every spare empty went back to wheat. Leave 2
+    # slots for strawberry until 4 stand, without cutting this-hour sow.
+    wheat_quota = want["WHEAT"]
+    if (days_left >= 14 and want.get("STRAWBERRY", 0) > 0
+            and on_board.get("STRAWBERRY", 0) < 4
+            and int(st.seeds.get("STRAWBERRY", 0) or 0) > 0
+            and spare >= 3):
+        wheat_quota = min(want["WHEAT"], max(2, spare - 2))
     _sow_order = ["WHEAT"] + sorted(
         (k for k in want if k != "WHEAT"),
         key=lambda k: -plan.price_hint.get(k, 0),
@@ -1825,6 +1834,8 @@ def build_tasks(st, plan):
             crop = None
             for c in _sow_order:
                 if want[c] <= 0:
+                    continue
+                if c == "WHEAT" and planted["WHEAT"] >= wheat_quota:
                     continue
                 spec = CROPS[c]
                 need_days = 11 if c == "MELON" else (spec["max_day"] + 1 if not spec["ongoing"]
