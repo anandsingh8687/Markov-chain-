@@ -1240,11 +1240,7 @@ class MPCRevenueEngine:
                 # Wool often printed +oversupply at $116–$189 while strawberry
                 # sat −400 at $300. Cap sheep at 4 unless the quote is still
                 # 1.25× base; those tiles go to strawberry/wheat leftovers.
-                # 9068 keep stood 4 sheep into wool $189 (below base). Do not
-                # buy the 4th head once the book is already oversupplied.
-                if quote_wo < MARKET_PARAMS["WOOL"]["base"]:
-                    sh_hi = min(3, cap_sh)
-                elif quote_wo < 1.25 * MARKET_PARAMS["WOOL"]["base"]:
+                if quote_wo < 1.25 * MARKET_PARAMS["WOOL"]["base"]:
                     sh_hi = min(4, cap_sh)
                 p.animal_targets["SHEEP"] = min(
                     max(int(p.animal_targets.get("SHEEP", 0) or 0), sh_floor), sh_hi)
@@ -2114,6 +2110,12 @@ class KaggricultureAgent(object):
                     # from dumping this premium, sell our lot first.
                     if st.opp_imminent.get(prod, 0) > 0:
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
+                    # 9068 stood 4 sheep into wool $189. Sheep-below-base cap
+                    # never bound (the 4th head was already placed). Dump the
+                    # oversupplied lot to the bank; scarce wool stays at *2.
+                    quote = Econ.price(prod, inv)
+                    if prod == "WOOL" and quote < MARKET_PARAMS["WOOL"]["base"]:
+                        n = int(min(held, sellable or held, max(n, 6)))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
             if n > 0:
