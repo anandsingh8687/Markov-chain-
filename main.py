@@ -2234,11 +2234,6 @@ class KaggricultureAgent(object):
                 need = max(0, min(want, 6) - have - standing)
                 cost = SEED_COST[crop]
                 keep = 400
-                if crop == "STRAWBERRY":
-                    # 34 straw seeds at $100 printed 9051 $9 / 7 hands.
-                    # Hold a cow+float so core straw does not eat the till.
-                    # Leftover straw keep stays 400 (replant stock).
-                    keep = 800
                 afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
                 if afford > 0:
                     budget = _spend(core, ["BUY_SEED", crop, afford], afford * cost)
@@ -2364,6 +2359,11 @@ class KaggricultureAgent(object):
         # Shipping orders[1] after core (a9e2b62) dried mid-cash: 9034
         # $10.6k→$5.6k and the floor $59.2k→$57.4k.
         packed = cash_sells[:1] + hires + core + rest_sells + seeds
+        # HARVEST 3*(herd+2) wheat buy is feed (601fbac). Put dump sells
+        # before core so rest_sells take the 10-order cap; wheat still
+        # ships if a slot remains. Do not ship orders[1] as a second lead.
+        if plan.phase in ("HARVEST", "LIQUIDATE"):
+            packed = cash_sells[:1] + hires + rest_sells + core + seeds
         return packed[:MAX_MARKET_ORDERS]
 
 
