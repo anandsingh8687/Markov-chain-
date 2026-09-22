@@ -1293,13 +1293,9 @@ class MPCRevenueEngine:
                 st.usable_tiles - used_now,
                 plant_slots(st) - sum(p.crop_mix.values()),
             ))
-            # Reserve leftover carrot before straw extra. Cutting extra
-            # entirely crashed 9051 (77992f7); sending all leftover to
-            # wheat crashed 9017 (7cd483a). Keep 2 carrot tiles.
-            carrot_reserve = 2 if (days_left >= 4 and not product_contested(st, "CARROT")) else 0
-            if left > carrot_reserve and cap_s > 0 and days_left >= 14 and not product_contested(st, "STRAWBERRY"):
+            if left > 0 and cap_s > 0 and days_left >= 14 and not product_contested(st, "STRAWBERRY"):
                 have_s = int(p.crop_mix.get("STRAWBERRY", 0) or 0)
-                extra = min(left - carrot_reserve, max(0, cap_s - have_s))
+                extra = min(left, max(0, cap_s - have_s))
                 if extra:
                     p.crop_mix["STRAWBERRY"] = have_s + extra
                     left -= extra
@@ -2187,7 +2183,9 @@ class KaggricultureAgent(object):
         short = max(short, 3 * (herd + 2) - st.wheat_held())
         if short > 0 and (herd > 0 or plan.animal_targets.get("GOOSE", 0) > 0):
             price = Econ.price("WHEAT", st.inventory.get("WHEAT", MARKET_I0))
-            afford = int(min(max(short, 1), max(0.0, budget - 400) // max(1.0, price), 16))
+            # Cap 16 saturates market wheat. 12 still covers the living
+            # herd; leftover wheat seeds stay the replant stock.
+            afford = int(min(max(short, 1), max(0.0, budget - 400) // max(1.0, price), 12))
             if afford > 0:
                 budget = _spend(core, ["BUY_PRODUCT", "WHEAT", afford], afford * price)
                 pending_wheat = afford
