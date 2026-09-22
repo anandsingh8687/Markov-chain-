@@ -1803,7 +1803,10 @@ def build_tasks(st, plan):
     # water new plants before EOD (consecutive_unwatered starts at 1).
     labor = effective_labor(st)
     hours_left = max(0, 22 - st.hour)
-    sow_this_hour = max(0, labor // 2) if st.hour <= 16 else 0
+    # Dual: hour-19 DROP crashed 9051. Hour-13 burst *extended* morning
+    # sow. This cuts the labor//2 window 16→15 so hour 16 waters today's
+    # plants (consecutive_unwatered starts at 1). Burst hour<=12 stays.
+    sow_this_hour = max(0, labor // 2) if st.hour <= 15 else 0
     if st.hour <= 12 and len(empties) >= 8:
         sow_this_hour = max(sow_this_hour, min(max(0, labor - 3), 8))
     water_left = max(0, labor * hours_left - st.n_unwatered)
@@ -1967,10 +1970,7 @@ class KaggricultureAgent(object):
             near_crit = any(
                 abs(t["pos"][0] - wpos[0]) + abs(t["pos"][1] - wpos[1]) <= 1
                 and t["value"] >= CRITICAL for t in tasks)
-            # Dual: leftover wheat-first dried 9085. Hour 18 DROP walks
-            # off the field; 19 keeps FEED/WATER one more hour. DROP at
-            # 3/6 and shop-tick hold are not retried. Lot still 4+.
-            deliver = (produce >= 4 or st.hour >= 19 or self.gate.armed
+            deliver = (produce >= 4 or st.hour >= 18 or self.gate.armed
                        or st.shed_total > SHED_CAPACITY * 0.80)
             if produce > 0 and deliver and not near_crit:
                 dst, _ = self._nearest(wpos, shed_tiles)
