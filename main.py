@@ -2222,7 +2222,11 @@ class KaggricultureAgent(object):
                 if want <= 0:
                     continue
                 spec = CROPS[crop]
-                need_days = 11 if crop == "MELON" else spec["max_day"] + 1
+                # Mix zeros new straw at days_left<14; max_day+1 is 11 and
+                # kept buying $100 seeds the sow window would still plant.
+                need_days = (14 if crop == "STRAWBERRY"
+                             else 11 if crop == "MELON"
+                             else spec["max_day"] + 1)
                 if need_days > days_left:
                     continue
                 have = int(st.seeds.get(crop, 0) or 0)
@@ -2325,7 +2329,11 @@ class KaggricultureAgent(object):
             for crop in seed_order:
                 want = plan.crop_mix.get(crop, 0)
                 spec = CROPS[crop]
-                need_days = 11 if crop == "MELON" else spec["max_day"] + 1
+                # Mix zeros new straw at days_left<14; max_day+1 is 11 and
+                # kept buying $100 seeds the sow window would still plant.
+                need_days = (14 if crop == "STRAWBERRY"
+                             else 11 if crop == "MELON"
+                             else spec["max_day"] + 1)
                 if want <= 0 or need_days > days_left:
                     continue
                 have = int(st.seeds.get(crop, 0) or 0)
@@ -2346,14 +2354,13 @@ class KaggricultureAgent(object):
                 if afford > 0:
                     budget = _spend(seeds, ["BUY_SEED", crop, afford], afford * cost)
 
-        cash_sells = orders[:1]
+        cash_sells = orders[:2]
         rest_sells = orders[2:]
-        # Shipping orders[1] after core (a9e2b62) dried mid-cash when #2 was
-        # premium. If #2 is a staple, that slot is wheat/carrot/egg cash
-        # currently voided; put it after core with the rest.
-        if len(orders) > 1 and orders[1][1] in STAPLES:
-            rest_sells = [orders[1]] + rest_sells
-        packed = cash_sells + hires + core + rest_sells + seeds
+        # Sells first so HIRE has cash. Hires before cows so seed 9051
+        # cannot print $0 / 4 hands (cows ate the till after a failed dawn hire).
+        # Shipping orders[1] after core (a9e2b62) dried mid-cash: 9034
+        # $10.6k→$5.6k and the floor $59.2k→$57.4k.
+        packed = cash_sells[:1] + hires + core + rest_sells + seeds
         return packed[:MAX_MARKET_ORDERS]
 
 
