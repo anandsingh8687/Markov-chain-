@@ -587,11 +587,10 @@ class BayesianElasticityFilter:
     Collapse: a >15% drop across a 12-turn window pivots the farm vector.
     """
 
-    WINDOW = 12
-    # Dual: 15%→20% so a noisy 12-turn drop does not vacate a still-alive
-    # book. Wheat-holder FEED-first dropped every starter seed (floor
-    # $53.9k); holders still take feed_left + field_tasks.
-    COLLAPSE_FRAC = 0.20
+    # Dual: 12-turn 15% collapse never bound (0.20 was bit-identical).
+    # Shorter lookback so a real drop pivots inside a day, not after.
+    WINDOW = 8
+    COLLAPSE_FRAC = 0.15
 
     def __init__(self):
         self.mu = {p: 0.0 for p in PRODUCTS}
