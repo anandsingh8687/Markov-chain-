@@ -1393,7 +1393,7 @@ class MPCRevenueEngine:
             + int(p.animal_targets.get("SHEEP", 0) or 0)
             + int(st.n_animals or 0)
         )
-        p.wheat_reserve = herd * 2
+        p.wheat_reserve = max(herd * 2, st.n_animals * 3)
 
         # Cap crop mix to plants we can actually water.
         slots = plant_slots(st)
@@ -2325,7 +2325,10 @@ class KaggricultureAgent(object):
                     and budget >= st.next_land_cost + 400):
                 budget = _spend(core, ["BUY_LAND"], st.next_land_cost)
 
-            seed_order = ("STRAWBERRY", "MELON", "WHEAT", "CARROT", "TOMATO")
+            # Density already bought wheat into core (cap 24). A second
+            # leftover WHEAT order spent cash and a 10-order slot on the
+            # same have/standing snapshot.
+            seed_order = ("STRAWBERRY", "MELON", "CARROT", "TOMATO")
             for crop in seed_order if sow_seeds else ():
                 want = plan.crop_mix.get(crop, 0)
                 spec = CROPS[crop]
