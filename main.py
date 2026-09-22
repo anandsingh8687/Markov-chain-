@@ -1964,8 +1964,10 @@ class KaggricultureAgent(object):
                         continue
             produce = sum(int(v or 0) for k, v in inv.items()
                           if k in PRODUCTS)
+            # FEED already interrupts at d<=2. DROP at d<=1 still walked
+            # off a missed watering. Same radius as the feed interrupt.
             near_crit = any(
-                abs(t["pos"][0] - wpos[0]) + abs(t["pos"][1] - wpos[1]) <= 1
+                abs(t["pos"][0] - wpos[0]) + abs(t["pos"][1] - wpos[1]) <= 2
                 and t["value"] >= CRITICAL for t in tasks)
             deliver = (produce >= 4 or st.hour >= 18 or self.gate.armed
                        or st.shed_total > SHED_CAPACITY * 0.80)
@@ -2109,9 +2111,7 @@ class KaggricultureAgent(object):
                     # Beat their harvest onto the book: if they are 0-2 days
                     # from dumping this premium, sell our lot first.
                     if st.opp_imminent.get(prod, 0) > 0:
-                        # leftover MELON keep was scaler-only. Race a
-                        # bigger slice when they are about to dump.
-                        n = int(min(held, max(n, math.ceil(held * 0.55)), sellable or held))
+                        n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
             if n > 0:
