@@ -2094,7 +2094,10 @@ class KaggricultureAgent(object):
                 if st.stance == "LOCK" and prod in PREMIUM:
                     floor *= 1.08
                 elif st.stance == "CONTEST" and prod in PREMIUM:
-                    floor *= 0.78
+                    # 0.78 walked a contested milk book to the crush
+                    # gate on scaler 9000 when we also dumped wheat.
+                    # 0.85 still undercuts a peer without the 0.25× dump.
+                    floor *= 0.85
                 if cash_tight and prod in STAPLES:
                     floor = min(floor, 0.35 * MARKET_PARAMS[prod]["base"])
                 sellable = Econ.units_until(prod, inv, max(1.0, floor))
@@ -2164,10 +2167,7 @@ class KaggricultureAgent(object):
         # Seed 9051 printed $0 and 4 hands: 3 HIREs then cows spent the till.
         # Four HIREs until 8 are living or landing this pack; cows wait.
         # Fib(0..7) ≈ $54.
-        # 3 HIREs + a cow on a 10-order pack still crowds wheat.
-        # Two HIREs when a pasture buy is pending leaves a slot and
-        # the $400 float. 12th hire and float $600 are not retried.
-        per_turn = min(need_hands, hire_slots, 4 if not staffed_now else (2 if need_pasture_buy else 4))
+        per_turn = min(need_hands, hire_slots, 4 if not staffed_now else (3 if need_pasture_buy else 4))
         float_cash = 400.0
         queued = 0
         for _ in range(per_turn):
