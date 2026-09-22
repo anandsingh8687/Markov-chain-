@@ -1952,10 +1952,7 @@ class KaggricultureAgent(object):
                 fert_tiles = []
                 for y, row in enumerate(st.tiles):
                     for x, tile in enumerate(row):
-                        # Melon PLAIN_CAP is already 6. FERTILIZE cannot
-                        # raise it and steals the walker from wheat/carrot.
                         if (isinstance(tile, dict) and tile.get("kind") == "PLANT"
-                                and tile.get("crop") != "MELON"
                                 and not CROPS.get(tile.get("crop"), {}).get("ongoing", True)
                                 and int(tile.get("fertilized_until_day", -1) or -1) < st.day
                                 and _age(st, tile) < CROPS[tile["crop"]]["max_day"]):
@@ -2237,6 +2234,11 @@ class KaggricultureAgent(object):
                 need = max(0, min(want, 6) - have - standing)
                 cost = SEED_COST[crop]
                 keep = 400
+                if crop == "STRAWBERRY":
+                    # 34 straw seeds at $100 printed 9051 $9 / 7 hands.
+                    # Hold a cow+float so core straw does not eat the till.
+                    # Leftover straw keep stays 400 (replant stock).
+                    keep = 800
                 afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
                 if afford > 0:
                     budget = _spend(core, ["BUY_SEED", crop, afford], afford * cost)
