@@ -1273,7 +1273,13 @@ class MPCRevenueEngine:
             # 12 straw tiles crashed seed 9000 to $118 (at I0). The $64k
             # farm had 3 tiles at $347. Cap 6; leftover is not a dump.
             # max(kkt, 4) kept the KKT dump: scaler 9051 stood 25 straw.
+            # Soft FEED at 0.01*CRITICAL stole sow (9000 wheat 12→7).
+            # 9085/9051 print straw −550 to −770 at $318–$353. Cap 6
+            # leaves that book. Raise to 8 only at 2.50× so 9000/9017
+            # /9034 ($278–$294) keep the 6-tile floor.
             cap_s = min(6, book_tiles(st, "STRAWBERRY", 0.70))
+            if quote_s >= 2.50 * MARKET_PARAMS["STRAWBERRY"]["base"]:
+                cap_s = min(8, book_tiles(st, "STRAWBERRY", 0.70))
             if (cap_s > 0 and days_left >= 14 and quote_s >= 0.85 * MARKET_PARAMS["STRAWBERRY"]["base"]
                     and not product_contested(st, "STRAWBERRY")):
                 have_s = int(p.crop_mix.get("STRAWBERRY", 0) or 0)
@@ -1728,11 +1734,7 @@ def build_tasks(st, plan):
                 if not fed:
                     animals_unfed += 1
                     future = (max(0, days_left - 1) / float(spec["interval"])) * price
-                    # Shop-tick premium hold cut mid-cash (9051 $7.5k→$3.5k,
-                    # floor $52.9k). Soft same-day FEED was ~$107, so melon
-                    # HARVEST ($1500) and CARE stole the first feed. Price
-                    # it above those, still far below starving/unwatered.
-                    val = (CRITICAL + future) if unfed >= 1 else CRITICAL * 0.01
+                    val = (CRITICAL + future) if unfed >= 1 else (price / float(spec["interval"])) * 2.0
                     add({"pos": pos, "op": ["FEED"], "kind": "FEED",
                          "value": val, "need": "WHEAT"})
                 if fed and not cared and days_left > spec["interval"]:
