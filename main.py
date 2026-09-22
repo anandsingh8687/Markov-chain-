@@ -2206,7 +2206,11 @@ class KaggricultureAgent(object):
             # HARVEST/LIQUIDATE do not sow. Core BUY_SEED still spent a
             # 10-order slot on unused wheat while standing crops came off
             # the field, crowding rest_sells in the dump window.
-            sow_seeds = plan.phase not in ("HARVEST", "LIQUIDATE")
+            # Market resolves after farm actions, so hour>=16 buys cannot
+            # be planted until tomorrow (sow window is hour<=16).
+            sow_seeds = (
+                plan.phase not in ("HARVEST", "LIQUIDATE") and st.hour <= 15
+            )
             # $56k floor seeds had 4 wheat on 24 animals: strawberry/melon
             # seeds took the 10-order cap. Feed seeds first.
             want_w = int(plan.crop_mix.get("WHEAT", 0) or 0)
