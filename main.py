@@ -2110,6 +2110,11 @@ class KaggricultureAgent(object):
                     # from dumping this premium, sell our lot first.
                     if st.opp_imminent.get(prod, 0) > 0:
                         n = int(min(held, max(n, math.ceil(held * 0.40)), sellable or held))
+                    # Melon has no shop. Inventory already above I0 is the
+                    # 12-tile $7 walk; leftover melon seeds were unused cash
+                    # (73af7b0). Do not dump the rest onto that book.
+                    if prod == "MELON" and inv > MARKET_I0:
+                        n = int(min(n, 1))
                 if st.shed_total > SHED_CAPACITY * 0.75:
                     n = max(n, min(held, 12))
             if n > 0:
@@ -2333,11 +2338,6 @@ class KaggricultureAgent(object):
                 spec = CROPS[crop]
                 need_days = 11 if crop == "MELON" else spec["max_day"] + 1
                 if want <= 0 or need_days > days_left:
-                    continue
-                # BOOTSTRAP is 100% carrot and leftover is how those seeds
-                # are bought. After EXPAND the leftover carrot pass replants
-                # onto the starter book; wheat leftover stays (69d9a28).
-                if crop == "CARROT" and plan.phase != "BOOTSTRAP":
                     continue
                 have = int(st.seeds.get(crop, 0) or 0)
                 standing = int(st.crops_alive.get(crop, 0) or 0)
