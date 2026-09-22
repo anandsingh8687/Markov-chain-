@@ -1709,7 +1709,10 @@ def build_tasks(st, plan):
                             # starter floor $56k → $53.5k: seed 9051 milk
                             # died at $175 (cows ate shed wheat we refused
                             # to replenish) and weeds rose on 9017/9068.
-                            urg = 1.7 if age > spec["max_day"] else 1.0
+                            # 1.7 pulled distant HARVEST over nearby WATER.
+                            # Dual: 1.55 so overripe still beats CARE 0.95
+                            # without the 2.2× melon fail.
+                            urg = 1.55 if age > spec["max_day"] else 1.0
                             add({"pos": pos, "op": ["HARVEST"], "kind": "HARVEST",
                                  "value": units_now * price * urg})
                 continue
@@ -2229,9 +2232,7 @@ class KaggricultureAgent(object):
                 standing = int(st.crops_alive.get(crop, 0) or 0)
                 need = max(0, min(want, 6) - have - standing)
                 cost = SEED_COST[crop]
-                # 400 let melon/straw seeds spend the last cow float.
-                # 500 still fills a 4-tile block and leaves a BUY_ANIMAL.
-                keep = 500
+                keep = 400
                 afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
                 if afford > 0:
                     budget = _spend(core, ["BUY_SEED", crop, afford], afford * cost)
@@ -2336,13 +2337,13 @@ class KaggricultureAgent(object):
                 if need <= 0:
                     continue
                 cost = SEED_COST[crop]
-                keep = 500
+                keep = 400
                 if crop == "MELON":
                     geese_need = max(0, goose_buy_cap(st, plan) - st.animals_alive.get("GOOSE", 0))
                     keep = max(keep, 250 + 300 * min(2, geese_need))
                 elif crop == "STRAWBERRY":
                     # 34 strawberry seeds at $100 left seed 9051 with $9 and 7 hands.
-                    keep = 500
+                    keep = 400
                     need = min(need, 6)
                 afford = int(min(need, max(0.0, budget - keep) // cost)) if cost else 0
                 if afford > 0:
