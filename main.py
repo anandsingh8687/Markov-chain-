@@ -2217,10 +2217,7 @@ class KaggricultureAgent(object):
                 if afford_w > 0:
                     budget = _spend(core, ["BUY_SEED", "WHEAT", afford_w], afford_w * cost_w)
 
-            # Dual: leftover/first-block straw-then-melon can drop melon
-            # when the 10-order pack is full. Melon has no shop. Buy it
-            # first; straw still follows. Lead-sell rank is not retried.
-            for crop in ("MELON", "STRAWBERRY"):
+            for crop in ("STRAWBERRY", "MELON"):
                 want = int(plan.crop_mix.get(crop, 0) or 0)
                 if want <= 0:
                     continue
@@ -2324,7 +2321,10 @@ class KaggricultureAgent(object):
                     and budget >= st.next_land_cost + 400):
                 budget = _spend(core, ["BUY_LAND"], st.next_land_cost)
 
-            seed_order = ("STRAWBERRY", "MELON", "WHEAT", "CARROT", "TOMATO")
+            # Dual: first-block melon-before-straw dropped 9017/9068.
+            # Leftover only: wheat first so a harvested feed block can
+            # reclaim a 10-order slot before straw/carrot. Same keep.
+            seed_order = ("WHEAT", "STRAWBERRY", "MELON", "CARROT", "TOMATO")
             for crop in seed_order:
                 want = plan.crop_mix.get(crop, 0)
                 spec = CROPS[crop]
