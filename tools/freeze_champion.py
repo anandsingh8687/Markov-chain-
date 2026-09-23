@@ -8,7 +8,7 @@ disabled and its parameters baked in as they stand.
 import os
 import sys
 
-SRC = sys.argv[1] if len(sys.argv) > 1 else "main.py"
+SRC = sys.argv[1] if len(sys.argv) > 1 else "agents/scratch/main.py"
 DST = sys.argv[2] if len(sys.argv) > 2 else "champion.py"
 s = open(SRC).read()
 needle = 'if _os.environ.get("KG_PARAMS"):'

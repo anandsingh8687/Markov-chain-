@@ -1,5 +1,7 @@
 # Architecture
 
+> **Scope:** this document describes the from-scratch agent, now at `agents/scratch/main.py`. The submission is v8 (`main.py`), described in [V8.md](V8.md). The engine facts here still hold for both.
+
 Derived from the shipped interpreter (`kaggle_environments/envs/kaggriculture/
 kaggriculture.py`, pinned at 1.32.7) and the published tables. No public
 leaderboard solution was consulted. Every number below was read off the

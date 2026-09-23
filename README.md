@@ -1,156 +1,85 @@
-# Kaggriculture agent
+# Kaggriculture v8
 
-A finite-horizon agent for the [Kaggriculture](https://www.kaggle.com/competitions/kaggriculture)
-competition, derived from the shipped interpreter rather than from any public
-leaderboard solution.
+`main.py` is the submission. It is a single file, standard library only, and
+`agent` is the last callable in it.
 
-`main.py` is the whole submission: one file, standard library only, no
-dependency on `kaggle-environments` at runtime.
+v8 builds on the strongest public agent, prvsiyan's *The Soil Remembers Rain*
+(Apache-2.0), and adds three things:
 
-## Status: v8
+* **Counter D** (shiiin9). Each turn it picks the order of our market orders by
+  solving the engine's per-unit lockstep exactly against a rival that plays our
+  own list.
+* **Sale-race horizon 44.**
+* **Level-2 counter D** (new). Counter D is public, so v8 also models a rival
+  running it, and picks the ordering that is best against the worse of the two
+  rival models.
 
-[docs/V8.md](docs/V8.md) documents v8, a new candidate. It is built on the
-strongest public agent and adds level-2 counter D. It is tested against 367 of
-this account's real ladder opponents, replayed from their recorded moves by
-`tools/ghost_bench.py` from `benchmark/ghosts/`. The v8 file is not committed
-yet; see the status note in that document. The rest of this README describes
-the from-scratch agent that `main.py` still holds.
-
-## The short version
-
-The shared order book is a **sink, not a ceiling**. The town centre and up to
-eight shop instances remove on the order of 120 units/day, which is more than a
-100-tile farm supplies, so inventory sits below the reference level all season
-and the quote sits *above* base — carrot ends a measured episode at **$186**
-against a $35 base. Absorption is not the binding constraint; tile-days and
-worker-actions are.
-
-The agent therefore equalises marginal revenue per tile-day against a forward
-model of the book, reading this episode's actual shop draw to price demand.
-Under that valuation a fed-and-cared cow or sheep is worth ~$260/tile-day
-against ~$55 for carrot, so the plan is livestock-led — melon for the opening
-capital event, carrot and wheat through the middle, a herd capped at the town's
-own draw for each product.
-
-Full reasoning, the measured numbers, and the engine facts the plan depends on:
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Credits: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The full evidence and
+the experiments that failed are in [docs/V8.md](docs/V8.md).
 
 ## Measured
 
-720 turns, `kaggle-environments==1.32.7`, sides swapped, strict mode:
+`kaggle-environments==1.32.7`, 720 turns, real ladder seeds. Each seed is counted
+once, because games are deterministic.
 
-| Match | Episodes | Result |
+| Test | v8 lineage | For comparison |
 | --- | --- | --- |
-| vs. built-in `starter` | 4 | **4-0**, median margin +$77,458 |
-| vs. `benchmark/incumbent` (PR #1), seeds 1-18 | 32 | **32-0**, mean $76,393 vs ~$11k |
-| vs. `benchmark/incumbent`, seeds 31-42 (fresh) | 24 | **24-0**, mean $73,106 |
-| vs. `benchmark/rival` (PR #2 `32762ff`), two seed sets | 24 | **24-0**, mean $75,176 / $83,011 |
-| vs. the previous `main.py` in this repo | 12 | **12-0**, mean $63,512 |
+| **210 real v7 ladder games, opponent replayed from its recorded tape** | **185 won** (v7 won 61, tied 39) | base 169, tetsutani 155 |
+| the 110 of those that v7 lost | **87 turned into wins** | base 77, tetsutani 58 |
+| vs the user's v7, 20 seeds | 20-0, +$1,938 | |
+| vs the user's v3, 44 seeds | 44-0, +$4,502 | |
+| vs the base (prvsiyan), 16 seeds | 15-1, +$380 | |
+| vs tetsutani demand (counter D), 16 seeds | 16-0, +$1,168 | |
+| vs the level-1 build (counter D + 44), 16 seeds | 14 W, 2 T, 0 L | |
 
-Even with two copies of this agent on both sides of the book, every product
-the town buys finishes *under*-supplied at two to three times base price. The
-market is not the ceiling — see `docs/ARCHITECTURE.md` §3b.
-
-For reference, the previous `main.py` in this repository won 31% against that
-same incumbent, with both sides finishing between $9k and $13k.
+The ghost replay cannot react to v8, so it flatters any agent somewhat. The
+closed-loop rows are the check on that.
 
 ## Layout
 
 ```
-main.py                     the submission -- stdlib only, `agent` last
-agent.py                    import alias for notebooks and tooling
-benchmark/incumbent/        PR #1 agent; regression gate
-benchmark/rival/            PR #2 agent, the strongest rival; regression gate
-tools/cloud_verify.py       verification gates (see below)
-tools/search_params.py      coordinate search over the agent's tunables
-tools/build_submission.py   tarball with main.py at the archive root
-docs/ARCHITECTURE.md        why the agent does what it does
-.github/workflows/deploy.yml  verify on every push, submit only from main
+main.py                        v8, the submission
+THIRD_PARTY_NOTICES.md         upstream credits (Apache-2.0)
+docs/V8.md                     evidence, method, what failed, what next
+benchmark/incumbent/           the live v7 file; gate: v8 must beat it
+benchmark/rival/               v8's unmodified parent; gate: v8 must beat it
+benchmark/ghosts/              367 real ladder opponents as replayable action tapes
+benchmark/ladder/              real ladder banks by seed (tools/ladder_gap.py)
+benchmark/legacy/              PR #1 / PR #2 agents, for the scratch agent's tools
+tools/cloud_verify.py          loader, import, strict self-play, latency, structure, strength
+tools/ghost_bench.py           replay real ladder opponents against an agent
+tools/fetch_ghosts.py          refresh the ghosts from the Kaggle episode API
+tools/build_submission.py      tarball with main.py at the archive root
+agents/scratch/                the from-scratch agent this repo started with (research)
+.github/workflows/deploy.yml   verify on every push, submit only from main
 ```
 
 ## Cloud-only
 
-Nothing here is built, tested or submitted from a workstation. A clean GitHub
-Actions runner is provisioned on every push; the agent is verified inside it;
-only a verified artifact reaches a submission slot.
+Nothing is built, tested or submitted from a workstation. On every push a clean
+GitHub Actions runner runs these checks:
 
-`tools/cloud_verify.py` covers the ways a submission dies before a slot is
-spent:
+1. `tools/cloud_verify.py`:
+   * byte-compile
+   * last-callable entrypoint
+   * cold-start import
+   * a strict 720-turn self-play
+   * latency against the 1s `actTimeout`
+   * a structural check at turn 480
+   * strength against the built-in starter
+2. 4 seeds against `benchmark/incumbent`, the live v7 file.
+3. 4 seeds against `benchmark/rival`, v8's own parent.
+4. `tools/ghost_bench.py` on the 40 most recent real v7 games. v7 won 3 of them;
+   v8 wins 35. The gate is 75%.
 
-1. byte-compilation;
-2. **entrypoint resolution** — `kaggle-environments` loads a file submission by
-   taking the *last callable in the module namespace*, not the one named
-   `agent`, so a helper defined below `agent` silently becomes the submission.
-   This is asserted explicitly; it cost a rewrite to discover;
-3. import and a cold-start action on a minimal observation;
-4. a full 720-turn self-play episode with the agent's own exception guard
-   **disabled**, so a planner bug surfaces instead of being swallowed;
-5. per-turn latency against the 1s `actTimeout`, gated on the overage budget's
-   low-water mark;
-6. a **structural check** at turn 480 — staffing, tile utilisation, weed
-   count, and whether any farmed product has been crushed below a quarter of
-   base. Score alone hides a farm that buys 75 tiles and works thirteen, or
-   an allocator that saturates the one product the town never buys;
-7. strength against the built-in `starter` *and* against both
-   `benchmark/incumbent` (PR #1) and `benchmark/rival` (PR #2) — beating the
-   starter is table stakes and says nothing about ladder position. A
-   submission that loses to an agent already sitting in this tree is a
-   regression whatever it scores against the starter.
-
-## The only benchmark that matters
-
-`benchmark/ladder/reference.json` holds real banks from real Kaggriculture
-ladder episodes, with the seed each one ran on, pulled from the Kaggle episode
-replay API. `tools/ladder_gap.py` replays those seeds and compares.
-
-Everything else in `benchmark/` finishes around a sixth of what the
-leaderboard actually plays at, so a 6x margin over them means nothing. Real
-ladder games are decided by **0.1–3% of the bank** — one sampled episode was
-lost by $73 out of $124,918.
-
-Current standing against that bar: **ahead on 1 of 7 seeds, mean gap 18.3%.**
-The gap is the opening ramp — the ladder agent owns four animals on day 0 and
-sells fertilizer from day 1, where this agent places its first animal around
-day 11.
-
-## Measuring against a strong opponent
-
-Beating `starter` measures how much of an *uncontested* book an agent can
-harvest. A ladder is a different problem — the book is shared and the town's
-draw is fixed, so whoever reaches the high-value products first gets the
-higher quotes. `tools/selfplay_ab.py` plays a candidate against a frozen copy
-of the current agent (`tools/freeze_champion.py`); identical agents score
-exactly 0.500, which is the control.
-
-Read both numbers. Self-play measures contested strength but is blind to any
-change that expands absolute production, because the mirrored opponent expands
-too and they split the same book. Mean bank against a fixed opponent measures
-that. They disagreed on the feed-shadow experiment, and the absolute measure
-was the one that mattered (`docs/ARCHITECTURE.md` §6d, §7).
-
-**The noise floor matters more than any single result here.** At 16 episodes
-the standard error on a self-play score is ~0.12; four candidates this session
-looked like clear wins at that size and reversed at 44-48 episodes. Treat
-nothing under ~8% on a 44+ episode sample as a result.
-
-## Parameter search
-
-`main.py` reads an optional `KG_PARAMS` JSON override at import time; it is
-unset on the evaluator, so the baked-in defaults are what ship. That lets
-`tools/search_params.py` run a coordinate search without editing the agent and
-without any chance of leaking into a submission.
+Only a push to `main` without `[no-submit]`, or a manual run with
+`submit: true`, reaches the submission job. A daily-quota preflight guards that
+job, because only the latest 2 submissions are scored, and each new one evicts
+the oldest.
 
 ## Credentials
 
-**A `KGAT_...` token authenticates only via `KAGGLE_API_TOKEN`.** The legacy
-`KAGGLE_USERNAME` + `KAGGLE_KEY` pair is the old kaggle.json username/hex-key
-form and is rejected outright for a KGAT token -- verified against the live
-API, where it returns "Authentication required to call the Kaggle API". The
-workflow now checks for this and fails with a clear message rather than
-burning a run.
-
-Kaggle credentials are **not** stored in this repository. Add `KAGGLE_API_TOKEN`
-as a GitHub Actions repository secret
-(Settings → Secrets and variables → Actions). Submission runs only from `main`,
-or from a `workflow_dispatch` with `submit: true`, and only after the gates
-pass.
+**A `KGAT_...` token authenticates only through `KAGGLE_API_TOKEN`.** The
+legacy `KAGGLE_USERNAME` + `KAGGLE_KEY` pair is rejected for that kind of token.
+Store the token as the repository secret `KAGGLE_API_TOKEN`, and never commit
+it.

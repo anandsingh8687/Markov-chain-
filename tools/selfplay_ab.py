@@ -23,7 +23,7 @@ def main():
     params = sys.argv[1]
     if params and params != "{}":
         os.environ["KG_PARAMS"] = params
-    cand = sys.argv[2] if len(sys.argv) > 2 else "main.py"
+    cand = sys.argv[2] if len(sys.argv) > 2 else "agents/scratch/main.py"
     champ = sys.argv[3] if len(sys.argv) > 3 else "champion.py"
     seeds = [int(x) for x in sys.argv[4].split(",")]
 

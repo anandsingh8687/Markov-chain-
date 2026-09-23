@@ -27,8 +27,8 @@ difference under roughly 8% is not a result. Treat every output of this script
 as a hypothesis, confirm it on seeds the search did not use, and look at the
 worst episode as well as the mean before changing a default in `main.py`.
 
-    python tools/search_params.py --agent main.py \
-        --opponent benchmark/incumbent/main.py --seeds 1,2,3,4 --rounds 2
+    python tools/search_params.py --agent agents/scratch/main.py \
+        --opponent benchmark/legacy/pr1/main.py --seeds 1,2,3,4 --rounds 2
 """
 
 from __future__ import annotations
@@ -87,8 +87,8 @@ def run_batch(params, agent, opponent, seeds, jobs):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--agent", default="main.py")
-    ap.add_argument("--opponent", default="benchmark/incumbent/main.py")
+    ap.add_argument("--agent", default="agents/scratch/main.py")
+    ap.add_argument("--opponent", default="benchmark/legacy/pr1/main.py")
     ap.add_argument("--seeds", default="1,2,3,4,5,6,7,8")
     ap.add_argument("--rounds", type=int, default=2)
     ap.add_argument("--jobs", type=int, default=4)

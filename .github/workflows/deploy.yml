@@ -14,12 +14,14 @@ on:
     paths:
       - 'main.py'
       - 'tools/**'
+      - 'benchmark/**'
       - '.github/workflows/deploy.yml'
   pull_request:
     branches: [main]
     paths:
       - 'main.py'
       - 'tools/**'
+      - 'benchmark/**'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
     inputs:
@@ -62,7 +64,7 @@ jobs:
   verify:
     name: Verify in cloud runner
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     outputs:
       score_rate: ${{ steps.gate.outputs.score_rate }}
     steps:
@@ -115,12 +117,10 @@ jobs:
             --min-score-rate "${{ github.event.inputs.incumbent_min || '0.50' }}"
           echo "rate=$(python -c "import json;print(json.load(open('$AGENT_DIR/incumbent_report.json'))['score_rate'])")" >> "$GITHUB_OUTPUT"
 
-      # The strongest rival in the repo, on the same terms. A submission that
-      # loses to an agent already sitting in this tree is a regression no
-      # matter what it scores against the built-in starter.
+      # The strongest public agent (benchmark/rival: prvsiyan's "Soil Remembers
+      # Rain", the base v8 is built on). v8 must not lose to its own parent.
       - name: Benchmark against the rival
         id: rival
-        continue-on-error: true
         run: |
           RIV="benchmark/rival/main.py"
           if [ ! -f "$RIV" ]; then
@@ -134,6 +134,20 @@ jobs:
             --opponent "$RIV" \
             --report "$AGENT_DIR/rival_report.json" \
             --min-score-rate 0.50
+
+      # Real ladder opponents: the 40 most recent v7 episodes, replayed from the
+      # recorded opponent tapes in benchmark/ghosts (see tools/ghost_bench.py).
+      # v7 won 3 (tied 5) of these 40 on the ladder, so the bar is set to catch
+      # a regression, and the report shows how many losses the build turns around.
+      - name: Replay real ladder opponents
+        id: ghosts
+        run: |
+          set -o pipefail
+          python "$AGENT_DIR/tools/ghost_bench.py" \
+            --agent "$AGENT_DIR/main.py" \
+            --filter-version v7 --limit 40 \
+            --report "$AGENT_DIR/ghost_report.json" \
+            --min-win-rate 0.75 | tee -a "$GITHUB_STEP_SUMMARY"
 
       # Telemetry, never a gate: runs even when a strength gate has already
       # failed, because that is exactly when the census is worth reading.
@@ -159,6 +173,7 @@ jobs:
             ${{ env.AGENT_DIR }}/verify_report.json
             ${{ env.AGENT_DIR }}/incumbent_report.json
             ${{ env.AGENT_DIR }}/rival_report.json
+            ${{ env.AGENT_DIR }}/ghost_report.json
           retention-days: 30
 
   submit:

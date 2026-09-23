@@ -1,12 +1,10 @@
 # Incumbent benchmark
 
-`main.py` here is the agent from PR #1 (`cursor/global-optima-agent-2233`), kept
-so the strength gate can answer the only question that matters before a
-submission slot is spent: **is this an improvement or a regression?**
+`main.py` is the exact file on the ladder as v7 (sha256 `827ddf2997fa…`). It is a
+copy of the public *kaggriculture-pipe16-idle-workers* notebook (Apache-2.0).
+Replace it whenever a new submission goes live. The gate asks whether a build
+beats what is already scoring, and that question is only meaningful against the
+live file.
 
-Beating the built-in `starter` is table stakes -- it finishes around $3.5k and
-says nothing about ladder position. This incumbent finishes around $13k and was
-the strongest agent this repository had produced before the current `main.py`.
-Do not delete it: without a fixed reference point, "the new agent scored more"
-is unfalsifiable, because both players draw from the same order book and a
-score is only meaningful relative to who was on the other side of it.
+v8 against it: 4/4 on the gate seeds (median +$2,216) and 20/20 on ladder seeds
+(+$1,938 mean). See `docs/V8.md`.
