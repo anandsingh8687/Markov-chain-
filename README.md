@@ -7,6 +7,15 @@ leaderboard solution.
 `main.py` is the whole submission: one file, standard library only, no
 dependency on `kaggle-environments` at runtime.
 
+## Status: v8
+
+[docs/V8.md](docs/V8.md) documents v8, a new candidate. It is built on the
+strongest public agent and adds level-2 counter D. It is tested against 367 of
+this account's real ladder opponents, replayed from their recorded moves by
+`tools/ghost_bench.py` from `benchmark/ghosts/`. The v8 file is not committed
+yet; see the status note in that document. The rest of this README describes
+the from-scratch agent that `main.py` still holds.
+
 ## The short version
 
 The shared order book is a **sink, not a ceiling**. The town centre and up to
