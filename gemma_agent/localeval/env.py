@@ -32,6 +32,13 @@ DEP_FILES = (
     "requirements-docs-tests.txt", "requirements/tests.txt", "requirements/dev.txt",
 )
 BASE_TEST_DEPS = ["pytest", "pytest-timeout==2.1.0", "typer"]
+# Test-only imports some commits need but do not declare in any file we install from.
+REPO_TEST_DEPS = {
+    "fastapi/fastapi": ["httpx", "python-multipart", "dirty-equals", "inline-snapshot", "sqlmodel", "pyyaml"],
+    "Textualize/rich": ["attrs"],
+    "psf/requests": ["pytest-httpbin", "pytest-mock", "trustme"],
+    "encode/httpx": ["trustme", "uvicorn", "chardet"],
+}
 
 
 def sh(cmd: str, cwd: Path | None = None, timeout: int = 1800, env: dict | None = None) -> subprocess.CompletedProcess:
@@ -172,7 +179,7 @@ def _test_groups(ws: Path) -> str:
 
 def venv_for(task: dict, ws: Path) -> Path:
     """A shared venv matching this workspace's dependency files."""
-    key = f"{task['repo'].replace('/', '__')}-v2-{_dep_fingerprint(ws)}"
+    key = f"{task['repo'].replace('/', '__')}-v3-{_dep_fingerprint(ws)}"
     venv = VENVS / key
     with _locked(venv):
         if (venv / ".ready").exists():
@@ -183,7 +190,7 @@ def venv_for(task: dict, ws: Path) -> Path:
         if r.returncode:
             raise RuntimeError(f"venv: {r.stderr[-2000:]}")
         py = venv / "bin" / "python"
-        base = " ".join(f"'{d}'" for d in BASE_TEST_DEPS)
+        base = " ".join(f"'{d}'" for d in BASE_TEST_DEPS + REPO_TEST_DEPS.get(task["repo"], []))
         reqs = _requirement_args(ws)
         groups = _test_groups(ws)
         # Requirement files often reference "-e ." or relative files, so install from the workspace.
