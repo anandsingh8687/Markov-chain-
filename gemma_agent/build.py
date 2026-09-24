@@ -63,6 +63,15 @@ def check_agent(path: Path, bundle: Path, models: set, seen: set) -> None:
     seen.add(path)
     cfg = load_config(path, bundle)
     rel = path.relative_to(bundle)
+    if cfg.get("agent_class") in ("SequentialAgent", "ParallelAgent", "LoopAgent"):
+        assert cfg.get("name") and cfg.get("sub_agents"), f"{rel}: workflow agent needs name and sub_agents"
+        for sub in cfg["sub_agents"]:
+            sub_path = bundle / sub["config_path"]
+            assert sub_path.is_file(), f"{rel}: sub-agent {sub['config_path']} missing"
+            check_agent(sub_path, bundle, models, seen)
+        print(f"  {rel}: {cfg['agent_class']} with {len(cfg['sub_agents'])} stages")
+        return
+    assert cfg.get("include_contents", "default") in ("default", "none"), f"{rel}: bad include_contents"
     for key in ("name", "model", "instruction", "tools"):
         assert cfg.get(key), f"{rel}: missing {key}"
     assert isinstance(cfg["instruction"], str) and cfg["instruction"].strip(), f"{rel}: empty instruction"

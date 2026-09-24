@@ -1,0 +1,10 @@
+name: analyst
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Reads the issue and the code; reports requirements, locations, tests and a fix plan. Read-only.
+instruction: !include ../prompts/analyst.md
+include_contents: none
+output_key: analysis
+tools:
+  - run_command
+  - read_file
+generate_content_config: !include ../configs/sampling.yaml

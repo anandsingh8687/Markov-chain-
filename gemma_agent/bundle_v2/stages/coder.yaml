@@ -1,0 +1,11 @@
+name: coder
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Implements the fix planned by the analyst and checks it with the reproduction script.
+instruction: !include ../prompts/coder.md
+include_contents: none
+output_key: change_summary
+tools:
+  - run_command
+  - read_file
+  - edit_file
+generate_content_config: !include ../configs/sampling.yaml
