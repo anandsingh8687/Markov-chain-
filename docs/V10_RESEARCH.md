@@ -98,6 +98,82 @@ execution quality. The next Foreman design has to copy the tape's structure:
 lay the farm out for circuits (animal lines, crop rows) and give each hand a
 fixed daily circuit, then choose investments within that structure.
 
+## v9 on the ladder (2026-09-24)
+
+v9 is 47-14 (77%), rated 2277.2. v8 finished 111-33 at 2255.9.
+
+All 14 v9 losses were downloaded and replayed with our agent in its seat. **None
+is a hire failure**, so the v9 fix held. What the opponents sold that we did not:
+
+| Product | Effect over the 14 losses | Where it happens |
+| --- | --- | --- |
+| Tomato (volume) | −$27.8k | Pizza shop and farmers market layouts. One opponent sold 80 at $168 while we sold none; another sold 190 |
+| Strawberry (price) | −$15.0k | Mostly route-105 layouts, where the opponent sells before the price drops |
+| Carrot (volume) | −$11.9k | Pet cafe and farmers market layouts |
+
+None of the 41 route tapes plants a tomato. The only tomatoes v9 grows come from
+the day-18 "V219" annex (buy the SE plot, grow 10 tomatoes for days 26-29). It
+only fires when **3 or more** of the unlocked shops buy tomatoes.
+
+## Tomatoes are the untapped market
+
+Each shop drains 1 unit of each of its products every 4 turns, which is 6 a day,
+and the town center drains 1 a day. Tomato prices use a "hinge" curve that stays
+calm until the unmet demand passes 200 units and then climbs fast. Nobody in
+v9's games sells tomatoes, so the unmet demand keeps growing:
+
+| Game (v9 vs prv_rain) | Day 18 | Day 24 | Day 27 | Day 29 |
+| --- | --- | --- | --- | --- |
+| 923533578 | $75 (126 short) | $89 (222) | $123 (279) | $164 (317) |
+| 1892559107 | $77 (144) | $96 (240) | $161 (315) | $234 (365) |
+| 424470723 | $77 (144) | $138 (294) | $205 (347) | $179 (329) |
+
+Selling the whole backlog of 330 units would bring in about $30k. Since shops are
+drawn with replacement, about 90% of games unlock a pizza shop or a farmers
+market at some point.
+
+The per-tile comparison is less one-sided than the prices suggest. A watered
+wheat plant gives 4-6 units every 3-4 days (about $40 each, and v9 sells about
+750 wheat a game). An unfertilized tomato gives 4 units over 12 days. A tomato
+therefore only beats wheat on the same tile when it is fertilized (8 units) and
+sells for $100 or more. That points to the late-game annex (days 18-29), not a
+general wheat-to-tomato swap.
+
+## Adaptive routes: the layout table does not generalize
+
+The router picks one of 41 route tapes at turn 144 from the first two shops. To
+test whether a better table exists, 60 seeds × 3 opponents were played with the
+default route and with 6 alternative routes forced from turn 144: 180 games plus
+1002 alternatives.
+
+* A per-game oracle over the alternatives would flip 14 of 40 losses. That is the
+  headroom.
+* Choosing the best route per layout, and testing it on held-out seeds (leave one
+  seed out), scores **−$45 to −$215 a game**, depending on how strict the choice
+  is. Results for one layout differ from seed to seed. That is because shops 3-8,
+  which arrive after turn 144, matter as much as the first two, and the layout
+  itself depends on both players' actions through the shared weed RNG.
+* The earlier "best alternative per layout" finding, for example 105 → 103 for
+  bakery + ice cream, came from a single seed per layout. It was overfit.
+
+**Verdict:** the existing router is already about as good as any static
+layout-to-route table. Adapting further needs information that arrives after
+turn 144, which a fixed tape cannot use.
+
+## The uploaded paper (game-theoretic DEA)
+
+Input-oriented DEA with variable returns to scale, applied to downloaded ladder
+games. Each farm-game is one unit. Inputs: wages, land, animals, seeds, and
+bought feed and fertilizer. Output: sales revenue.
+
+* v8's efficiency is 0.98 and the top-10 teams' is 0.94.
+* So the gap is **scale, not efficiency**: the top teams use more inputs, and use
+  them slightly less efficiently.
+
+The paper's payoff-matrix view led to the route-by-layout experiment above. Its
+metaheuristics and L-BFGS-B solver do not apply to our noisy, simulation-only
+payoffs.
+
 ## Next
 
 1. Keep the empirical loop that produced v9: download each new ladder loss and
