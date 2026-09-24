@@ -66,6 +66,7 @@ P = {
     "FERT_VALUE": 0.35,
     "LABOUR_FILL": 0.95,
     "MIN_TURN_VALUE": 4.0,
+    "SMART_WATER": 1,
     "FERTILIZE": 1,
     "FERT_KEEP": 1.0,
     "FERT_BUY_MAX": 60,               # expected rival supply relative to ours
@@ -155,6 +156,25 @@ def crop_plan(crop, days_left):
 
 
 TARGET_AGE = {c: crop_plan(c, 99)[0] for c in CROPS if not CROPS[c]["ongoing"]}
+
+
+def water_needed(t, day):
+    """0: no need today, 1: adds yield today, 2: dies tonight without it."""
+    if t.get("watered_today"):
+        return 0
+    if int(t.get("consecutive_unwatered", 0)) >= 1:
+        return 2
+    c = CROPS[t["crop"]]
+    age = day - int(t["planted_day"])
+    if c["ongoing"]:
+        dsf = (day + 1) - int(t["planted_day"]) - c["fyd"]
+        if dsf >= 0 and dsf % c["interval"] == 0 and dsf // c["interval"] + 1 <= c["my"] and int(t.get("fertilized_until_day", -1)) >= day:
+            return 1
+        return 0
+    ws = (c["myd"] + 1) // 2
+    if ws <= age <= c["myd"] and int(t.get("yield_units", 0)) < c["my"] and age <= TARGET_AGE[t["crop"]]:
+        return 1
+    return 0
 
 
 class Foreman:
@@ -394,7 +414,7 @@ class Foreman:
             c = CROPS[crop]
             age = day - int(t["planted_day"])
             yu = int(t.get("yield_units", 0))
-            if not t.get("watered_today") and day < 29:
+            if day < 29 and ((P["SMART_WATER"] and water_needed(t, day)) or (not P["SMART_WATER"] and not t.get("watered_today"))):
                 return ["WATER"]
             if (P["FERTILIZE"] and c["ongoing"] and inv.get("FERTILIZER", 0) > 0 and day < 29
                     and int(t.get("fertilized_until_day", -1)) < day
@@ -472,8 +492,12 @@ class Foreman:
         if kind == "PLANT":
             c = CROPS[t["crop"]]
             age = day - int(t["planted_day"])
-            crit = 0 if (t.get("watered_today") or day == 29) else 1
-            opt = 0
+            if P["SMART_WATER"]:
+                wn = 0 if day == 29 else water_needed(t, day)
+                crit, opt = (1 if wn == 2 else 0), (1 if wn == 1 else 0)
+            else:
+                crit = 0 if (t.get("watered_today") or day == 29) else 1
+                opt = 0
             if int(t.get("yield_units", 0)) > 0 and age >= c["fyd"]:
                 if c["ongoing"] or age >= TARGET_AGE[t["crop"]] or day == 29:
                     opt += 1
@@ -543,6 +567,66 @@ class Foreman:
         opt.sort(key=lambda q: -q[1])
         for xy, w in opt:
             insert(xy, w, True)
+        if P.get("ROUTE_OPT", 1):
+            wt = {}
+            for xy, w in crit + opt:
+                wt[xy] = w
+
+            def rcost(i, r):
+                p, tot = starts[i], 0
+                for xy in r:
+                    tot += dist(p, xy) + wt.get(xy, 1)
+                    p = xy
+                return tot
+
+            for _ in range(3):
+                improved = False
+                # 2-opt within each route
+                for i in range(n):
+                    r = routes[i]
+                    if len(r) < 3:
+                        continue
+                    best = rcost(i, r)
+                    for a in range(len(r) - 1):
+                        for b in range(a + 1, len(r)):
+                            cand = r[:a] + r[a:b + 1][::-1] + r[b + 1:]
+                            c2 = rcost(i, cand)
+                            if c2 < best:
+                                r, best, improved = cand, c2, True
+                    routes[i] = r
+                    cost[i] = best
+                # relocate single tiles between routes
+                for i in range(n):
+                    k = 0
+                    while k < len(routes[i]):
+                        xy = routes[i][k]
+                        base_i = rcost(i, routes[i])
+                        without = routes[i][:k] + routes[i][k + 1:]
+                        gain_rm = base_i - rcost(i, without)
+                        best = None
+                        for j in range(n):
+                            if j == i:
+                                continue
+                            rj = routes[j]
+                            cj = rcost(j, rj)
+                            for q in range(len(rj) + 1):
+                                cand = rj[:q] + [xy] + rj[q:]
+                                add = rcost(j, cand) - cj
+                                if cj + add > horizon[j]:
+                                    continue
+                                if add < gain_rm - 0.5 and (best is None or add < best[0]):
+                                    best = (add, j, cand)
+                        if best:
+                            add, j, cand = best
+                            routes[j] = cand
+                            routes[i] = without
+                            cost[i] = rcost(i, without)
+                            cost[j] = rcost(j, cand)
+                            improved = True
+                            continue
+                        k += 1
+                if not improved:
+                    break
         s["routes"] = routes
         s["route_cost"] = cost
 

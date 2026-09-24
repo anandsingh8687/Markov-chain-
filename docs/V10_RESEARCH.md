@@ -65,6 +65,39 @@ herd), and wheat (it buys feed that the routes grow).
 
 Benchmark: `python agents/foreman/bench.py <seeds> <opponent main.py> <switch step> [params json]`.
 
+## Foreman, second round (2026-09-24)
+
+These results come from an exact execution audit: the same seed, the same
+opponent, and Foreman given v9's farm composition as its target.
+
+| Output | v9 | Foreman |
+| --- | --- | --- |
+| wheat | 145 planted, 569 units | 91 planted, 306 units |
+| carrot | 31 planted, 90 units | 0 |
+| strawberry | 29 plants, 238 units (about 8 a plant) | 29 plants, 151 units (about 5 a plant; 11 died before their production ended) |
+| cow / sheep / goose output | 222 / 92 / 81 | 214 / 126 / 63 |
+
+* Animal output is at parity. The loss is in crops and labour.
+* Foreman's own *planned* routes carry about 115-130 moves a day for about 130
+  work actions. v9's routes carry about 110 moves for about 150 work actions,
+  and they are built around the layout: animals in lines leading away from the
+  shed, crops in rows beyond them, and a fixed daily circuit per hand (wheat
+  pickup, then feed, care and collect along the line, then fertilize and water
+  along the rows, then a midday delivery for same-day sales).
+* Changes tried, all within noise of the best score ($62k against v9's $96k on
+  8 seeds):
+  * smart watering (water only when a plant would die or when the water adds
+    yield)
+  * evening rescue replans
+  * splitting hands into ranchers and croppers (worse: $53k)
+  * 2-opt and relocate route search
+  * v9's composition given as a blueprint
+
+**Conclusion.** A generic task-dispatch planner does not reach the tape's
+execution quality. The next Foreman design has to copy the tape's structure:
+lay the farm out for circuits (animal lines, crop rows) and give each hand a
+fixed daily circuit, then choose investments within that structure.
+
 ## Next
 
 1. Keep the empirical loop that produced v9: download each new ladder loss and
