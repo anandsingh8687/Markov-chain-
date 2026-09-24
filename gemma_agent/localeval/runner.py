@@ -11,6 +11,7 @@ session (the harness does not retry a 400).
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from dataclasses import dataclass, field
@@ -149,6 +150,10 @@ def render(instruction: str, state: dict) -> str:
 
 # ------------------------------------------------------------------ loop
 
+# Local-only guard: a looping agent is stopped (and scored as it stands) before it eats the budget.
+TASK_SPEND_CAP = float(os.environ.get("LLM_TASK_SPEND_CAP", "0.08"))
+
+
 class SessionEnd(Exception):
     pass
 
@@ -240,6 +245,8 @@ def run_llm(agent: Agent, events: list[dict], ctx: tools.Context, state: dict, t
         trace.usage["calls"] += 1
         trace.usage["cost"] = trace.usage.get("cost", 0) + float(u.get("cost") or 0)
         trace.usage["max_prompt"] = max(trace.usage["max_prompt"], u.get("prompt_tokens", 0))
+        if trace.usage["cost"] > TASK_SPEND_CAP:
+            raise SessionEnd(f"task_spend_cap ${TASK_SPEND_CAP}")
         msg = resp["message"]
         content = msg.get("content") or ""
         calls = msg.get("tool_calls") or []

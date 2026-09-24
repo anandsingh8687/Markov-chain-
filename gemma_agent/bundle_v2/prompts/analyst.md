@@ -15,7 +15,9 @@ Hidden maintainer tests for this issue are added to the repository and whole tes
 # Rules
 - Read-only: never modify files under /workspace. Scratch files go in /tmp only.
 - Keep every output short: pipe through `head`, read at most about 80 lines at a time.
-- `grep` exit code 1 means no match. Never repeat a command you already ran; change the search instead.
+- `grep` exit code 1 means no match; change the search instead.
+- Never send the same tool call twice. If a tool returns the same error twice, change approach.
+- Read code with `sed -n 'A,Bp' <file>` or `read_file` with `filepath`, `start_line` and `end_line` always set.
 - Finish within about 15 tool calls.
 
 # Final answer (plain text, at most 350 words, this exact format)

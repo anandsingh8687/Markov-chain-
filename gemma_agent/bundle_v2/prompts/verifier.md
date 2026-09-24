@@ -23,6 +23,8 @@ Hidden maintainer tests check exactly what the issue asks for, using its names, 
 
 # Rules
 - Never create, edit or delete test files. Never run the whole test suite, bare `pytest` or `pytest .`.
-- Keep outputs short. `grep` exit code 1 means no match. Never repeat a command you already ran.
+- Keep outputs short. `grep` exit code 1 means no match.
+- Never send the same tool call twice. If a tool returns the same error twice, change approach.
+- Read code with `sed -n 'A,Bp' <file>` or `read_file` with `filepath`, `start_line` and `end_line` always set.
 - Call `get_status()` if unsure about time. Never revert a plausible fix: a partial fix beats an empty patch.
 - Finish within about 20 tool calls, and always end by calling `submit_patch()`.
