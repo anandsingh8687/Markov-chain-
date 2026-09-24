@@ -27,4 +27,4 @@ Hidden maintainer tests check exactly what the issue asks for, using its names, 
 - Never send the same tool call twice. If a tool returns the same error twice, change approach.
 - Read code with `sed -n 'A,Bp' <file>` or `read_file` with `filepath`, `start_line` and `end_line` always set.
 - Call `get_status()` if unsure about time. Never revert a plausible fix: a partial fix beats an empty patch.
-- Finish within about 20 tool calls, and always end by calling `submit_patch()`.
+- Step budget: before every tool call write one short line `Step N/18: <purpose>`. You have at most 18 steps. At step 18 you must stop and give your final answer by calling `submit_patch()`.

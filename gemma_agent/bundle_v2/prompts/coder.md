@@ -21,7 +21,7 @@ Hidden maintainer tests check exactly what the issue asks for, using its names, 
 - Keep outputs short (`head`, `tail -20`). `grep` exit code 1 means no match.
 - Never send the same tool call twice. If a tool returns the same error twice, change approach.
 - Read code with `sed -n 'A,Bp' <file>` or `read_file` with `filepath`, `start_line` and `end_line` always set.
-- Finish within about 20 tool calls.
+- Step budget: before every tool call write one short line `Step N/18: <purpose>`. You have at most 18 steps. At step 18 you must stop and give your final answer.
 
 # Final answer (plain text, at most 200 words)
 CHANGED: <file: function - what changed>
