@@ -12,6 +12,8 @@
 # Added 3 (new in v8): a final `agent` entrypoint that can never raise.
 # Added 4 (new in v9): morning-hire reserve -- from hour 12, trim this turn's seed purchases
 #   so the next morning's tape hires stay affordable (see the block at the end of the file).
+# Added 5 (v9): the cheaper opening (buy 8 / sell 3 wheat) from arsgorynich, "Herd Safe v3
+#   Experimental Risk Aware Feed" (public Kaggle notebook, Apache-2.0).
 # Evidence and method: README.md, docs/V8.md and docs/V9.md in this repository.
 #
 # MODIFIED by prvsiyan/Codex on 2026-09-22: explicit Kaggle final-callable entrypoint seal.
@@ -7568,3 +7570,10 @@ def agent(observation, configuration=None):
     except Exception:
         _HR_REPORT['hr_errors'] += 1
         return action
+
+
+# ==== v9 opening: Herd Safe v3's cheaper first-turn wheat round trip ====
+# From arsgorynich, "Herd Safe v3 Experimental Risk Aware Feed" (public Kaggle notebook,
+# Apache-2.0): buy 8 / sell 3 instead of buy 20 / sell 15.  The same 5 wheat and seed are
+# kept; the round trip costs a few dollars less, which is float the day-0 tape spends.
+V9_OPENING_STEP0 = (("BUY_PRODUCT", "WHEAT", 8), ("SELL", "WHEAT", 3))

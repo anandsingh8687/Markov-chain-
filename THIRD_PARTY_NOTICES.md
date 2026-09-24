@@ -7,7 +7,7 @@ unchanged. The v8 additions are listed at the top of `main.py`.
 
 | File | Upstream | Changes here |
 | --- | --- | --- |
-| `main.py` | prvsiyan, *Kaggriculture Frontier: The Soil Remembers Rain*. Its lineage, credited inside the file, includes thomastschinkel, yhay81, destbreso, aurax7, tetsutani, Ahmed Berat Ozer, Dmitrii Gluzdov, lucifer19, sdy623/jaxa623, busyaprime and the kaggle-environments contributors. | v8 header; counter D and `V9_RACE_DEFAULT = 44` from tetsutani, *Demand-preserving turn sale timing* (counter D by shiiin9, 2026-09-18); level-2 counter D and the guarded entrypoint (new) |
+| `main.py` | prvsiyan, *Kaggriculture Frontier: The Soil Remembers Rain*. Its lineage, credited inside the file, includes thomastschinkel, yhay81, destbreso, aurax7, tetsutani, Ahmed Berat Ozer, Dmitrii Gluzdov, lucifer19, sdy623/jaxa623, busyaprime and the kaggle-environments contributors. | v8 header; counter D and `V9_RACE_DEFAULT = 44` from tetsutani, *Demand-preserving turn sale timing* (counter D by shiiin9, 2026-09-18); level-2 counter D and the guarded entrypoint (new in v8); morning-hire reserve (new in v9); the buy-8/sell-3 opening from arsgorynich, *Herd Safe v3 Experimental Risk Aware Feed* (Apache-2.0) |
 | `benchmark/incumbent/main.py` | *kaggriculture-pipe16-idle-workers* (public notebook). This is the exact file this account submitted as v7. | none |
 | `benchmark/rival/main.py` | prvsiyan, *The Soil Remembers Rain*: v8's base, unmodified | none |
 

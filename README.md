@@ -3,8 +3,8 @@
 `main.py` is the submission. It is a single file, standard library only, and
 `agent` is the last callable in it.
 
-v8 builds on the strongest public agent, prvsiyan's *The Soil Remembers Rain*
-(Apache-2.0), and adds three things:
+v8 and v9 build on the strongest public agent, prvsiyan's *The Soil Remembers Rain*
+(Apache-2.0), and add:
 
 * **Counter D** (shiiin9). Each turn it picks the order of our market orders by
   solving the engine's per-unit lockstep exactly against a rival that plays our
@@ -13,6 +13,7 @@ v8 builds on the strongest public agent, prvsiyan's *The Soil Remembers Rain*
 * **Level-2 counter D** (new in v8). Counter D is public, so v8 also models a
   rival running it, and picks the ordering that is best against the worse of the
   two rival models.
+* **Cheaper opening** (v9, from Herd Safe v3): buy 8 / sell 3 wheat instead of 20 / 15.
 * **Morning-hire reserve** (new in v9). It keeps enough cash for the next
   morning's hires. A $1 end-of-day balance used to cost 2 hands, then the cow,
   then the herd: v8's two biggest ladder losses. See [docs/V9.md](docs/V9.md).
@@ -26,8 +27,8 @@ the experiments that failed are in [docs/V8.md](docs/V8.md).
 once, because games are deterministic.
 
 **Ladder:** v8 went 79-15 over its first 94 games (rated 2188.9, still climbing).
-**v9 against the same real opponents:** 361 of 412 ghost games won, against 357
-for v8, with no episode worse. All four of v8's collapse games flip to wins by
+**v9 against the same real opponents:** 362 of 412 ghost games won, against 357
+for v8 (mean margin +$3,255 against +$2,632). All four of v8's collapse games flip to wins by
 more than $17k.
 
 | Test | v8 lineage | For comparison |
@@ -46,7 +47,7 @@ closed-loop rows are the check on that.
 ## Layout
 
 ```
-main.py                        v8, the submission
+main.py                        v9, the submission
 THIRD_PARTY_NOTICES.md         upstream credits (Apache-2.0)
 docs/V8.md, docs/V9.md         evidence, method, what failed, what next
 benchmark/incumbent/           the live v8 file; gate: the build must not lose to it
