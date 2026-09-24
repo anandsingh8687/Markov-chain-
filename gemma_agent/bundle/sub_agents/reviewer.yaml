@@ -1,0 +1,8 @@
+name: reviewer
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Read-only patch reviewer. Input is the full issue text. Inspects the current git diff and returns PASS, or FAIL with the concrete gaps a hidden test would catch.
+instruction: !include ../prompts/reviewer.md
+tools:
+  - run_command
+  - read_file
+generate_content_config: !include ../configs/sampling.yaml
