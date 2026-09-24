@@ -194,6 +194,40 @@ The paper's payoff-matrix view led to the route-by-layout experiment above. Its
 metaheuristics and L-BFGS-B solver do not apply to our noisy, simulation-only
 payoffs.
 
+## Leaderboard check and a stronger public base (2026-09-24 evening)
+
+v9's team entry is at rank ~1,025 of ~9,800, with a score of 2285.5. The top 10
+are at 2,930 and above. A gap of ~650 points will not close with layers worth a
+few hundred dollars a game.
+
+Thirteen public notebooks updated in the last two days were pulled and played
+against v9 on 8 fresh seeds. Two of them beat v9 head to head:
+
+| Agent | vs v9 | Notes |
+| --- | --- | --- |
+| tetsutani, "Demand-Preserving Turn Sale Timing" (Apache-2.0; also republished as cha22 / Master Engine V3 / Multi-Route, byte-identical) | **6-2**, −$1,447 a game for v9 | Same route-tape lineage as v9, plus WHEAT BUY-FIRST, FLOWPX / DAWNPX / MODELPX lead-sellers, BUYDIP, SHIELD-MILK, a fertilizer guard, a late seed cap, same-item SELL compaction and queue hole-closure |
+| Harvest Ledger (new version) | 7-1, −$218 a game | |
+| 7-Turn Rescue, Population-Robust Economy, Fieldcraft "2887" | v9 won 8-0 each | |
+
+Field test: each agent against the same 8 opponents (prv_rain, Herd Safe v3,
+tetsutani's old version, V40 Challenger, Pioneers, 7-Turn Rescue,
+Population-Robust, Fieldcraft), 8 seeds each:
+
+| Agent | Wins | Mean margin |
+| --- | --- | --- |
+| **tetsutani (new)** | 58/64 | **+$2,104** |
+| Harvest Ledger | 58/64 | +$1,382 |
+| v9 | 57/64 | +$1,293 |
+
+**v10c** is the tetsutani agent plus v9's morning-hire reserve and the 8/3
+opening. The challenger lacks the hire reserve and plays 20/15:
+
+* Against the unmodified challenger: 8 identical games, all ties. The reserve
+  never needs to fire there, and the challenger's own opening layers override the
+  8/3 opening, so that change is a no-op.
+* Against v9: 6-2, +$1,197 a game.
+* Across the whole field, it plays exactly like the challenger.
+
 ## Next
 
 1. Keep the empirical loop that produced v9: download each new ladder loss and
