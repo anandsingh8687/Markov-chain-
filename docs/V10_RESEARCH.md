@@ -139,6 +139,26 @@ therefore only beats wheat on the same tile when it is fertilized (8 units) and
 sells for $100 or more. That points to the late-game annex (days 18-29), not a
 general wheat-to-tomato swap.
 
+### Loosening the tomato annex gate: rejected
+
+The annex gate counts pizza shops and farmers markets among the shops unlocked
+by day 18. v9 fires the annex at 3 or more. Lower thresholds were tested, head
+to head:
+
+| Gate | Seeds where it changes the game | Result |
+| --- | --- | --- |
+| 1 or more | 6 (adapt2 seeds, 3 opponents each) | −$566 a game; 5 of the 6 seeds got worse |
+| 2 or more | 17 (adapt2 seeds) | +$371 a game, within noise |
+| 2 or more | **49 fresh seeds** | **−$325 a game against v9 (6-27)**; against prv_rain, wins fell from 46 to 23 |
+
+With only two tomato-buying shops, the $4,000 plot plus the daily crew costs more
+than ten tomatoes earn. The 3-shop gate stays.
+
+**A benchmarking warning.** Any change after day 18 alters the weed RNG, and so
+which shops unlock later. Both banks then move by ±$2-4k for reasons unrelated
+to the change. A late-game layer needs 40 or more seeds on which it actually
+fires before a result means anything.
+
 ## Adaptive routes: the layout table does not generalize
 
 The router picks one of 41 route tapes at turn 144 from the first two shops. To
