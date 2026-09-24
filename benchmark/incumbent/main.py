@@ -1,7 +1,7 @@
-# Kaggriculture v8 (Anand Singh, 2026-09-23). Apache-2.0 derivative work.
+# Kaggriculture v9 (Anand Singh, 2026-09-24). Apache-2.0 derivative work.
 #
 # Base: prvsiyan, "Kaggriculture Frontier: The Soil Remembers Rain" (public Kaggle
-#   notebook, Apache-2.0), unchanged below apart from the three additions listed here.
+#   notebook, Apache-2.0), unchanged below apart from the additions listed here.
 #   Its own lineage and the full Apache License 2.0 text follow in the retained notices.
 # Added 1: "counter D" exact best-response market ordering (shiiin9, 2026-09-18), copied
 #   from tetsutani, "Demand-preserving turn sale timing" (public Kaggle notebook,
@@ -10,7 +10,11 @@
 #   plays our own pre-D market list. Since counter D is public, v8 also models a rival
 #   that runs it, and picks the ordering that is best against the worse of those two.
 # Added 3 (new in v8): a final `agent` entrypoint that can never raise.
-# Evidence and method: README.md and docs/V8.md in this repository.
+# Added 4 (new in v9): morning-hire reserve -- from hour 12, trim this turn's seed purchases
+#   so the next morning's tape hires stay affordable (see the block at the end of the file).
+# Added 5 (v9): the cheaper opening (buy 8 / sell 3 wheat) from arsgorynich, "Herd Safe v3
+#   Experimental Risk Aware Feed" (public Kaggle notebook, Apache-2.0).
+# Evidence and method: README.md, docs/V8.md and docs/V9.md in this repository.
 #
 # MODIFIED by prvsiyan/Codex on 2026-09-22: explicit Kaggle final-callable entrypoint seal.
 # Policy logic preserved from frozen discovery winner; original notices follow unchanged.
@@ -7470,12 +7474,106 @@ _cxd_agent = _cxd_entry
 del _cxd_entry
 
 
-# ==== v8 entrypoint: the last module-level callable, and it never raises ====
+# ==== v9 morning-hire reserve ====
+# Hands are wiped every night and re-hired at hour 0 for fib(1)+fib(2)+... dollars.  The
+# tapes spend the day's cash down to the dollar on the assumption that the opening left the
+# usual float; when the rival's opening lockstep makes ours a few dollars dearer, day 0 ends
+# at $1, day 1 hires one hand instead of three, the day-2 cow purchase fails and the herd
+# never catches up (ladder: -$28,063 and -$10,813, the only two v8 games with a failed hire).
+# From hour 12, keep enough cash for the next morning's tape hires by trimming this turn's
+# seed purchases -- the cheapest thing on the list to lose.
+_HR_FROM_HOUR = 12
+_HR_REPORT = dict(hr_trims=0, hr_units=0, hr_errors=0)
+
+
+def _hr_fib(n):
+    a, b = 1, 1
+    for _ in range(n):
+        a, b = b, a + b
+    return a
+
+
+def _hr_guard(obs, action):
+    step = int(obs['step'])
+    if step % 24 < _HR_FROM_HOUR:
+        return action
+    nxt = (step // 24 + 1) * 24
+    if nxt > LAST_ACT_STEP:
+        return action
+    player = int(obs['player'])
+    native = _IMPL.chassis.players.get(player) or {}
+    route = 2 if nxt >= 648 else native.get('route')
+    tape = _IMPL.chassis.routes.get(route)
+    if not tape or nxt >= len(tape):
+        return action
+    hires = sum(1 for o in tape[nxt].get('market') or [] if o and o[0] == 'HIRE')
+    if not hires:
+        return action
+    reserve = sum(_hr_fib(i) for i in range(hires))
+    market = [list(o) if isinstance(o, (list, tuple)) else o for o in action.get('market') or []]
+    farm = obs['farms'][player]
+    prices = obs['market']['prices']
+    stock = {k: max(0, int(v)) for k, v in projected_shed(action, FarmView(obs)).items()}
+    money = float(farm['money'])
+    hired = int(farm.get('hires_today', 0))
+    income = spend = 0.0
+    for o in market:
+        if not o:
+            continue
+        try:
+            n = int(o[2]) if len(o) >= 3 else 1
+        except Exception:
+            n = 0
+        if o[0] == 'SELL' and len(o) >= 3:
+            n = min(n, stock.get(o[1], 0)); stock[o[1]] = stock.get(o[1], 0) - n
+            income += 0.8 * n * max(0, int(prices.get(o[1], 0)) - 2)
+        elif o[0] == 'BUY_SEED' and len(o) >= 3:
+            spend += n * SEED_PRICE.get(o[1], 0)
+        elif o[0] == 'BUY_PRODUCT' and len(o) >= 3:
+            spend += n * (1.2 * int(prices.get(o[1], 0)) + 1)
+        elif o[0] == 'BUY_ANIMAL' and len(o) >= 3:
+            spend += n * ANIMAL_COST.get(o[1], 0)
+        elif o[0] == 'HIRE':
+            spend += _hr_fib(hired); hired += 1
+        elif o[0] == 'BUY_LAND':
+            spend += LAND_PRICES[0]
+    short = reserve - (money + income - spend)
+    if short <= 0:
+        return action
+    out, trimmed = [], 0
+    for o in reversed(market):
+        if short > 0 and o and o[0] == 'BUY_SEED' and len(o) >= 3 and SEED_PRICE.get(o[1], 0) > 0:
+            price = SEED_PRICE[o[1]]
+            n = int(o[2]); cut = min(n, -(-int(short) // price))
+            short -= cut * price; trimmed += cut
+            if n - cut > 0:
+                out.append([o[0], o[1], n - cut])
+            continue
+        out.append(o)
+    if not trimmed:
+        return action
+    _HR_REPORT['hr_trims'] += 1; _HR_REPORT['hr_units'] += trimmed
+    return dict(action, market=list(reversed(out)))
+
+
+# ==== v9 entrypoint: the last module-level callable, and it never raises ====
 globals().pop("agent", None)
 
 
 def agent(observation, configuration=None):
     try:
-        return _cxd_agent(observation, configuration)
+        action = _cxd_agent(observation, configuration)
     except Exception:
         return {"farmer": ["PASS"], "hands": [], "market": []}
+    try:
+        return _hr_guard(observation, action)
+    except Exception:
+        _HR_REPORT['hr_errors'] += 1
+        return action
+
+
+# ==== v9 opening: Herd Safe v3's cheaper first-turn wheat round trip ====
+# From arsgorynich, "Herd Safe v3 Experimental Risk Aware Feed" (public Kaggle notebook,
+# Apache-2.0): buy 8 / sell 3 instead of buy 20 / sell 15.  The same 5 wheat and seed are
+# kept; the round trip costs a few dollars less, which is float the day-0 tape spends.
+V9_OPENING_STEP0 = (("BUY_PRODUCT", "WHEAT", 8), ("SELL", "WHEAT", 3))

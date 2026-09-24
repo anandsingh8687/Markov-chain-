@@ -1,25 +1,33 @@
-# Kaggriculture v9
+# Kaggriculture v10
 
 `main.py` is the submission. It is a single file, standard library only, and
 `agent` is the last callable in it.
 
-v8 and v9 build on the strongest public agent, prvsiyan's *The Soil Remembers Rain*
-(Apache-2.0), and add:
+v10 is built on tetsutani's *Demand-Preserving Turn Sale Timing* (Apache-2.0,
+2026-09-24), the strongest public agent at release. That base is itself the same
+route-tape lineage as v8 and v9 (prvsiyan's *The Soil Remembers Rain*), with
+newer selling and ordering layers. v10 adds two pieces from v9:
 
-* **Counter D** (shiiin9). Each turn it picks the order of our market orders by
-  solving the engine's per-unit lockstep exactly against a rival that plays our
-  own list.
-* **Sale-race horizon 44.**
-* **Level-2 counter D** (new in v8). Counter D is public, so v8 also models a
-  rival running it, and picks the ordering that is best against the worse of the
-  two rival models.
-* **Cheaper opening** (v9, from Herd Safe v3): buy 8 / sell 3 wheat instead of 20 / 15.
-* **Morning-hire reserve** (new in v9). It keeps enough cash for the next
-  morning's hires. A $1 end-of-day balance used to cost 2 hands, then the cow,
-  then the herd: v8's two biggest ladder losses. See [docs/V9.md](docs/V9.md).
+* **Level-2 counter D** in place of the base's level-1 counter D. It orders the
+  market list against both a plain rival and a rival running counter D itself,
+  which is exactly a copy of the public base. Against that mirror, v10 goes
+  13-1-2 on 16 seeds, where the unmodified base ties every game.
+* **Morning-hire reserve** from v9, as a safety net: it keeps enough cash for the
+  next morning's hires.
 
-Credits: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The full evidence and
-the experiments that failed are in [docs/V8.md](docs/V8.md).
+| | v9 | v10 |
+| --- | --- | --- |
+| 412 real ladder opponents replayed (ghosts) | 362 won, +$3,255 | **379 won, +$3,460** |
+| vs 8 public opponents, 64 games | 57 won, +$1,293 | 58 won, +$2,104 (base) |
+| head to head | | 14 of 16 won |
+
+See [docs/V10.md](docs/V10.md) for the release and
+[docs/V10_RESEARCH.md](docs/V10_RESEARCH.md) for what was tried towards the top 10.
+Credits: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+v9 and v8 notes (the hire reserve, counter D, the cheaper opening) are in
+[docs/V9.md](docs/V9.md) and [docs/V8.md](docs/V8.md). The tables below are the
+v8/v9 measurements.
 
 ## Measured
 
@@ -47,11 +55,12 @@ closed-loop rows are the check on that.
 ## Layout
 
 ```
-main.py                        v9, the submission
+main.py                        v10, the submission
 THIRD_PARTY_NOTICES.md         upstream credits (Apache-2.0)
-docs/V8.md, docs/V9.md         evidence, method, what failed, what next
-benchmark/incumbent/           the live v8 file; gate: the build must not lose to it
-benchmark/rival/               the unmodified public parent; gate: must beat it
+docs/V8.md .. docs/V10.md       evidence, method, what failed, what next
+candidates/                    v10c / v10d builds as tested
+benchmark/incumbent/           the previous live file (v9); gate: the build must not lose to it
+benchmark/rival/               the unmodified public parent (tetsutani); gate: must beat it
 benchmark/ghosts/              412 real ladder opponents (v3-v8) as replayable tapes
 benchmark/ladder/              real ladder banks by seed (tools/ladder_gap.py)
 benchmark/legacy/              PR #1 / PR #2 agents, for the scratch agent's tools

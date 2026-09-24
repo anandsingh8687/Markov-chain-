@@ -1,15 +1,16 @@
 # Third-party notices
 
-`main.py` (v8), `benchmark/incumbent/main.py` and `benchmark/rival/main.py` are
+`main.py` (v10), `candidates/`, `benchmark/incumbent/main.py` and `benchmark/rival/main.py` are
 derived from public Kaggle notebooks released under the Apache License, Version
 2.0. Each file keeps its upstream attribution header and the full license text
-unchanged. The v8 additions are listed at the top of `main.py`.
+unchanged. The v10 additions are appended at the end of `main.py` and described in `docs/V10.md`.
 
 | File | Upstream | Changes here |
 | --- | --- | --- |
-| `main.py` | prvsiyan, *Kaggriculture Frontier: The Soil Remembers Rain*. Its lineage, credited inside the file, includes thomastschinkel, yhay81, destbreso, aurax7, tetsutani, Ahmed Berat Ozer, Dmitrii Gluzdov, lucifer19, sdy623/jaxa623, busyaprime and the kaggle-environments contributors. | v8 header; counter D and `V9_RACE_DEFAULT = 44` from tetsutani, *Demand-preserving turn sale timing* (counter D by shiiin9, 2026-09-18); level-2 counter D and the guarded entrypoint (new in v8); morning-hire reserve (new in v9); the buy-8/sell-3 opening from arsgorynich, *Herd Safe v3 Experimental Risk Aware Feed* (Apache-2.0) |
-| `benchmark/incumbent/main.py` | *kaggriculture-pipe16-idle-workers* (public notebook). This is the exact file this account submitted as v7. | none |
-| `benchmark/rival/main.py` | prvsiyan, *The Soil Remembers Rain*: v8's base, unmodified | none |
+| `main.py` (v10) | tetsutani, *Demand-Preserving Turn Sale Timing* (public Kaggle notebook, Apache-2.0, 2026-09-24; also republished as cha22, *Master Engine V3* and *Multi-Route Farming Agent*). Its lineage, credited inside the file, includes prvsiyan, thomastschinkel, yhay81, destbreso, aurax7, Ahmed Berat Ozer, Dmitrii Gluzdov, shiiin9, the pipe18 and 2695 authors and the kaggle-environments contributors. | Appended: level-2 counter D (from this repo's v8), the morning-hire reserve (from v9) and a guarded entrypoint |
+| `candidates/v10c`, `candidates/v10d` | as `main.py` | v10c: hire reserve only. v10d is identical to `main.py` |
+| `benchmark/incumbent/main.py` | v9, this account's previous submission (prvsiyan, *Kaggriculture Frontier: The Soil Remembers Rain*, plus the v8/v9 layers; the buy-8/sell-3 opening is from arsgorynich, *Herd Safe v3 Experimental Risk Aware Feed*, Apache-2.0) | none |
+| `benchmark/rival/main.py` | tetsutani, *Demand-Preserving Turn Sale Timing*: v10's base, unmodified | none |
 
 `benchmark/ghosts/ladder_ghosts.json.gz` holds opponent actions taken from
 this account's own public ladder replays on Kaggle.
