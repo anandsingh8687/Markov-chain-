@@ -3,11 +3,12 @@
 `ladder_ghosts.json.gz` is a list of this account's own ladder episodes. Each
 entry has `ep`, `seed`, `seat` (ours), `version`, `opponent`, `bank` (ours,
 theirs) and `actions` (the opponent's recorded action for every turn). There
-are 367 episodes:
+are 412 episodes:
 
 * all v7 losses (110) and ties (39)
 * 61 v7 wins
 * about 40 losses each from v3, v4, v5 and v6
+* v8's first 15 losses and 30 of its wins
 
 Games against our own other submission were dropped.
 

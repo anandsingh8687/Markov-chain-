@@ -1,3 +1,23 @@
+# Kaggriculture v8 (Anand Singh, 2026-09-23). Apache-2.0 derivative work.
+#
+# Base: prvsiyan, "Kaggriculture Frontier: The Soil Remembers Rain" (public Kaggle
+#   notebook, Apache-2.0), unchanged below apart from the three additions listed here.
+#   Its own lineage and the full Apache License 2.0 text follow in the retained notices.
+# Added 1: "counter D" exact best-response market ordering (shiiin9, 2026-09-18), copied
+#   from tetsutani, "Demand-preserving turn sale timing" (public Kaggle notebook,
+#   Apache-2.0), together with its V9_RACE_DEFAULT = 44 sale-race horizon.
+# Added 2 (new in v8): level-2 counter D. Counter D is a best response to a rival that
+#   plays our own pre-D market list. Since counter D is public, v8 also models a rival
+#   that runs it, and picks the ordering that is best against the worse of those two.
+# Added 3 (new in v8): a final `agent` entrypoint that can never raise.
+# Evidence and method: README.md and docs/V8.md in this repository.
+#
+# MODIFIED by prvsiyan/Codex on 2026-09-22: explicit Kaggle final-callable entrypoint seal.
+# Policy logic preserved from frozen discovery winner; original notices follow unchanged.
+# MODIFIED by prvsiyan/Codex on 2026-09-22 for LOCAL DISCOVERY ONLY.
+# Changes: sale-advance lookahead 3 -> 4; seed-float hedge 2 -> 0.
+# Derived from queue_compact.py; original attribution and notices retained below.
+# This candidate is unproven and is not an official Kaggle score claim.
 # Kaggriculture submission v9/3: public V39 (Apache-2.0, notices below) plus the v9 layers
 # RACEPX gate, RACE (reservation from step 192, horizon 40 / margin 12), COURIER, CARROT and HERD
 # appended at the end of this file.
@@ -6588,3 +6608,874 @@ def agent(observation,configuration=None):
     return action
 agent.telemetry=_ALT_REPORT
 agent=globals().pop('agent')
+
+kaggle_submission_agent = agent
+
+# Apache-2.0. Dmitrii Gluzdov: mature the temporary wheat one extra day.
+_CL_INSTALL = _alt_install
+_CL_REPORT = dict(cl_harvested=0, cl_pasture=0, cl_delivered=0, cl_errors=0)
+
+def _alt_install(mode):
+    _CL_INSTALL(mode)
+    if mode not in ('EarlyCycle','HybridOpening'):
+        return
+    tape = _IMPL.chassis.routes[0]
+    # Day-two watering remains at52; wait one more day before harvesting.
+    for step in range(53,58):
+        tape[step]['hands'][0] = ['PASS']
+    # Hand0 finishes its original day-three work at(0,4), then idles.
+    commands = [['EAST'],['EAST'],['WATER'],['HARVEST'],['BUILD_PASTURE'],['EAST'],['EAST'],['DROP']]
+    for step, command in zip(range(84,92), commands):
+        assert tape[step]['hands'][0] == ['PASS']
+        tape[step]['hands'][0] = command
+
+_CL_PARENT = agent
+def agent(observation, configuration=None):
+    step = int(observation['step'])
+    if step == 0:
+        for key in _CL_REPORT: _CL_REPORT[key] = 0
+    action = _CL_PARENT(observation, configuration)
+    try:
+        seat = int(observation['player'])
+        farm, private = observation['farms'][seat], observation['private']
+        if step == 88:
+            _CL_REPORT['cl_harvested'] = int(private['inventories'][1].get('WHEAT',0))
+        if step == 89:
+            tile = farm['tiles'][4][2]
+            _CL_REPORT['cl_pasture'] = int(isinstance(tile,dict) and tile.get('kind')=='PASTURE')
+        if step == 91 and farm['hands'] and tuple(farm['hands'][0]) == (4,4) and action['hands'][0] == ['DROP']:
+            amount = int(private['inventories'][1].get('WHEAT',0))
+            action = _alt_sell_extra(action,'WHEAT',amount)
+            _CL_REPORT['cl_delivered'] = amount
+    except Exception:
+        _CL_REPORT['cl_errors'] += 1
+    return action
+agent.telemetry = _CL_REPORT
+agent = globals().pop('agent')
+kaggle_submission_agent = agent
+
+# Correctly last-bound visible-price sale guard experiment; threshold=31.
+_PG_PARENT=agent
+def final_price_guard(observation, configuration=None):
+    action=_PG_PARENT(observation, configuration)
+    try:
+        if int(observation["step"])==91:
+            price=float(observation.get("market",{}).get("prices",{}).get("WHEAT",0))
+            if price < 31:
+                orders=[list(o) for o in action.get("market",[]) if not (len(o)>=3 and o[0]=="SELL" and o[1]=="WHEAT")]
+                action=dict(action, market=orders)
+    except Exception:
+        pass
+    return action
+final_price_guard.telemetry={"sale_price_threshold":31}
+kaggle_submission_agent=final_price_guard
+
+# EXP389 frozen market-race reservation horizon.
+V9_RACE_DEFAULT = 41
+V9_RACE_MAX = 48
+
+# EXP402: cap late seed purchases by an upper bound on all remaining planting.
+# No price-sensitive product orders are moved. Keep empty market slots so the
+# opponent's simultaneous market interactions retain their original positions.
+_E402_PARENT=final_price_guard
+_E402_CACHE={}
+_E402_REPORT=dict(cut_units=0,saved_cost=0,changed_turns=0,errors=0)
+
+def _e402_remaining(native,step):
+    route=native['route'];key=(route,step)
+    if key in _E402_CACHE:return _E402_CACHE[key]
+    need=0
+    for t in range(step+1,719):
+        tape=_IMPL.chassis.routes[2 if t>=648 else route]
+        act=tape[t]
+        need+=sum(1 for c in [act.get('farmer') or ['PASS']]+list(act.get('hands') or [])
+                  if len(c)>1 and c[0]=='PLANT' and c[1] in ('WHEAT','CARROT'))
+    _E402_CACHE[key]=need
+    return need
+
+def e402_agent(observation,configuration=None):
+    action=_E402_PARENT(observation,configuration)
+    try:
+        step=int(observation['step']);seat=int(observation['player'])
+        if step==0:
+            _E402_CACHE.clear()
+            for k in _E402_REPORT:_E402_REPORT[k]=0
+        if step<624:return action
+        market=action.get('market',[])
+        if not any(len(o)>=3 and o[0]=='BUY_SEED' and o[1] in ('WHEAT','CARROT') for o in market):return action
+        native=_IMPL.chassis.players[seat]
+        remaining=_e402_remaining(native,step)
+        # Queued retries can outlive their original schedule; reserve for them too.
+        remaining+=sum(1 for queue in native['pending'].values() for pos,c in queue
+                       if len(c)>1 and c[0]=='PLANT' and c[1] in ('WHEAT','CARROT'))
+        units=[action.get('farmer') or ['PASS']]+list(action.get('hands') or [])
+        available={p:max(0,int(observation['private']['seeds'].get(p,0))-sum(c[:2]==['PLANT',p] for c in units)) for p in ('WHEAT','CARROT')}
+        out=[];changed=False
+        for o in market:
+            if len(o)>=3 and o[0]=='BUY_SEED' and o[1] in available:
+                p=o[1];qty=max(0,int(o[2]));keep=min(qty,max(0,remaining-available[p]));available[p]+=keep
+                if keep<qty:
+                    cut=qty-keep;changed=True
+                    _E402_REPORT['cut_units']+=cut;_E402_REPORT['saved_cost']+=cut*(10 if p=='WHEAT' else 20)
+                    if p=='CARROT':
+                        st=_CA_STATE.get(seat)
+                        if st is not None:st['spare_carrot']=max(0,st.get('spare_carrot',0)-cut)
+                    o=[o[0],p,keep] if keep else []
+            out.append(o)
+        if changed:
+            _E402_REPORT['changed_turns']+=1
+            action=dict(action,market=out)
+    except Exception:_E402_REPORT['errors']+=1
+    return action
+
+e402_agent.telemetry=_E402_REPORT
+kaggle_submission_agent=e402_agent
+
+# EXP410: do not consume another fertilizer where it cannot improve the planned harvest.
+_E410_REPORT=dict(skips=0,covered=0,capped=0,errors=0)
+_E410_PARENT=e402_agent
+def e410_agent(observation,configuration=None):
+    action=_E410_PARENT(observation,configuration)
+    try:
+        step=int(observation['step']);seat=int(observation['player']);day=step//24
+        if step==0:
+            for k in _E410_REPORT:_E410_REPORT[k]=0
+        units=[action.get('farmer') or ['PASS']]+list(action.get('hands') or [])
+        if not any(c==['FERTILIZE'] for c in units):return action
+        farm,private=_PLANNER_NS['_clone_state'](observation['farms'][seat],observation['private'])
+        positions=[farm['farmer']]+list(farm['hands']);changed=False
+        native=_IMPL.chassis.players[seat]
+        expected=max(len(a.get('hands',[])) for a in _v219_native_day(native,day))
+        reactive=set(_R51_INPUT_STATES.get(seat,{}).get('workers',{}))
+        for i,cmd in enumerate(units[:len(positions)]):
+            pos=tuple(positions[i]);tile=farm['tiles'][pos[1]][pos[0]]
+            if cmd==['FERTILIZE'] and isinstance(tile,dict) and tile.get('crop') in ('WHEAT','CARROT') and private['inventories'][i].get('FERTILIZER',0)>0:
+                until=int(tile.get('fertilized_until_day',-1));covered=until>=day+2;skip=covered
+                if not skip and i<=expected and i not in reactive:
+                    visits=_ca_visits(observation,action,pos,min(718,(int(tile['planted_day'])+6)*24),start=step+1)
+                    kw=dict(y0=int(tile['yield_units']),watered_day=day if tile.get('watered_today') else -1,now_step=step)
+                    old=_ca_yield_path(tile['crop'],int(tile['planted_day']),visits,fert_until=until,**kw)[0]
+                    new=_ca_yield_path(tile['crop'],int(tile['planted_day']),visits,fert_until=max(until,day+2),**kw)[0]
+                    skip=old>0 and old==new
+                if skip:
+                    units[i]=cmd=['PASS'];changed=True
+                    _E410_REPORT['skips']+=1;_E410_REPORT['covered' if covered else 'capped']+=1
+            _PLANNER_NS['_apply_unit_action'](farm,private,i,cmd,len(farm['tiles']),day,24,100)
+        if changed:return dict(action,farmer=units[0],hands=units[1:])
+    except Exception:
+        _E410_REPORT['errors']+=1
+    return action
+
+# Bridge: chain e410 -> R148 -> ADV -> IG
+agent = e410_agent
+
+# R148: overflow reclaim — sell inventory before shed overflow at dawn
+# Apache-2.0, Ahmed Berat Ozer EXP277
+_R148_OVERFLOW=True
+_R148_SEEDS=False
+# Original targeted contracts, Ahmed Berat Ozer, EXP277.
+# Uses only current observations and the agent's own existing raw plan.
+_R148_PARENT=agent
+_R148_REPORT={}
+_R148_PENDING={}
+
+
+def _r148_same_stock(a,b):
+    return all(int(a.get(p,0))==int(b.get(p,0)) for p in set(a)|set(b))
+
+
+def _r148_overflow(obs,action):
+    """Sell only inventory replaced by otherwise destroyed dawn cargo.
+
+    All original orders/field jobs remain in place. The COMPLETE warehouse
+    vector after dawn must match the original funded action exactly.
+    """
+    if int(obs['step'])%24!=23:return action
+    orders=action.get('market') or []
+    if len(orders)>=10 or not _r97_budget(obs,orders):return action
+    _,private=_r127_fields(obs,action)
+    stock,_,_=_r97_market_stock(private['shed'],orders)
+    original,loss=_r97_delivery(stock,private,True)
+    if not loss:return action
+    # The deposits are ordered. Recoverable cargo is the discarded suffix in
+    # that same order, not an unordered product total or future forecast.
+    remaining=max(0,100-sum(stock.values()));tail=[]
+    for bag in private['inventories']:
+        for item,n in bag.items():
+            n=max(0,int(n));take=min(n,remaining);remaining-=take
+            if n>take:tail.extend([item]*(n-take))
+    released={};best=None
+    for item in tail:
+        released[item]=released.get(item,0)+1
+        if item not in obs['market']['prices'] or released[item]>stock.get(item,0):break
+        if len(orders)+len(released)>10:break
+        proposed=list(orders)+[['SELL',p,n] for p,n in released.items()]
+        after,_,_=_r97_market_stock(private['shed'],proposed)
+        final,new_loss=_r97_delivery(after,private,True)
+        if _r148_same_stock(original,final):best=(proposed,dict(released),final,new_loss)
+    if best is None:return action
+    proposed,released,final,new_loss=best
+    _R148_REPORT['overflow_turns']+=1
+    _R148_REPORT['overflow_units_reclaimed']+=sum(released.values())
+    _R148_REPORT['overflow_quote_exposure']+=sum(n*obs['market']['prices'][p] for p,n in released.items())
+    _R148_PENDING[int(obs['player'])]=(int(obs['step'])+1,dict(final))
+    return dict(action,market=proposed)
+
+
+def _r148_atomic(obs,action):
+    """A shortage must not cancel every otherwise executable same-crop plant."""
+    commands=[list(c) for c in [action.get('farmer') or ['PASS'],*(action.get('hands') or [])]]
+    demand={}
+    for c in commands:
+        if len(c)>1 and c[0]=='PLANT':demand[c[1]]=demand.get(c[1],0)+1
+    blocked={p for p,n in demand.items() if n>obs['private']['seeds'].get(p,0)}
+    if not blocked:return action
+    farm,private=_PLANNER_NS['_clone_state'](obs['farms'][obs['player']],obs['private'])
+    kept=removed=0
+    for actor,c in enumerate(commands):
+        if len(c)>1 and c[0]=='PLANT' and c[1] in blocked:
+            pos=None if actor>=len(private['inventories']) else farm['farmer'] if actor==0 else farm['hands'][actor-1]
+            valid=pos is not None and farm['tiles'][pos[1]][pos[0]] is None and private['seeds'].get(c[1],0)>0
+            if not valid:commands[actor]=['PASS'];removed+=1
+            else:kept+=1
+        if actor<len(private['inventories']):
+            _PLANNER_NS['_apply_unit_action'](farm,private,actor,commands[actor],10,int(obs['step'])//24,24,100)
+    if not removed:return action
+    result=dict(action,farmer=commands[0],hands=commands[1:])
+    # The inherited final-hour watering contract still governs any rescue.
+    result=_r127_last_hour(obs,result)
+    _R148_REPORT['atomic_turns']+=1;_R148_REPORT['atomic_kept_requests']+=kept;_R148_REPORT['atomic_removed_requests']+=removed
+    return result
+
+
+def _r148_seed_prefund(obs,action):
+    """Fund next-turn valid own-plan planting from already available cash.
+
+    No dawn/shop prediction, displaced purchases, new land or future opponent
+    observation. Future geometry is obtained from exact current unit effects.
+    """
+    step=int(obs['step']);orders=action.get('market') or []
+    if step<24 or step>=695 or step%24 in (22,23) or len(orders)>=10:return action
+    future=_r128_future(obs)
+    commands=[future.get('farmer') or ['PASS'],*(future.get('hands') or [])]
+    if not any(c and c[0]=='PLANT' for c in commands):return action
+    if not _r97_budget(obs,orders):return action
+    farm,private=_r127_fields(obs,action)
+    # Avoid predicting geometry changed by a land purchase in this callback.
+    if any(o and o[0]=='BUY_LAND' for o in orders):return action
+    access=((4,4),(5,4),(4,5),(5,5));positions=[tuple(farm['farmer']),*map(tuple,farm['hands'])]
+    for order in orders:
+        if order and order[0]=='HIRE':
+            pos=min(access,key=lambda p:(positions.count(p),access.index(p)))
+            positions.append(pos);farm['hands'].append(list(pos));private['inventories'].append({})
+        elif len(order)>2 and order[0]=='BUY_SEED':
+            private['seeds'][order[1]]=private['seeds'].get(order[1],0)+max(0,int(order[2]))
+    available=dict(private['seeds']);intended={}
+    # Simulate the known next own commands with virtual seeds, solely to count
+    # physically valid births. The current atomic repair drops invalid requests.
+    for c in commands:
+        if len(c)>1 and c[0]=='PLANT':intended[c[1]]=intended.get(c[1],0)+1
+    for item,n in intended.items():private['seeds'][item]=available.get(item,0)+n
+    before=dict(private['seeds'])
+    for actor,c in enumerate(commands[:len(private['inventories'])]):
+        _PLANNER_NS['_apply_unit_action'](farm,private,actor,c,10,step//24,24,100)
+    short={item:max(0,before[item]-private['seeds'].get(item,0)-available.get(item,0)) for item in intended}
+    short={item:n for item,n in short.items() if n>0}
+    if not short or len(orders)+len(short)>10:return action
+    proposed=list(orders)+[['BUY_SEED',item,n] for item,n in sorted(short.items())]
+    if not _r97_budget(obs,proposed):return action
+    _R148_REPORT['seed_prefund_turns']+=1;_R148_REPORT['seed_prefund_units']+=sum(short.values())
+    return dict(action,market=proposed)
+
+
+def agent(observation,configuration=None):
+    action=_R148_PARENT(observation,configuration)
+    try:
+        player=int(observation['player']);step=int(observation['step'])
+        if step==0:
+            _R148_PENDING.pop(player,None);_R148_REPORT.clear()
+            _R148_REPORT.update(overflow_turns=0,overflow_units_reclaimed=0,overflow_quote_exposure=0,overflow_contract_checks=0,overflow_contract_errors=0,atomic_turns=0,atomic_kept_requests=0,atomic_removed_requests=0,seed_prefund_turns=0,seed_prefund_units=0,targeted_errors=0)
+        pending=_R148_PENDING.pop(player,None)
+        if pending:
+            if step!=pending[0] or not _r148_same_stock(observation['private']['shed'],pending[1]):_R148_REPORT['overflow_contract_errors']+=1
+            else:_R148_REPORT['overflow_contract_checks']+=1
+        standard=configuration is None or all(configuration.get(k,v)==v for k,v in [('boardSize',10),('turnsPerDay',24),('shedCapacity',100),('maxMarketOrdersPerTurn',10),('farmHandCostMult',1)])
+        if standard:
+            if _R148_SEEDS:action=_r148_seed_prefund(observation,_r148_atomic(observation,action))
+            if _R148_OVERFLOW:action=_r148_overflow(observation,action)
+    except Exception:_R148_REPORT['targeted_errors']=_R148_REPORT.get('targeted_errors',0)+1
+    _R148_REPORT.update(getattr(_R148_PARENT,'telemetry',{}))
+    return action
+agent.telemetry=_R148_REPORT
+agent=globals().pop('agent')
+
+# ADV: sale advance — front-run mirrors by selling 3 turns early
+# Apache-2.0, Ahmed Berat Ozer EXP293
+# EXP293 sale advance. Mechanism after sdy623 / jaxa623, "Beyond 48-0" (public Kaggle notebook, Apache-2.0): when the
+# native tape sells a pure cash product within the next 3 turns and the units already sit in the shed, sell them now,
+# ahead of a rival executing the same tape.  Own implementation over this project's chassis (tape lookup, projected shed,
+# route 2 after step 648); never on the dawn turn (the warehouse-closing layer inspects the shed there); the first-listed
+# sale of the next turn is left alone when it funds the sale-credit feed purchase; quantities are caps, so the tape's own
+# later SELL simply sells whatever was deposited since.
+_ADV_PARENT=agent
+_ADV_LOOK=4
+_ADV_FROM=144
+_ADV_TO=718
+_ADV_PROTECT=True
+_ADV_FRONT=True
+_ADV_BOOK=False
+_ADV_SUBTRACT_DEBTS=False
+_ADV_ITEMS=('STRAWBERRY','WOOL','EGG','MILK','MELON','CARROT','TOMATO')
+_ADV_REPORT=dict(adv_turns=0,adv_units=0,adv_errors=0)
+def _adv_future(player,t):
+    native=_IMPL.chassis.players[player]
+    return _IMPL.chassis.routes[2 if t>=648 else native['route']][t].get('market',[]) or []
+def _adv_apply(obs,action):
+    step=int(obs['step']);player=int(obs['player'])
+    if step%24==23 or not _ADV_FROM<=step<_ADV_TO:return action
+    native=_IMPL.chassis.players[player];debts=native['sell_state'].setdefault('r36_debts',{})
+    plan=[];first=None
+    for off in range(1,_ADV_LOOK+1):
+        t=step+off
+        if t>718:break
+        for o in _adv_future(player,t):
+            if not o or len(o)<3:continue
+            if first is None:first=o
+            if o[0]=='SELL' and o[1] in _ADV_ITEMS:
+                try:q=max(0,int(o[2]))
+                except Exception:q=0
+                if _ADV_SUBTRACT_DEBTS:q-=debts.get(t,{}).get(o[1],0)   # already reserved by the sale-reservation layer
+                if q>0:plan.append((t,o[1],q))
+    protected=first[1] if _ADV_PROTECT and first is not None and first[0]=='SELL' else None
+    plan=[(t,item,q) for t,item,q in plan if item!=protected]
+    if not plan:return action
+    market=[list(o) for o in (action.get('market') or [])]
+    if any(len(o)>1 and o[0]=='BUY_PRODUCT' for o in market):return action
+    stock=projected_shed(action,FarmView(obs))
+    selling={}
+    for o in market:
+        if len(o)>=3 and o[0]=='SELL':
+            try:selling[o[1]]=selling.get(o[1],0)+max(0,int(o[2]))
+            except Exception:return action
+    commands=[action.get('farmer') or ['PASS'],*(action.get('hands') or [])]
+    picked={c[1] for c in commands if len(c)>1 and c[0]=='PICKUP'}
+    prices=obs['market']['prices'];added=0;extra=[];booked=[]
+    for item in sorted({it for _,it,_ in plan},key=lambda it:-int(prices.get(it,0))):
+        if item in picked or int(prices.get(item,0))<2:continue
+        avail=int(stock.get(item,0))-selling.get(item,0)
+        if avail<1:continue
+        hit=next((o for o in market if len(o)>=3 and o[0]=='SELL' and o[1]==item),None)
+        if hit is None and len(market)+len(extra)>=10:continue
+        n=0
+        for t,it,q in plan:
+            if it!=item or avail<=0:continue
+            take=min(q,avail);booked.append((t,item,take));n+=take;avail-=take
+        if n<1:continue
+        if hit is not None:hit[2]=int(hit[2])+n
+        else:extra.append(['SELL',item,n])
+        added+=n
+    if not added:return action
+    for t,item,take in (booked if _ADV_BOOK else []):
+        d=debts.setdefault(t,{});d[item]=d.get(item,0)+take
+    _ADV_REPORT['adv_turns']+=1;_ADV_REPORT['adv_units']+=added
+    return dict(action,market=extra+market)
+def _adv_frontload(obs,action):
+    """Final market-list order: sales first, then product purchases (with the sales of an item the same list also buys, in
+    their original order), then everything else in its original order.  Sales earlier only add cash and shed room before
+    purchases; a product purchase ahead of fixed-price orders meets the rival's same-item purchase at the same index or
+    earlier."""
+    market=[list(o) for o in (action.get('market') or []) if o]
+    if len(market)<2 or int(obs['step'])<_ADV_FROM:return action
+    buys={o[1] for o in market if len(o)>1 and o[0]=='BUY_PRODUCT'}
+    front=[o for o in market if len(o)>=3 and o[0]=='SELL' and o[1] not in buys]
+    mid=[o for o in market if len(o)>=3 and o[0]=='BUY_PRODUCT' or (len(o)>=3 and o[0]=='SELL' and o[1] in buys)]
+    rest=[o for o in market if o not in front and o not in mid]
+    new=front+mid+rest
+    if new==market:return action
+    _ADV_REPORT['front_turns']=_ADV_REPORT.get('front_turns',0)+1
+    return dict(action,market=new)
+def agent(observation,configuration=None):
+    action=_ADV_PARENT(observation,configuration)
+    try:
+        if int(observation['step'])==0:_ADV_REPORT.update(adv_turns=0,adv_units=0,adv_errors=0)
+        standard=configuration is None or all(configuration.get(k,v)==v for k,v in [('boardSize',10),('turnsPerDay',24),('shedCapacity',100),('maxMarketOrdersPerTurn',10)])
+        if standard:action=_adv_apply(observation,action)
+        if standard and _ADV_FRONT:action=_adv_frontload(observation,action)
+        # the race layer's lost-race detector must judge the final market list (advanced sales included)
+        st=_RACE_STATE.get(int(observation['player']))
+        if st is not None and st.get('prev_action') is not None and st.get('step')==int(observation['step']):st['prev_action']=action
+    except Exception:_ADV_REPORT['adv_errors']+=1
+    _ADV_REPORT.update(getattr(_ADV_PARENT,'telemetry',{}))
+    return action
+agent.telemetry=_ADV_REPORT
+agent=globals().pop('agent')
+
+# Final conservative closure for the productive-idle opening and market queue.
+_IG_CASH = frozenset((
+    "CARROT", "TOMATO", "STRAWBERRY", "MELON", "EGG", "MILK", "WOOL",
+))
+_IG_REPORT = {
+    "opening_repairs": 0,
+    "queue_changed_turns": 0,
+    "zeroed_orders": 0,
+    "pulled_orders": 0,
+    "pulled_slots": 0,
+    "errors": 0,
+}
+
+
+def _ig_standard(configuration):
+    if configuration is None or not hasattr(configuration, "get"):
+        return True
+    return all(configuration.get(key, expected) == expected for key, expected in (
+        ("boardSize", 10),
+        ("turnsPerDay", 24),
+        ("shedCapacity", 100),
+        ("maxMarketOrdersPerTurn", 10),
+    ))
+
+
+def _ig_guard_opening(observation, action):
+    """Restore the parent pasture command if the temporary wheat never exists."""
+    if int(observation.get("step", -1)) != 29 or not isinstance(action, dict):
+        return action
+    seat = int(observation["player"])
+    state = _ALT_STATE.get(seat)
+    if not state or state.get("mode") != "HybridOpening":
+        return action
+    farm = observation["farms"][seat]
+    site = farm["tiles"][4][2]
+    valid_wheat = (
+        isinstance(site, dict) and site.get("kind") == "PLANT" and
+        site.get("crop") == "WHEAT" and int(site.get("planted_day", -1)) == 0
+    )
+    if valid_wheat:
+        return action
+    hands = [list(command) for command in (action.get("hands") or [])]
+    if len(hands) <= 2 or hands[2] != ["WATER"]:
+        return action
+    hands[2] = ["BUILD_PASTURE"]
+    _IG_REPORT["opening_repairs"] += 1
+    return dict(action, hands=hands)
+
+
+def _ig_close_queue(observation, action):
+    """Turn final cash-sale no-ops into holes and fill holes from the right."""
+    if not isinstance(action, dict):
+        return action
+    market = action.get("market") or []
+    if len(market) < 2:
+        return action
+    projected = dict(projected_shed(action, FarmView(observation)))
+    remaining = {item: max(0, int(projected.get(item, 0))) for item in _IG_CASH}
+    revised = []
+    zeroed = 0
+    for raw in market:
+        order = list(raw) if isinstance(raw, (list, tuple)) else raw
+        if (isinstance(order, list) and len(order) >= 3 and
+                order[0] == "SELL" and order[1] in _IG_CASH):
+            requested = max(0, int(order[2]))
+            executed = min(requested, remaining[order[1]])
+            remaining[order[1]] -= executed
+            if executed <= 0:
+                revised.append([])
+                zeroed += 1
+            else:
+                revised.append(order)
+        else:
+            revised.append(order)
+
+    holes = []
+    pulled = 0
+    distance = 0
+    for index, order in enumerate(revised):
+        if not order:
+            holes.append(index)
+            continue
+        movable = (
+            isinstance(order, list) and len(order) >= 3 and
+            order[0] == "SELL" and order[1] in _IG_CASH and int(order[2]) > 0
+        )
+        if not movable or not holes:
+            continue
+        target = holes.pop(0)
+        revised[target] = order
+        revised[index] = []
+        holes.append(index)
+        pulled += 1
+        distance += index - target
+
+    if revised == market:
+        return action
+    _IG_REPORT["queue_changed_turns"] += 1
+    _IG_REPORT["zeroed_orders"] += zeroed
+    _IG_REPORT["pulled_orders"] += pulled
+    _IG_REPORT["pulled_slots"] += distance
+    return dict(action, market=revised)
+
+
+_IG_PARENT = agent
+del agent
+
+
+def agent(observation, configuration=None):
+    if int(observation.get("step", 0)) == 0:
+        for key in _IG_REPORT:
+            _IG_REPORT[key] = 0
+    action = _IG_PARENT(observation, configuration)
+    try:
+        if _ig_standard(configuration):
+            action = _ig_guard_opening(observation, action)
+            action = _ig_close_queue(observation, action)
+    except Exception:
+        _IG_REPORT["errors"] += 1
+    return action
+
+
+agent.telemetry = _IG_REPORT
+agent = globals().pop("agent")
+
+kaggle_submission_agent = agent
+
+
+# busyaprime, 2026-09-21, Apache-2.0. Seed float trim for the last planting day (v2).
+# On day 27 the chassis switches to route 2, and the CARROT2 layer keeps a float of carrot seed
+# (buffer 8) while the tape keeps buying wheat seed for its own plants. Nothing planted after day 27
+# can be harvested before the engine's last acted step (718), so whatever float is left at the end is
+# money spent on nothing. This layer reads the PLANT orders still ahead on the route 2 tape, asks
+# CARROT2's own price test whether those plants will turn into carrots, and caps the seed buys so the
+# float never exceeds what the rest of the day can plant, plus a small wheat hedge.
+_33_SF_TAPE = _IMPL.chassis.routes.get(2) or []
+_33_SF_W = [0] * 721
+_33_SF_C = [0] * 721
+for _t in range(719, -1, -1):
+    _a = _33_SF_TAPE[_t] if _t < len(_33_SF_TAPE) else {}
+    _u = [_x for _x in [_a.get("farmer")] + list(_a.get("hands") or []) if _x and _x[0] == "PLANT" and _t <= 671]
+    _33_SF_W[_t] = _33_SF_W[_t + 1] + sum(1 for _x in _u if _x[1] == "WHEAT")
+    _33_SF_C[_t] = _33_SF_C[_t + 1] + sum(1 for _x in _u if _x[1] == "CARROT")
+_33_SF_HEDGE = 0
+_33_SF_FROM = 648
+_33_SF_REPORT = dict(wheat_cut=0, carrot_cut=0, errors=0)
+_33_SF_PARENT = [v for v in list(globals().values()) if callable(v)][-1]
+def _33_seedfloat_agent(observation, configuration=None):
+    action = _33_SF_PARENT(observation, configuration)
+    try:
+        step = int(observation["step"])
+        if step < _33_SF_FROM:
+            return action
+        market = [list(o) for o in (action.get("market") or [])]
+        seeds = observation["private"]["seeds"]; prices = observation["market"]["prices"]
+        units = [action.get("farmer")] + list(action.get("hands") or [])
+        pw = sum(1 for u in units if u and u[:2] == ["PLANT", "WHEAT"])
+        pc = sum(1 for u in units if u and u[:2] == ["PLANT", "CARROT"])
+        w_ahead = _33_SF_W[step + 1] if step < 719 else 0
+        c_ahead = _33_SF_C[step + 1] if step < 719 else 0
+        p_c, p_w = float(prices.get("CARROT", 0)), float(prices.get("WHEAT", 0))
+        swapping = 3 * (p_c - _CA_DROP) - 20 > 4 * p_w - 10 + _CA_MARGIN and step // 24 <= _CA_TO
+        need_c = c_ahead + (w_ahead if swapping else 0)
+        need_w = 0 if swapping else w_ahead
+        c_left = int(seeds.get("CARROT", 0)) - pc
+        w_left = int(seeds.get("WHEAT", 0)) - pw
+        allow_c = max(0, need_c - c_left)
+        out = []
+        for o in market:
+            if len(o) >= 3 and o[:2] == ["BUY_SEED", "CARROT"]:
+                q = min(int(o[2]), allow_c); allow_c -= q
+                _33_SF_REPORT["carrot_cut"] += int(o[2]) - q
+                c_left += q
+                if q <= 0:
+                    continue
+                o = ["BUY_SEED", "CARROT", q]
+            out.append(o)
+        short_c = max(0, need_c - c_left)
+        allow_w = max(0, min(w_ahead, need_w + short_c + _33_SF_HEDGE) - w_left)
+        final = []
+        for o in out:
+            if len(o) >= 3 and o[:2] == ["BUY_SEED", "WHEAT"]:
+                q = min(int(o[2]), allow_w); allow_w -= q
+                _33_SF_REPORT["wheat_cut"] += int(o[2]) - q
+                if q <= 0:
+                    continue
+                o = ["BUY_SEED", "WHEAT", q]
+            final.append(o)
+        if final != market:
+            action = dict(action, market=final)
+    except Exception:
+        _33_SF_REPORT["errors"] += 1
+    return action
+
+
+# busyaprime knockout probe: drop market orders of kind BUY_PRODUCT FERTILIZER from step 696 to 719, keep at most 0 HIRE per step.
+_33_KO = dict(op="BUY_PRODUCT", item="FERTILIZER", frm=696, to=719)
+_33_KO_PARENT = [v for v in list(globals().values()) if callable(v)][-1]
+def _33_knock_agent(observation, configuration=None):
+    action = _33_KO_PARENT(observation, configuration)
+    try:
+        step = int(observation["step"])
+        if _33_KO["frm"] <= step <= _33_KO["to"]:
+            m = action.get("market") or []
+            if _33_KO["op"] == "HIRE_LAST":
+                n = sum(1 for o in m if o and o[0] == "HIRE")
+                out = []; seen = 0
+                for o in m:
+                    if o and o[0] == "HIRE":
+                        seen += 1
+                        if seen == n and n > 0:
+                            continue
+                    out.append(o)
+            else:
+                out = [o for o in m if not (o and o[0] == _33_KO["op"] and (_33_KO["item"] == "*" or (len(o) > 1 and o[1] == _33_KO["item"])))]
+            if len(out) != len(m):
+                action = dict(action, market=out)
+    except Exception:
+        pass
+    return action
+
+
+agent = _33_knock_agent
+kaggle_submission_agent = agent
+
+
+# Original visible-state extension, 2026-09-22. Apache-2.0.
+# Stable market queue compaction. Engine 1.32.7 resolves slots in lockstep;
+# removing provable no-op slots preserves our own order while moving executable
+# sales/purchases earlier relative to the opponent. No opponent action is read.
+_VQ_PARENT = agent
+_VQ_REPORT = dict(changed_turns=0, holes_removed=0, dead_sales=0, dead_land=0,
+                  shifted_orders=0, shifted_slots=0, errors=0)
+def _vq_compact(obs, action):
+    orders=action.get('market') or []
+    if len(orders)<2: return action
+    # Unit commands resolve before market orders, including atomic PLANT checks.
+    _,private=_r127_fields(obs,action)
+    stock={p:max(0,int(n)) for p,n in private['shed'].items()}
+    unknown=set();out=[];changes=dict(holes_removed=0,dead_sales=0,dead_land=0,
+                                    shifted_orders=0,shifted_slots=0)
+    all_land=len(obs['farms'][obs['player']]['unlocked_quadrants'])>=4
+    for index,raw in enumerate(orders[:10]):
+        if not raw:
+            changes['holes_removed']+=1;continue
+        order=list(raw)
+        if order[0]=='BUY_LAND' and all_land:
+            changes['dead_land']+=1;continue
+        if len(order)>=3:
+            op,item=order[:2];qty=max(0,int(order[2]))
+            if qty==0:
+                changes['holes_removed']+=1;continue
+            if op=='SELL' and item not in unknown:
+                sold=min(qty,stock.get(item,0))
+                if sold==0:
+                    changes['dead_sales']+=1;continue
+                stock[item]-=sold
+            elif op in ('BUY_PRODUCT','BUY_ANIMAL'):
+                # Cash and opponent-dependent price may limit this order. Never
+                # infer a later sale is dead after an uncertain purchase.
+                unknown.add(item)
+        if index>len(out):
+            changes['shifted_orders']+=1;changes['shifted_slots']+=index-len(out)
+        out.append(order)
+    if out==orders:return action
+    _VQ_REPORT['changed_turns']+=1
+    for key,n in changes.items():_VQ_REPORT[key]+=n
+    result=dict(action,market=out)
+    # Inherited clone detector must judge the actual action we returned.
+    st=_RACE_STATE.get(int(obs['player']))
+    if st is not None and st.get('prev_action') is not None and st.get('step')==int(obs['step']):
+        st['prev_action']=result
+    return result
+
+def agent(observation,configuration=None):
+    if int(observation['step'])==0:
+        for k in _VQ_REPORT:_VQ_REPORT[k]=0
+    action=_VQ_PARENT(observation,configuration)
+    try:
+        if _ig_standard(configuration):return _vq_compact(observation,action)
+    except Exception:_VQ_REPORT['errors']+=1
+    return action
+agent.telemetry=_VQ_REPORT
+kaggle_submission_agent=agent
+
+
+# Explicit final callable for Kaggle get_last_callable; preserve the intended policy.
+_FINAL_POLICY = agent
+def _final_submission_entrypoint(observation, configuration=None):
+    return _FINAL_POLICY(observation, configuration)
+agent = _final_submission_entrypoint
+
+# ---- v8 graft: tetsu_demand counter D (Apache-2.0, credited upstream) ----
+# ==== counter D: exact best-response ordering against a copy of ourselves (shiiin9, 2026-09-18) ====
+# Supersedes layer A's fixed rule.  Against a V48 clone the rival's market list is exactly the
+# list this stack produces before D touches it (same tape, same production, same market layers),
+# so `_v44y_factor_margin` - V48's own per-unit lockstep evaluator - scores any ordering of our
+# own list exactly.  V48 already uses it, but only permutes contiguous runs of 2-6 SELLs; it never
+# moves a SELL past a HIRE/BUY_SEED/BUY_ANIMAL/BUY_LAND, which is where layer A found its wins.
+#
+# Search space: the slots held by SELLs and fixed-price orders.  SELLs may take any of them (any
+# order); the fixed-price orders keep their relative order in the slots that are left.  Held fixed:
+# BUY_PRODUCT (the turn-0/1 openings depend on its index), wash SELLs of an item the list also
+# buys, and V48's deliberate empty slots.  Selling earlier only adds cash before a purchase, so a
+# fixed-price order never moves earlier than it already is.
+# Budgeted: at most _CXD_BUDGET scored orderings per turn, and the original ordering scores 0, so
+# a change needs a strictly positive gain.
+import itertools as _cxd_it
+_CXD_HOST = [v for v in list(globals().values()) if callable(v)][-1]
+_CXD_FIXED = ('HIRE', 'BUY_SEED', 'BUY_ANIMAL', 'BUY_LAND')
+_CXD_BUDGET = 800
+_CXD_FROM = 0
+_CXD_REPORT = {'cxd_turns': 0, 'cxd_gain': 0.0, 'cxd_evals': 0, 'cxd_budget_hits': 0, 'cxd_errors': 0}
+# Rival order lists to be robust against, refreshed each turn by the identification layer
+# below this one. Empty means "assume the rival plays our own list", which is exact against
+# a V48 copy; with several entries an ordering is scored by its worst case among them.
+_CXD_MODELS = []
+# The list this stack produced before D touched it. Against a V48 copy that IS the rival's
+# list, so layers above D (which see an already reordered list) must model the rival with
+# this, not with our reordered one.
+_CXD_PARENT_ORDERS = []
+
+
+def _cxd_candidates(orders, slots, sells, fixed):
+    """Orderings of `sells` over `slots`, fixed-price orders filling the rest in their own order."""
+    for positions in _cxd_it.permutations(slots, len(sells)):
+        out = list(orders)
+        rest = [i for i in slots if i not in positions]
+        for i, order in zip(positions, sells):
+            out[i] = order
+        for i, order in zip(rest, fixed):
+            out[i] = order
+        yield out
+
+
+def _cxd_reorder(obs, action):
+    market = action.get('market') or []
+    if len(market) < 2:
+        return action
+    orders = [list(o) if isinstance(o, (list, tuple)) else o for o in market]
+    bought = {o[1] for o in orders if o and len(o) > 1 and o[0] == 'BUY_PRODUCT'}
+    slots, sells, fixed = [], [], []
+    for i, o in enumerate(orders):
+        if not o:
+            continue
+        if o[0] in _CXD_FIXED:
+            slots.append(i); fixed.append(o)
+        elif o[0] == 'SELL' and len(o) > 1 and o[1] not in bought:
+            slots.append(i); sells.append(o)
+    if not sells or len(slots) < 2:
+        return action
+    params = _v44y_params(obs)
+    stock = {k: max(0, int(v)) for k, v in projected_shed(action, FarmView(obs)).items()}
+    inv0 = {k: int(v) for k, v in obs['market']['inventory'].items()}
+    _CXD_PARENT_ORDERS[:] = [list(o) for o in orders if o]
+    models = [m for m in _CXD_MODELS if m] or [orders]
+    margins = [_v44y_factor_margin(m, inv0, stock, params) for m in models]
+
+    def margin(cand):
+        return min(f(cand) for f in margins)
+    base = best = margin(orders)
+    best_orders = None
+    evals = 0
+    for cand in _cxd_candidates(orders, slots, sells, fixed):
+        if cand == orders:
+            continue
+        evals += 1
+        if evals > _CXD_BUDGET:
+            _CXD_REPORT['cxd_budget_hits'] += 1
+            break
+        value = margin(cand)
+        if value > best + 0.5:
+            best, best_orders = value, cand
+    _CXD_REPORT['cxd_evals'] += evals
+    if best_orders is None:
+        return action
+    _CXD_REPORT['cxd_turns'] += 1
+    _CXD_REPORT['cxd_gain'] += best - base
+    return dict(action, market=best_orders)
+
+
+def _cxd_agent(observation, configuration=None):
+    action = _CXD_HOST(observation, configuration)
+    try:
+        if int(observation.get('step', 0)) == 0:
+            _CXD_REPORT.update(cxd_turns=0, cxd_gain=0.0, cxd_evals=0, cxd_budget_hits=0, cxd_errors=0)
+        if int(observation.get('step', 0)) >= _CXD_FROM:
+            return _cxd_reorder(observation, action)
+    except Exception:
+        _CXD_REPORT['cxd_errors'] += 1
+    return action
+
+
+V9_RACE_DEFAULT = 44
+
+
+# ==== level-2 counter D ====
+# Counter D above is a best response to a rival that plays our own pre-D list (level 0).
+# A rival running counter D itself plays the level-1 list: its best response to that same
+# pre-D list.  Compute it, then choose our ordering against the rival model(s).
+_CXD_L2_MODE = 'min'
+
+
+def _cxd_l2_search(orders, slots, sells, fixed, fns):
+    base = best = min(f(orders) for f in fns)
+    best_orders, evals = None, 0
+    for cand in _cxd_candidates(orders, slots, sells, fixed):
+        if cand == orders:
+            continue
+        evals += 1
+        if evals > _CXD_BUDGET:
+            _CXD_REPORT['cxd_budget_hits'] += 1
+            break
+        value = min(f(cand) for f in fns)
+        if value > best + 0.5:
+            best, best_orders = value, cand
+    _CXD_REPORT['cxd_evals'] += evals
+    return best_orders, best - base
+
+
+def _cxd_l2_reorder(obs, action):
+    market = action.get('market') or []
+    if len(market) < 2:
+        return action
+    orders = [list(o) if isinstance(o, (list, tuple)) else o for o in market]
+    bought = {o[1] for o in orders if o and len(o) > 1 and o[0] == 'BUY_PRODUCT'}
+    slots, sells, fixed = [], [], []
+    for i, o in enumerate(orders):
+        if not o:
+            continue
+        if o[0] in _CXD_FIXED:
+            slots.append(i); fixed.append(o)
+        elif o[0] == 'SELL' and len(o) > 1 and o[1] not in bought:
+            slots.append(i); sells.append(o)
+    if not sells or len(slots) < 2:
+        return action
+    params = _v44y_params(obs)
+    stock = {k: max(0, int(v)) for k, v in projected_shed(action, FarmView(obs)).items()}
+    inv0 = {k: int(v) for k, v in obs['market']['inventory'].items()}
+    f0 = _v44y_factor_margin(orders, inv0, stock, params)
+    l1, _ = _cxd_l2_search(orders, slots, sells, fixed, [f0])
+    if l1 is None:
+        return action          # level-1 rival plays the parent list too: nothing to exploit
+    f1 = _v44y_factor_margin(l1, inv0, stock, params)
+    fns = [f0, f1] if _CXD_L2_MODE == 'min' else [f1]
+    best, gain = _cxd_l2_search(orders, slots, sells, fixed, fns)
+    if best is None:
+        return action
+    _CXD_REPORT['cxd_turns'] += 1
+    _CXD_REPORT['cxd_gain'] += gain
+    return dict(action, market=best)
+
+
+_cxd_reorder = _cxd_l2_reorder
+_cxd_entry = _cxd_agent
+del _cxd_agent
+_cxd_agent = _cxd_entry
+del _cxd_entry
+
+
+# ==== v8 entrypoint: the last module-level callable, and it never raises ====
+globals().pop("agent", None)
+
+
+def agent(observation, configuration=None):
+    try:
+        return _cxd_agent(observation, configuration)
+    except Exception:
+        return {"farmer": ["PASS"], "hands": [], "market": []}
