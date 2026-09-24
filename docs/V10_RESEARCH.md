@@ -228,6 +228,24 @@ opening. The challenger lacks the hire reserve and plays 20/15:
 * Against v9: 6-2, +$1,197 a game.
 * Across the whole field, it plays exactly like the challenger.
 
+Ghost benchmark (412 real ladder episodes, opponents replayed):
+
+| Agent | Won | Mean margin |
+| --- | --- | --- |
+| v9 | 362 (87.9%) | +$3,255 |
+| tetsutani (new) = v10c | **379 (92.0%)** | **+$3,454** |
+
+v10c and the challenger match to the dollar in every episode. The hire reserve
+runs without errors and never needs to fire: the new base does not hit the day-1
+cash crunch in v8's collapse games (it wins them by $7-22k). The reserve stays
+in as a safety net. The candidate is `candidates/v10c/main.py`, and `main.py`
+still holds the live v9.
+
+**Honest expectation.** This is about +$800 a game against the field, and the
+same base is public, so many teams will run it. It should lift the rating, but it
+is not a top-10 breakthrough: that still needs the scale the top teams have
+(more land and bigger herds, reinvested early).
+
 ## Next
 
 1. Keep the empirical loop that produced v9: download each new ladder loss and
