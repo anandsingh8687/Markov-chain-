@@ -1,4 +1,10 @@
-# Kaggriculture v10
+# Kaggriculture v11
+
+**v11** (`main.py`) is v10 plus later-game lead-selling: from day 18 the base's
+lead-sellers look 12 turns ahead instead of 8, except for strawberries. It wins
+the late sale races against agents running the same route tape: 24-0 against v10,
+and 80 of v10's 111 real ladder games replayed against v10's 72. See
+[docs/V11.md](docs/V11.md). The v10 notes follow.
 
 `main.py` is the submission. It is a single file, standard library only, and
 `agent` is the last callable in it.
@@ -55,11 +61,11 @@ closed-loop rows are the check on that.
 ## Layout
 
 ```
-main.py                        v10, the submission
+main.py                        v11, the submission
 THIRD_PARTY_NOTICES.md         upstream credits (Apache-2.0)
-docs/V8.md .. docs/V10.md       evidence, method, what failed, what next
+docs/V8.md .. docs/V11.md       evidence, method, what failed, what next
 candidates/                    v10c / v10d builds as tested
-benchmark/incumbent/           the previous live file (v9); gate: the build must not lose to it
+benchmark/incumbent/           the previous live file (v10); gate: the build must not lose to it
 benchmark/rival/               the unmodified public parent (tetsutani); gate: must beat it
 benchmark/ghosts/              412 real ladder opponents (v3-v8) as replayable tapes
 benchmark/ladder/              real ladder banks by seed (tools/ladder_gap.py)
