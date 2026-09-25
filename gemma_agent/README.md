@@ -23,6 +23,9 @@ Read from `HARNESS_README.md` and confirmed with local runs:
   call (50x `edit_file` with over-escaped quotes, 138x `read_file({})`).
 - **`write_file` always writes inside /workspace**, even for `/tmp/x`, so
   scratch files leak into the patch.
+- **The whole hidden run must finish in 12 hours.** Without `eval_config.yaml`
+  each task may take 60 minutes and the submission errors out (v1). The bundle
+  caps tasks at 25 minutes; `build.py` refuses more than 30.
 - **A text-only reply ends an ADK agent's turn**, so anything that makes the
   model "narrate" without a tool call stops that stage.
 
@@ -74,5 +77,5 @@ submission should change one thing and be recorded in the log below.
 
 | Date | Change | Local pilot | Public LB |
 | --- | --- | --- | --- |
-| 2026-09-24 | v1: coder + analyzer + reviewer | 1/3 | pending |
+| 2026-09-24 | v1: coder + analyzer + reviewer | 1/3 | **error: exceeded 12h runtime** (no eval_config, 60 min/task default) |
 | 2026-09-25 | v2d: analyst -> coder -> verifier, fresh contexts, T=1.0, 4k output | 3/6 (v2b), rich_3006 pass | pending |

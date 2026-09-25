@@ -1,0 +1,9 @@
+# Per-task budget. The whole hidden run (~120 tasks) must finish in 12 hours:
+# v1 shipped no eval_config, got the 60-minute default per task and was
+# rejected for exceeding the runtime limit. 25 minutes leaves a wide margin.
+# timeout_seconds is set to the same 25 minutes so it is safe whether it means
+# the per-command or the per-task timeout; prompts use `timeout 240` on tests.
+evaluation:
+  timeout_seconds: 1500
+  max_time_minutes: 25
+  max_turns: 300

@@ -112,6 +112,14 @@ def validate(bundle: Path) -> list[Path]:
         if p.suffix in (".yaml", ".yml"):
             for target in re.findall(r"!include\s+(\S+)", p.read_text(encoding="utf-8")):
                 assert (p.parent / target).is_file(), f"{p.name}: missing include {target}"
+    ec = bundle / "eval_config.yaml"
+    if ec.is_file():
+        ev = (yaml.safe_load(ec.read_text()) or {}).get("evaluation", {})
+        minutes = float(ev.get("max_time_minutes", 60))
+        assert minutes <= 30, f"eval_config max_time_minutes={minutes}: ~120 tasks must fit in 12h"
+        print(f"  eval_config.yaml: {ev}")
+    else:
+        print("  WARNING: no eval_config.yaml -> 60 min/task default; v1 exceeded the 12h runtime this way")
     print(f"OK: {len(files)} files, {total:,} bytes, model {models.pop()}")
     return files
 
