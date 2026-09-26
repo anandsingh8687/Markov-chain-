@@ -1,6 +1,8 @@
-# Kaggriculture v12
+# Kaggriculture v13
 
-**v12** (`main.py`) is v11 plus opponent-aware sale timing (RDX) and a late-selling retune; see [docs/V12.md](docs/V12.md). **v11** was v10 plus later-game lead-selling: from day 18 the base's
+**v13** (`main.py`) is v12 plus MDX: from day 18, at 5am and 5pm, it sells the whole shed stock of strawberries, milk and wool at the morning/evening peak instead of trickling it out, so we no longer sell into the crash left by tape copies. On v12's own 72 ladder games it wins 59 to v12's 49; see [docs/V13.md](docs/V13.md).
+
+**v12** is v11 plus opponent-aware sale timing (RDX) and a late-selling retune; see [docs/V12.md](docs/V12.md). **v11** was v10 plus later-game lead-selling: from day 18 the base's
 lead-sellers look 12 turns ahead instead of 8, except for strawberries. It wins
 the late sale races against agents running the same route tape: 24-0 against v10,
 and 80 of v10's 111 real ladder games replayed against v10's 72. See
