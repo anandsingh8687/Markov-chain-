@@ -1,0 +1,13 @@
+Kaggriculture cha23 current-meta agent, September 24, 2026.
+
+Direct strategy source: Thomas Tschinkel, The 2945 Farm: 96% vs the Top-10
+Public Bots, version 2, released under Apache-2.0.
+https://www.kaggle.com/code/thomastschinkel/the-2945-farm-96-vs-the-top-10-public-bots
+
+The source incorporates public work by Ahmed Berat Ozer, Yusuke Hayashi,
+prvsiyan, Dmitrii Gluzdov, aurax7, tetsutani, lucifer19, leoprovorov,
+destbreso, Steven Lee Hans, Kaggle, and other Kaggriculture contributors.
+
+Local changes are mechanical: Python comment tokens were removed at the user's
+request and the source was repackaged in an updated notebook. Strategy semantics
+and callable ordering are unchanged.

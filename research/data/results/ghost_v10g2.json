@@ -1,0 +1,3305 @@
+{
+ "episodes": 412,
+ "won": 368,
+ "win_rate": 0.8932038834951457,
+ "mean_margin": 3494.266990291262,
+ "errors": 0,
+ "rows": [
+  {
+   "ep": 112725997,
+   "version": "v8",
+   "opponent": "Logus",
+   "orig": -128.0,
+   "margin": 35.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112724768,
+   "version": "v8",
+   "opponent": "Nikoo Yu",
+   "orig": 474.0,
+   "margin": 121.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112717823,
+   "version": "v8",
+   "opponent": "Tom3",
+   "orig": -37.0,
+   "margin": 792.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112716962,
+   "version": "v8",
+   "opponent": "Zhou Hengyu",
+   "orig": 736.0,
+   "margin": 1741.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112710302,
+   "version": "v8",
+   "opponent": "Aaditya Verma",
+   "orig": -1858.0,
+   "margin": 400.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112702421,
+   "version": "v8",
+   "opponent": "elren",
+   "orig": 585.0,
+   "margin": 913.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112699312,
+   "version": "v8",
+   "opponent": "Marti",
+   "orig": -341.0,
+   "margin": -301.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112686652,
+   "version": "v8",
+   "opponent": "RUSHMANTH NALLURI",
+   "orig": -577.0,
+   "margin": -80.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112682853,
+   "version": "v8",
+   "opponent": "liminhai",
+   "orig": 885.0,
+   "margin": 978.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112682741,
+   "version": "v8",
+   "opponent": "koala_bear",
+   "orig": 2835.0,
+   "margin": 1171.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112674126,
+   "version": "v8",
+   "opponent": "MAC SAHO",
+   "orig": 348.0,
+   "margin": -30.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112670597,
+   "version": "v8",
+   "opponent": "Linh Le",
+   "orig": 1205.0,
+   "margin": 1217.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112668486,
+   "version": "v8",
+   "opponent": "Haraguchi-T",
+   "orig": 2098.0,
+   "margin": 4049.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112668193,
+   "version": "v8",
+   "opponent": "cabbage corp",
+   "orig": 826.0,
+   "margin": 817.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112667026,
+   "version": "v8",
+   "opponent": "Tashfik Salehin",
+   "orig": -10813.0,
+   "margin": 17787.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112665877,
+   "version": "v8",
+   "opponent": "Suna-D",
+   "orig": 731.0,
+   "margin": 1258.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112661209,
+   "version": "v8",
+   "opponent": "Asem Adnan",
+   "orig": 424.0,
+   "margin": 739.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112657713,
+   "version": "v8",
+   "opponent": "HKUST Random",
+   "orig": -174.0,
+   "margin": 878.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112654208,
+   "version": "v8",
+   "opponent": "cmasch",
+   "orig": -1206.0,
+   "margin": -157.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112653034,
+   "version": "v8",
+   "opponent": "khursani",
+   "orig": 628.0,
+   "margin": 2858.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112650671,
+   "version": "v8",
+   "opponent": "massi0411",
+   "orig": 525.0,
+   "margin": 863.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112649466,
+   "version": "v8",
+   "opponent": "greyhound",
+   "orig": 693.0,
+   "margin": 2272.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112648288,
+   "version": "v8",
+   "opponent": "yuki ogata",
+   "orig": -20.0,
+   "margin": 374.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112644764,
+   "version": "v8",
+   "opponent": "Shivam_2212",
+   "orig": 868.0,
+   "margin": 754.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112642445,
+   "version": "v8",
+   "opponent": "fshindo",
+   "orig": -694.0,
+   "margin": 425.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112641298,
+   "version": "v8",
+   "opponent": "Ahmed Hazem Abdeltawab",
+   "orig": 575.0,
+   "margin": -353.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112640143,
+   "version": "v8",
+   "opponent": "Aaron amacadu",
+   "orig": 3355.0,
+   "margin": 2008.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112638982,
+   "version": "v8",
+   "opponent": "Sonu Yadav",
+   "orig": 462.0,
+   "margin": 956.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112638258,
+   "version": "v8",
+   "opponent": "Donald Trump",
+   "orig": 2085.0,
+   "margin": 1316.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112637815,
+   "version": "v8",
+   "opponent": "Jiarui (Jerry) Cao",
+   "orig": 244.0,
+   "margin": -1006.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112633162,
+   "version": "v8",
+   "opponent": "Anton Tikhonov",
+   "orig": -1524.0,
+   "margin": 927.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112632691,
+   "version": "v8",
+   "opponent": "ShuHaya",
+   "orig": 159.0,
+   "margin": -189.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112632016,
+   "version": "v8",
+   "opponent": "Oshbocker",
+   "orig": 2801.0,
+   "margin": 2623.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112631780,
+   "version": "v8",
+   "opponent": "Pavlo Ivanin",
+   "orig": 8876.0,
+   "margin": 8416.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112629718,
+   "version": "v8",
+   "opponent": "Jeryos",
+   "orig": -28063.0,
+   "margin": 8379.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112627330,
+   "version": "v8",
+   "opponent": "Yuxuan Ba",
+   "orig": 7110.0,
+   "margin": 6263.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112623893,
+   "version": "v8",
+   "opponent": "Lord Momo",
+   "orig": 4470.0,
+   "margin": 3290.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112621590,
+   "version": "v8",
+   "opponent": "Rabia Eda Y\u0131lmaz",
+   "orig": 7375.0,
+   "margin": 8076.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112620481,
+   "version": "v8",
+   "opponent": "Yosef Zoabi",
+   "orig": 4705.0,
+   "margin": 3478.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112618126,
+   "version": "v8",
+   "opponent": "Izzoudine Mohamed KANTA",
+   "orig": -1213.0,
+   "margin": 59649.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112615648,
+   "version": "v8",
+   "opponent": "Ad Space Available",
+   "orig": -1726.0,
+   "margin": -2166.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112614478,
+   "version": "v8",
+   "opponent": "LaManbo",
+   "orig": 10190.0,
+   "margin": 8355.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112612108,
+   "version": "v8",
+   "opponent": "Here i come",
+   "orig": -6183.0,
+   "margin": -5424.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112609813,
+   "version": "v8",
+   "opponent": "Fighting Gold",
+   "orig": 6598.0,
+   "margin": 6219.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112599290,
+   "version": "v8",
+   "opponent": "shichi",
+   "orig": 75722.0,
+   "margin": 76066.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112130574,
+   "version": "v7",
+   "opponent": "evolve faster!",
+   "orig": -257.0,
+   "margin": -627.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112123401,
+   "version": "v7",
+   "opponent": "Lester Leong",
+   "orig": 0.0,
+   "margin": 4302.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112116415,
+   "version": "v7",
+   "opponent": "Li Li",
+   "orig": -1509.0,
+   "margin": 35.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112109560,
+   "version": "v7",
+   "opponent": "BOB",
+   "orig": -762.0,
+   "margin": 1011.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112102394,
+   "version": "v7",
+   "opponent": "Chellick",
+   "orig": -77.0,
+   "margin": 4241.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112096771,
+   "version": "v7",
+   "opponent": "XINGYUAN  ZHOU",
+   "orig": 0.0,
+   "margin": 3107.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112093801,
+   "version": "v7",
+   "opponent": "Ignat",
+   "orig": -517.0,
+   "margin": -1784.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112082381,
+   "version": "v6",
+   "opponent": "Semih Temiz",
+   "orig": -367.0,
+   "margin": 472.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112080358,
+   "version": "v7",
+   "opponent": "Debmalya",
+   "orig": 0.0,
+   "margin": 2192.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112076221,
+   "version": "v6",
+   "opponent": "\u00d6mer Faruk Y\u00fcce",
+   "orig": -1390.0,
+   "margin": 463.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112072553,
+   "version": "v7",
+   "opponent": "qi yun",
+   "orig": -28.0,
+   "margin": 2424.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112065355,
+   "version": "v7",
+   "opponent": "Rohit Kumar Sahoo",
+   "orig": -137.0,
+   "margin": 2341.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112060892,
+   "version": "v7",
+   "opponent": "1m0ke",
+   "orig": -1351.0,
+   "margin": 1519.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112056363,
+   "version": "v7",
+   "opponent": "kk.sky.9k",
+   "orig": -327.0,
+   "margin": 1237.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112052053,
+   "version": "v7",
+   "opponent": "Boiled-Sweet-Potato",
+   "orig": 0.0,
+   "margin": 143.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112050646,
+   "version": "v7",
+   "opponent": "Yuan Yongth",
+   "orig": -1088.0,
+   "margin": 299.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112049477,
+   "version": "v7",
+   "opponent": "Kazumi Sakamaki",
+   "orig": -55.0,
+   "margin": 1118.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112046990,
+   "version": "v6",
+   "opponent": "micro",
+   "orig": -6612.0,
+   "margin": 6046.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112044300,
+   "version": "v7",
+   "opponent": "\u6a4b\u672c\u771f\u65fa",
+   "orig": 0.0,
+   "margin": 2071.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112037534,
+   "version": "v7",
+   "opponent": "Khalid",
+   "orig": -54.0,
+   "margin": 2654.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112030755,
+   "version": "v7",
+   "opponent": "\u8001\u4e61",
+   "orig": -48.0,
+   "margin": 4339.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112024075,
+   "version": "v7",
+   "opponent": "lixusb",
+   "orig": -27.0,
+   "margin": 1730.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112017650,
+   "version": "v7",
+   "opponent": "Matt Motoki",
+   "orig": -209.0,
+   "margin": 942.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112017093,
+   "version": "v7",
+   "opponent": "Komi ShouKo",
+   "orig": -28.0,
+   "margin": 103.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112016885,
+   "version": "v6",
+   "opponent": "Freddy",
+   "orig": -3842.0,
+   "margin": 1097.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112016664,
+   "version": "v7",
+   "opponent": "BOB",
+   "orig": -896.0,
+   "margin": -294.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112009988,
+   "version": "v7",
+   "opponent": "sztszt0726",
+   "orig": -216.0,
+   "margin": 3801.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112008863,
+   "version": "v7",
+   "opponent": "Liyi xin jie",
+   "orig": -397.0,
+   "margin": 1510.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112004893,
+   "version": "v7",
+   "opponent": "Ikeda0516",
+   "orig": -28.0,
+   "margin": 2438.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 112000024,
+   "version": "v7",
+   "opponent": "kyy666",
+   "orig": -1189.0,
+   "margin": 584.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111994392,
+   "version": "v7",
+   "opponent": "yok",
+   "orig": -235.0,
+   "margin": 100.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111987340,
+   "version": "v7",
+   "opponent": "kanno",
+   "orig": -1332.0,
+   "margin": -147.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111984735,
+   "version": "v7",
+   "opponent": "Talvenn",
+   "orig": -134.0,
+   "margin": 936.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111979895,
+   "version": "v6",
+   "opponent": "Amy Yuan",
+   "orig": -2158.0,
+   "margin": -805.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111970714,
+   "version": "v7",
+   "opponent": "c_fxy",
+   "orig": -825.0,
+   "margin": 1233.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111967772,
+   "version": "v7",
+   "opponent": "fmind",
+   "orig": 48.0,
+   "margin": 2078.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111959905,
+   "version": "v7",
+   "opponent": "Hongxin Su",
+   "orig": 50.0,
+   "margin": -117.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111954325,
+   "version": "v6",
+   "opponent": "haru0707",
+   "orig": -10341.0,
+   "margin": -8327.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111951506,
+   "version": "v7",
+   "opponent": "Baidalin Adilzhan [dsml.kz]",
+   "orig": -68.0,
+   "margin": 1016.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111945928,
+   "version": "v7",
+   "opponent": "haoming yang",
+   "orig": 93.0,
+   "margin": 2180.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111943737,
+   "version": "v7",
+   "opponent": "Kifine",
+   "orig": -73.0,
+   "margin": 7312.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111942090,
+   "version": "v7",
+   "opponent": "JudyWatermelon",
+   "orig": -28.0,
+   "margin": 1140.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111934864,
+   "version": "v7",
+   "opponent": "Yusuraume",
+   "orig": -92.0,
+   "margin": 6390.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111931809,
+   "version": "v7",
+   "opponent": "Arnav Goel",
+   "orig": -109.0,
+   "margin": 3689.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111924080,
+   "version": "v7",
+   "opponent": "Weixuan Liu",
+   "orig": -27.0,
+   "margin": -448.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111916669,
+   "version": "v7",
+   "opponent": "kojingbo",
+   "orig": -699.0,
+   "margin": 526.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111915047,
+   "version": "v7",
+   "opponent": "theredbluepill",
+   "orig": 50.0,
+   "margin": 1848.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111914751,
+   "version": "v7",
+   "opponent": "east",
+   "orig": -35.0,
+   "margin": 2584.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111913170,
+   "version": "v7",
+   "opponent": "monsaraida",
+   "orig": -1478.0,
+   "margin": 1497.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111909025,
+   "version": "v7",
+   "opponent": "redblackbst",
+   "orig": -3441.0,
+   "margin": -3302.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111907511,
+   "version": "v7",
+   "opponent": "webmaking",
+   "orig": -1356.0,
+   "margin": 674.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111907197,
+   "version": "v7",
+   "opponent": "LH-and-FPGA",
+   "orig": -28.0,
+   "margin": 2214.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111900297,
+   "version": "v7",
+   "opponent": "Arul Prasad S P",
+   "orig": -546.0,
+   "margin": 2501.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111893466,
+   "version": "v7",
+   "opponent": "Kitsune0o",
+   "orig": 0.0,
+   "margin": 1250.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111887566,
+   "version": "v7",
+   "opponent": "SANNNNN",
+   "orig": -439.0,
+   "margin": 38.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111882825,
+   "version": "v7",
+   "opponent": "Fried Chicken Lovers",
+   "orig": -63.0,
+   "margin": -572.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111876903,
+   "version": "v6",
+   "opponent": "KoRo2_JP",
+   "orig": -1282.0,
+   "margin": 3288.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111876587,
+   "version": "v7",
+   "opponent": "Li Li",
+   "orig": 0.0,
+   "margin": 1378.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111873351,
+   "version": "v7",
+   "opponent": "miya",
+   "orig": -247.0,
+   "margin": 812.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111867739,
+   "version": "v7",
+   "opponent": "t-enstar",
+   "orig": 1810.0,
+   "margin": 1218.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111861821,
+   "version": "v6",
+   "opponent": "local",
+   "orig": -156.0,
+   "margin": 1145.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111861171,
+   "version": "v7",
+   "opponent": "xxxx0314",
+   "orig": -1510.0,
+   "margin": -520.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111860489,
+   "version": "v7",
+   "opponent": "uki706",
+   "orig": -508.0,
+   "margin": 1080.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111857844,
+   "version": "v7",
+   "opponent": "rode1234",
+   "orig": -525.0,
+   "margin": -413.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111852054,
+   "version": "v7",
+   "opponent": "kitton",
+   "orig": -73.0,
+   "margin": 1923.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111851705,
+   "version": "v7",
+   "opponent": "Knight of Favonius",
+   "orig": -982.0,
+   "margin": 1612.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111850529,
+   "version": "v7",
+   "opponent": "Kazama Yusuke",
+   "orig": -3588.0,
+   "margin": -3034.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111849325,
+   "version": "v6",
+   "opponent": "xi luo",
+   "orig": -1971.0,
+   "margin": -502.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111847428,
+   "version": "v7",
+   "opponent": "Batuhan Ustun",
+   "orig": -520.0,
+   "margin": 298.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111843200,
+   "version": "v7",
+   "opponent": "Soshi Uejima",
+   "orig": 0.0,
+   "margin": 1928.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111841801,
+   "version": "v6",
+   "opponent": "Yuanchen Huang",
+   "orig": -29.0,
+   "margin": 2795.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111840821,
+   "version": "v7",
+   "opponent": "Ken_Ken_Pa",
+   "orig": 494.0,
+   "margin": 430.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111840771,
+   "version": "v7",
+   "opponent": "naren_v",
+   "orig": 0.0,
+   "margin": 6063.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111835102,
+   "version": "v7",
+   "opponent": "yemaoye",
+   "orig": 0.0,
+   "margin": 1159.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111829449,
+   "version": "v7",
+   "opponent": "kuengo",
+   "orig": -174.0,
+   "margin": 2391.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111823841,
+   "version": "v7",
+   "opponent": "Kifine",
+   "orig": -27.0,
+   "margin": 1612.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111823066,
+   "version": "v7",
+   "opponent": "kigasudayooo",
+   "orig": -60.0,
+   "margin": 571.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111822685,
+   "version": "v6",
+   "opponent": "Yuanchen Huang",
+   "orig": -510.0,
+   "margin": 1359.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111817793,
+   "version": "v7",
+   "opponent": "OnlyFarms",
+   "orig": -28.0,
+   "margin": 975.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111813877,
+   "version": "v7",
+   "opponent": "Jinhan Gao",
+   "orig": 0.0,
+   "margin": 3683.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111808443,
+   "version": "v7",
+   "opponent": "subsubsubagent",
+   "orig": -40.0,
+   "margin": 2462.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111807955,
+   "version": "v6",
+   "opponent": "Zenith Ye",
+   "orig": -17.0,
+   "margin": 3170.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111806259,
+   "version": "v7",
+   "opponent": "taipen",
+   "orig": -60.0,
+   "margin": -723.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111803701,
+   "version": "v7",
+   "opponent": "evolve faster!",
+   "orig": 486.0,
+   "margin": 4328.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111801384,
+   "version": "v7",
+   "opponent": "jjamppongmandu",
+   "orig": 0.0,
+   "margin": 2605.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111799557,
+   "version": "v7",
+   "opponent": "high frequency farming",
+   "orig": 307.0,
+   "margin": 1848.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111797991,
+   "version": "v6",
+   "opponent": "Mizero Lucky Gall",
+   "orig": -359.0,
+   "margin": 1724.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111794867,
+   "version": "v7",
+   "opponent": "Noir",
+   "orig": 50.0,
+   "margin": 3039.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111784851,
+   "version": "v6",
+   "opponent": "srijan k.r keshri",
+   "orig": -5.0,
+   "margin": 3898.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111784806,
+   "version": "v7",
+   "opponent": "yuya",
+   "orig": -3025.0,
+   "margin": 611.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111779600,
+   "version": "v7",
+   "opponent": "mogura2.0",
+   "orig": -68.0,
+   "margin": 1969.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111779070,
+   "version": "v7",
+   "opponent": "Catalyst",
+   "orig": 0.0,
+   "margin": 2197.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111777181,
+   "version": "v6",
+   "opponent": "Shadow",
+   "orig": -3424.0,
+   "margin": 1459.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111773681,
+   "version": "v7",
+   "opponent": "Kitsune0o",
+   "orig": 0.0,
+   "margin": 1447.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111768309,
+   "version": "v7",
+   "opponent": "Bala Baskar",
+   "orig": -77.0,
+   "margin": 3201.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111768165,
+   "version": "v7",
+   "opponent": "Hikaru Umeda",
+   "orig": -60.0,
+   "margin": 858.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111767108,
+   "version": "v7",
+   "opponent": "kobq",
+   "orig": 499.0,
+   "margin": 548.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111766845,
+   "version": "v7",
+   "opponent": "Maksim Borisov",
+   "orig": -76.0,
+   "margin": 2669.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111766556,
+   "version": "v7",
+   "opponent": "Prashant Kikani",
+   "orig": -354.0,
+   "margin": -764.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111764558,
+   "version": "v6",
+   "opponent": "Civitasmass",
+   "orig": -6002.0,
+   "margin": 1250.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111761441,
+   "version": "v7",
+   "opponent": "ColorGram",
+   "orig": 0.0,
+   "margin": 2037.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111755115,
+   "version": "v7",
+   "opponent": "Aleksandrov Andrey Alekseevich",
+   "orig": -60.0,
+   "margin": 908.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111754476,
+   "version": "v7",
+   "opponent": "Tom&Jerry",
+   "orig": -71.0,
+   "margin": 2483.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111748976,
+   "version": "v7",
+   "opponent": "Kitsune0o",
+   "orig": 0.0,
+   "margin": 2633.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111741395,
+   "version": "v6",
+   "opponent": "Leon Sakakibara",
+   "orig": -2653.0,
+   "margin": 7948.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111737565,
+   "version": "v7",
+   "opponent": "Hyunwoo_Park",
+   "orig": -807.0,
+   "margin": 1048.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111737485,
+   "version": "v7",
+   "opponent": "KTAcosmo",
+   "orig": -57.0,
+   "margin": 743.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111733323,
+   "version": "v7",
+   "opponent": "Pilkwang Kim",
+   "orig": 50.0,
+   "margin": 2864.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111724448,
+   "version": "v7",
+   "opponent": "prairieee",
+   "orig": 0.0,
+   "margin": 845.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111721750,
+   "version": "v6",
+   "opponent": "yuiop!",
+   "orig": -228.0,
+   "margin": 1213.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111716830,
+   "version": "v7",
+   "opponent": "shawloong",
+   "orig": 0.0,
+   "margin": 2267.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111714687,
+   "version": "v7",
+   "opponent": "HarshPandey-yt-auto",
+   "orig": -449.0,
+   "margin": 1332.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111707580,
+   "version": "v7",
+   "opponent": "tw1nstar",
+   "orig": -2325.0,
+   "margin": -197.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111703271,
+   "version": "v7",
+   "opponent": "Xunden",
+   "orig": 0.0,
+   "margin": 755.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111699958,
+   "version": "v7",
+   "opponent": "Zhou Haonan",
+   "orig": -1229.0,
+   "margin": 2732.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111699685,
+   "version": "v7",
+   "opponent": "senkin13",
+   "orig": -298.0,
+   "margin": 1778.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111691889,
+   "version": "v7",
+   "opponent": "Ace Team",
+   "orig": -30.0,
+   "margin": 2975.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111691180,
+   "version": "v7",
+   "opponent": "\u6263\u6263\u519c\u573a",
+   "orig": 0.0,
+   "margin": 2275.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111690998,
+   "version": "v7",
+   "opponent": "YoungDSML [dsml.kz]",
+   "orig": 0.0,
+   "margin": 2702.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111687245,
+   "version": "v6",
+   "opponent": "Yanxi Teng",
+   "orig": -2133.0,
+   "margin": 922.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111686240,
+   "version": "v7",
+   "opponent": "Khanh",
+   "orig": -100.0,
+   "margin": 1580.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111682279,
+   "version": "v7",
+   "opponent": "neurlog",
+   "orig": -27.0,
+   "margin": 1228.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111676148,
+   "version": "v7",
+   "opponent": "Sailor Ren",
+   "orig": 0.0,
+   "margin": 4870.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111673677,
+   "version": "v7",
+   "opponent": "MKGA",
+   "orig": -28.0,
+   "margin": 2859.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111672050,
+   "version": "v6",
+   "opponent": "Aleksandrov Andrey Alekseevich",
+   "orig": -847.0,
+   "margin": 3819.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111667121,
+   "version": "v7",
+   "opponent": "snaykey",
+   "orig": -27.0,
+   "margin": 2035.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111663882,
+   "version": "v7",
+   "opponent": "OnlyFarms",
+   "orig": 0.0,
+   "margin": 155.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111660998,
+   "version": "v7",
+   "opponent": "\u597d\u8fd0\u8fde\u8fde",
+   "orig": 0.0,
+   "margin": 708.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111653078,
+   "version": "v7",
+   "opponent": "UCAS_fish_wang",
+   "orig": -2.0,
+   "margin": 665.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111651248,
+   "version": "v6",
+   "opponent": "lucataco",
+   "orig": -2870.0,
+   "margin": 2277.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111643434,
+   "version": "v7",
+   "opponent": "lumen",
+   "orig": -2261.0,
+   "margin": -2074.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111637069,
+   "version": "v6",
+   "opponent": "yuki matsumori",
+   "orig": -663.0,
+   "margin": 1597.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111630146,
+   "version": "v7",
+   "opponent": "offhand",
+   "orig": -591.0,
+   "margin": 916.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111625787,
+   "version": "v7",
+   "opponent": "1fan",
+   "orig": -461.0,
+   "margin": 2999.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111625138,
+   "version": "v7",
+   "opponent": "Jules",
+   "orig": -28.0,
+   "margin": 4167.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111624587,
+   "version": "v7",
+   "opponent": "ShadowT_T",
+   "orig": -28.0,
+   "margin": 883.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111618534,
+   "version": "v7",
+   "opponent": "Sheep \ud83d\udc11",
+   "orig": -12.0,
+   "margin": 2577.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111612207,
+   "version": "v7",
+   "opponent": "\u4e03\u6708\u4e03\u6708\u6674 \u5ffd\u7136\u4e0b\u8d77\u4e86\u5927\u96ea \u4e0d\u6562\u5f20\u5f00\u773c \u5e0c\u671b\u662f\u6211\u7684\u5e7b\u89c9",
+   "orig": -367.0,
+   "margin": 2320.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111608783,
+   "version": "v7",
+   "opponent": "Makhmudov_1602",
+   "orig": -28.0,
+   "margin": 1678.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111606885,
+   "version": "v7",
+   "opponent": "suk1yak1",
+   "orig": -160.0,
+   "margin": 1764.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111602338,
+   "version": "v7",
+   "opponent": "Lester Leong",
+   "orig": 0.0,
+   "margin": 2287.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111600111,
+   "version": "v7",
+   "opponent": "Maria Ma",
+   "orig": 0.0,
+   "margin": 2474.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111598992,
+   "version": "v7",
+   "opponent": "Frost Cerberus",
+   "orig": -28.0,
+   "margin": 4190.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111592876,
+   "version": "v7",
+   "opponent": "Leonardo Viola10",
+   "orig": 5215.0,
+   "margin": 5800.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111586231,
+   "version": "v7",
+   "opponent": "Mohamed Salah",
+   "orig": -1094.0,
+   "margin": -928.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111585456,
+   "version": "v7",
+   "opponent": "shoryakumar mishra",
+   "orig": -437.0,
+   "margin": 1578.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111579477,
+   "version": "v7",
+   "opponent": "Iskander Yusupov",
+   "orig": 0.0,
+   "margin": 3292.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111572770,
+   "version": "v7",
+   "opponent": "Maciek Kiryla",
+   "orig": -171.0,
+   "margin": -137.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111566136,
+   "version": "v7",
+   "opponent": "jojo",
+   "orig": -259.0,
+   "margin": 756.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111566116,
+   "version": "v7",
+   "opponent": "Infinity",
+   "orig": 50.0,
+   "margin": 1830.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111559448,
+   "version": "v7",
+   "opponent": "NineThree",
+   "orig": -19.0,
+   "margin": 1120.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111553819,
+   "version": "v7",
+   "opponent": "Hikari_30",
+   "orig": -1314.0,
+   "margin": 1822.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111547011,
+   "version": "v7",
+   "opponent": "Russell Kirk",
+   "orig": 0.0,
+   "margin": 1454.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111545574,
+   "version": "v7",
+   "opponent": "Jun_value",
+   "orig": -596.0,
+   "margin": -156.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111541322,
+   "version": "v7",
+   "opponent": "kawauso9n",
+   "orig": 50.0,
+   "margin": 1290.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111530127,
+   "version": "v7",
+   "opponent": "Yam",
+   "orig": 50.0,
+   "margin": 1526.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111530092,
+   "version": "v7",
+   "opponent": "Remielle",
+   "orig": 0.0,
+   "margin": 2003.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111529270,
+   "version": "v7",
+   "opponent": "Iskander Yusupov",
+   "orig": 0.0,
+   "margin": 2474.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111522654,
+   "version": "v7",
+   "opponent": "Lukas",
+   "orig": 5861.0,
+   "margin": 5939.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111522393,
+   "version": "v7",
+   "opponent": "GG-bond",
+   "orig": 486.0,
+   "margin": 810.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111511211,
+   "version": "v6",
+   "opponent": "Takamichi Toda",
+   "orig": -957.0,
+   "margin": -57.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111509797,
+   "version": "v7",
+   "opponent": "prairieee",
+   "orig": 0.0,
+   "margin": 2188.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111506183,
+   "version": "v7",
+   "opponent": "Andrey Chankin",
+   "orig": -28.0,
+   "margin": 2182.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111500427,
+   "version": "v7",
+   "opponent": "kaitle",
+   "orig": 0.0,
+   "margin": 38.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111496997,
+   "version": "v7",
+   "opponent": "oycr",
+   "orig": 4345.0,
+   "margin": 9457.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111495337,
+   "version": "v7",
+   "opponent": "NineThree",
+   "orig": -12.0,
+   "margin": 8.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111489013,
+   "version": "v7",
+   "opponent": "Hibachi Fried Rice",
+   "orig": 1690.0,
+   "margin": 2629.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111483913,
+   "version": "v7",
+   "opponent": "jiangnanxn",
+   "orig": -1277.0,
+   "margin": 2358.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111473948,
+   "version": "v7",
+   "opponent": "Alan",
+   "orig": 50.0,
+   "margin": 5942.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111468420,
+   "version": "v7",
+   "opponent": "JYShane",
+   "orig": 637.0,
+   "margin": 4185.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111457763,
+   "version": "v7",
+   "opponent": "Andrej Angelovski",
+   "orig": -11122.0,
+   "margin": 22519.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111449506,
+   "version": "v7",
+   "opponent": "Yunho Hwang",
+   "orig": 2031.0,
+   "margin": 3927.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111439410,
+   "version": "v7",
+   "opponent": "theredbluepill",
+   "orig": 3869.0,
+   "margin": 2756.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111438798,
+   "version": "v7",
+   "opponent": "Roman Katasonov",
+   "orig": -18902.0,
+   "margin": 8038.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111433678,
+   "version": "v7",
+   "opponent": "Yizhou",
+   "orig": 1526.0,
+   "margin": 70.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111428923,
+   "version": "v7",
+   "opponent": "kitton",
+   "orig": 0.0,
+   "margin": 1605.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111427122,
+   "version": "v7",
+   "opponent": "Xander",
+   "orig": -464.0,
+   "margin": 2921.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111421763,
+   "version": "v7",
+   "opponent": "Mike chen666",
+   "orig": 1091.0,
+   "margin": 2080.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111412940,
+   "version": "v7",
+   "opponent": "qq\u7267\u573a",
+   "orig": 50.0,
+   "margin": 5319.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111407075,
+   "version": "v7",
+   "opponent": "nena",
+   "orig": 0.0,
+   "margin": 3518.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111403208,
+   "version": "v7",
+   "opponent": "yomogii",
+   "orig": -139.0,
+   "margin": 2027.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111398324,
+   "version": "v7",
+   "opponent": "venks",
+   "orig": 921.0,
+   "margin": 1525.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111395587,
+   "version": "v6",
+   "opponent": "Keerthana",
+   "orig": -7404.0,
+   "margin": 2115.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111387121,
+   "version": "v6",
+   "opponent": "kobayasi",
+   "orig": -543.0,
+   "margin": 401.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111382960,
+   "version": "v6",
+   "opponent": "Georgy Mamarin",
+   "orig": -620.0,
+   "margin": 1574.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111378362,
+   "version": "v7",
+   "opponent": "playboicarti",
+   "orig": 50.0,
+   "margin": 2575.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111378006,
+   "version": "v6",
+   "opponent": "Tarang222",
+   "orig": -795.0,
+   "margin": 1840.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111377594,
+   "version": "v7",
+   "opponent": "Sai Reddy Pothireddy",
+   "orig": 1951.0,
+   "margin": 1424.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111376974,
+   "version": "v7",
+   "opponent": "pengurei",
+   "orig": 2976.0,
+   "margin": 6959.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111376828,
+   "version": "v7",
+   "opponent": "emreaydin",
+   "orig": 360.0,
+   "margin": -180.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111373891,
+   "version": "v6",
+   "opponent": "dataix",
+   "orig": -7101.0,
+   "margin": 2492.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111372117,
+   "version": "v7",
+   "opponent": "researchstudio.site",
+   "orig": 2001.0,
+   "margin": 2892.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111371762,
+   "version": "v6",
+   "opponent": "Zenith Ye",
+   "orig": -1734.0,
+   "margin": 815.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111366472,
+   "version": "v7",
+   "opponent": "Seho.Connect",
+   "orig": -340.0,
+   "margin": 915.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111348301,
+   "version": "v7",
+   "opponent": "Khanh",
+   "orig": 0.0,
+   "margin": 1397.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111344162,
+   "version": "v7",
+   "opponent": "yuuuki1111",
+   "orig": 1002.0,
+   "margin": 3893.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111343868,
+   "version": "v7",
+   "opponent": "lucataco",
+   "orig": 0.0,
+   "margin": 2639.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111336549,
+   "version": "v6",
+   "opponent": "BNBU Astra",
+   "orig": -614.0,
+   "margin": 1274.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111333625,
+   "version": "v7",
+   "opponent": "tw1nstar",
+   "orig": -472.0,
+   "margin": 1354.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111331987,
+   "version": "v7",
+   "opponent": "Mizero Lucky Gall",
+   "orig": 1676.0,
+   "margin": 2730.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111329927,
+   "version": "v6",
+   "opponent": "rererenore",
+   "orig": -3753.0,
+   "margin": 2276.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111329736,
+   "version": "v7",
+   "opponent": "cocoaAI",
+   "orig": -174.0,
+   "margin": 124.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111328627,
+   "version": "v7",
+   "opponent": "Timass",
+   "orig": 2399.0,
+   "margin": 1054.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111327499,
+   "version": "v7",
+   "opponent": "porply",
+   "orig": 1260.0,
+   "margin": 2714.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111325268,
+   "version": "v7",
+   "opponent": "Timass",
+   "orig": -863.0,
+   "margin": 190.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111324546,
+   "version": "v7",
+   "opponent": "K_daisuke",
+   "orig": 1269.0,
+   "margin": 1296.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111324142,
+   "version": "v7",
+   "opponent": "MILANA STARR",
+   "orig": 903.0,
+   "margin": 736.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111321928,
+   "version": "v7",
+   "opponent": "CHEN Xiang",
+   "orig": 239.0,
+   "margin": 1038.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111321843,
+   "version": "v6",
+   "opponent": "Sophinator",
+   "orig": -4157.0,
+   "margin": 3382.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111319267,
+   "version": "v7",
+   "opponent": "\u0438\u0442\u043c\u043e\u043d\u044f\u044f\u044f",
+   "orig": -191.0,
+   "margin": 831.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111318480,
+   "version": "v7",
+   "opponent": "eviltsundera",
+   "orig": 5681.0,
+   "margin": 6357.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111317440,
+   "version": "v7",
+   "opponent": "rz cao",
+   "orig": 1117.0,
+   "margin": -122.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111316327,
+   "version": "v7",
+   "opponent": "JamesJJJJJ",
+   "orig": -108.0,
+   "margin": 1400.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111315214,
+   "version": "v7",
+   "opponent": "Sufi Afifi",
+   "orig": 621.0,
+   "margin": 1530.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111314105,
+   "version": "v7",
+   "opponent": "Max64738CB",
+   "orig": 1174.0,
+   "margin": 2316.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111313000,
+   "version": "v7",
+   "opponent": "futabato",
+   "orig": -2065.0,
+   "margin": 1255.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111311889,
+   "version": "v7",
+   "opponent": "Haramball forever!",
+   "orig": 0.0,
+   "margin": 648.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111310693,
+   "version": "v7",
+   "opponent": "yoshino",
+   "orig": -2295.0,
+   "margin": 3432.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111309798,
+   "version": "v6",
+   "opponent": "TS",
+   "orig": -1249.0,
+   "margin": 2125.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111309676,
+   "version": "v7",
+   "opponent": "KongKongDe",
+   "orig": -953.0,
+   "margin": 2699.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111308558,
+   "version": "v7",
+   "opponent": "Have a nice trip in USST",
+   "orig": 6026.0,
+   "margin": 4583.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111306323,
+   "version": "v7",
+   "opponent": "Densike",
+   "orig": 3663.0,
+   "margin": 46252.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111302955,
+   "version": "v7",
+   "opponent": "GaoKui",
+   "orig": 0.0,
+   "margin": 2333.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111297366,
+   "version": "v7",
+   "opponent": "kevin zhou",
+   "orig": 736.0,
+   "margin": 980.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111294595,
+   "version": "v7",
+   "opponent": "pk210495",
+   "orig": -45.0,
+   "margin": 855.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111293997,
+   "version": "v7",
+   "opponent": "Rotation Theory",
+   "orig": 5412.0,
+   "margin": 6109.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111292885,
+   "version": "v7",
+   "opponent": "Oliver #2",
+   "orig": 1492.0,
+   "margin": 2256.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111290641,
+   "version": "v7",
+   "opponent": "Juste Me (\u25cf'\u25e1'\u25cf)",
+   "orig": 2113.0,
+   "margin": 2345.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111290513,
+   "version": "v7",
+   "opponent": "massi0411",
+   "orig": 0.0,
+   "margin": 1138.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111289524,
+   "version": "v7",
+   "opponent": "miya",
+   "orig": 43.0,
+   "margin": 2146.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111288826,
+   "version": "v7",
+   "opponent": "Hanaro",
+   "orig": 2563.0,
+   "margin": 2748.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111288423,
+   "version": "v7",
+   "opponent": "Ajanraj",
+   "orig": -912.0,
+   "margin": 766.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111287308,
+   "version": "v7",
+   "opponent": "Ryuichi",
+   "orig": 197.0,
+   "margin": -35.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111286186,
+   "version": "v7",
+   "opponent": "Dale Zhong",
+   "orig": 16346.0,
+   "margin": 15548.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111283954,
+   "version": "v7",
+   "opponent": "akmr",
+   "orig": 2880.0,
+   "margin": 3809.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111282816,
+   "version": "v7",
+   "opponent": "Shabuuu",
+   "orig": 3269.0,
+   "margin": 3994.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111281667,
+   "version": "v7",
+   "opponent": "Yuvraj Bhati",
+   "orig": 2339.0,
+   "margin": 3258.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111278233,
+   "version": "v7",
+   "opponent": "butterchicken",
+   "orig": 6081.0,
+   "margin": 6171.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111274867,
+   "version": "v7",
+   "opponent": "cununn",
+   "orig": -8552.0,
+   "margin": 22896.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111271566,
+   "version": "v7",
+   "opponent": "nir afek",
+   "orig": 23436.0,
+   "margin": 23624.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111267211,
+   "version": "v7",
+   "opponent": "Muneeba Badar",
+   "orig": 43217.0,
+   "margin": 43323.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111266111,
+   "version": "v7",
+   "opponent": "SydneyC666",
+   "orig": 60570.0,
+   "margin": 61129.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111265026,
+   "version": "v7",
+   "opponent": "Cedoque BAGBONON",
+   "orig": 62493.0,
+   "margin": 61979.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111260681,
+   "version": "v5",
+   "opponent": "Laxmi Khilnani",
+   "orig": -1030.0,
+   "margin": 1150.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111256997,
+   "version": "v5",
+   "opponent": "Hou JH-71",
+   "orig": -6078.0,
+   "margin": 2613.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111250210,
+   "version": "v5",
+   "opponent": "yoshino",
+   "orig": -2338.0,
+   "margin": 1997.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111238786,
+   "version": "v5",
+   "opponent": "Takamichi Toda",
+   "orig": -5619.0,
+   "margin": 3272.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111235309,
+   "version": "v5",
+   "opponent": "Team Amboss",
+   "orig": -2594.0,
+   "margin": -1215.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111222282,
+   "version": "v5",
+   "opponent": "isk54_34",
+   "orig": -153.0,
+   "margin": 1801.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111219691,
+   "version": "v5",
+   "opponent": "QQ\u519c\u573a",
+   "orig": -116.0,
+   "margin": 2356.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111210457,
+   "version": "v5",
+   "opponent": "kikikukikii",
+   "orig": -3269.0,
+   "margin": 2126.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111203208,
+   "version": "v5",
+   "opponent": "walawala",
+   "orig": -2481.0,
+   "margin": 2027.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111202404,
+   "version": "v5",
+   "opponent": "tebenia",
+   "orig": -1422.0,
+   "margin": 1262.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111198271,
+   "version": "v5",
+   "opponent": "Roman Tamrazov 52",
+   "orig": -4580.0,
+   "margin": 2932.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111198265,
+   "version": "v5",
+   "opponent": "NonCaffeine",
+   "orig": -516.0,
+   "margin": 14097.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111185258,
+   "version": "v5",
+   "opponent": "Marlubie",
+   "orig": -3167.0,
+   "margin": 5183.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111184404,
+   "version": "v5",
+   "opponent": "Qize He",
+   "orig": -1019.0,
+   "margin": 25038.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111163203,
+   "version": "v6",
+   "opponent": "pensukesan",
+   "orig": -423.0,
+   "margin": 482.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111158026,
+   "version": "v5",
+   "opponent": "Hadar",
+   "orig": -3997.0,
+   "margin": 2394.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111125075,
+   "version": "v6",
+   "opponent": "Md Arafat #2",
+   "orig": -1834.0,
+   "margin": 467.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111114692,
+   "version": "v5",
+   "opponent": "\u6e21\u908a\u5f81\u592e",
+   "orig": -7319.0,
+   "margin": 1326.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111111733,
+   "version": "v6",
+   "opponent": "prairieee",
+   "orig": -3153.0,
+   "margin": 3381.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111103018,
+   "version": "v6",
+   "opponent": "Kaixi Zha",
+   "orig": -503.0,
+   "margin": 2291.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111090798,
+   "version": "v5",
+   "opponent": "Ian lin",
+   "orig": -11050.0,
+   "margin": 384.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111082733,
+   "version": "v5",
+   "opponent": "Shivam_2212",
+   "orig": -1833.0,
+   "margin": 2647.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111074884,
+   "version": "v6",
+   "opponent": "kta_jpn",
+   "orig": -576.0,
+   "margin": 261.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111050684,
+   "version": "v5",
+   "opponent": "yukino",
+   "orig": -4457.0,
+   "margin": 1520.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111041876,
+   "version": "v5",
+   "opponent": "FENGYESHAN",
+   "orig": -65.0,
+   "margin": 5313.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 111039305,
+   "version": "v5",
+   "opponent": "Moh Notif",
+   "orig": -1350.0,
+   "margin": 2028.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110994298,
+   "version": "v6",
+   "opponent": "MILANA STARR",
+   "orig": -180.0,
+   "margin": 2245.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110991466,
+   "version": "v5",
+   "opponent": "An Garcia",
+   "orig": -3070.0,
+   "margin": 2550.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110986609,
+   "version": "v5",
+   "opponent": "Mumtaz Ahmad Maitla",
+   "orig": -574.0,
+   "margin": 3711.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110977845,
+   "version": "v6",
+   "opponent": "\u6e21\u908a\u5f81\u592e",
+   "orig": -323.0,
+   "margin": 5823.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110976859,
+   "version": "v5",
+   "opponent": "Ali Eren Konak",
+   "orig": -10189.0,
+   "margin": 2984.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110964367,
+   "version": "v5",
+   "opponent": "kta_jpn",
+   "orig": -789.0,
+   "margin": 18.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110934084,
+   "version": "v5",
+   "opponent": "Restart:)",
+   "orig": -4794.0,
+   "margin": 106.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110929404,
+   "version": "v4",
+   "opponent": "Ari Nakos",
+   "orig": -3919.0,
+   "margin": 4044.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110920275,
+   "version": "v4",
+   "opponent": "SA",
+   "orig": -2300.0,
+   "margin": 1309.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110920084,
+   "version": "v4",
+   "opponent": "easygame",
+   "orig": -1021.0,
+   "margin": 1931.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110914274,
+   "version": "v5",
+   "opponent": "weichy7",
+   "orig": -235.0,
+   "margin": 1580.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110913375,
+   "version": "v5",
+   "opponent": "ABHIRUP DAS",
+   "orig": -1143.0,
+   "margin": 2826.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110909149,
+   "version": "v4",
+   "opponent": "\u304a\u304b\u3086\u3093",
+   "orig": -5515.0,
+   "margin": 2382.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110907254,
+   "version": "v4",
+   "opponent": "Takamichi Toda",
+   "orig": -3504.0,
+   "margin": 2154.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110905311,
+   "version": "v5",
+   "opponent": "Steven Feng",
+   "orig": -2143.0,
+   "margin": 3656.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110890458,
+   "version": "v5",
+   "opponent": "Jules",
+   "orig": -2303.0,
+   "margin": 2148.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110889436,
+   "version": "v5",
+   "opponent": "Jamie Nojek",
+   "orig": -889.0,
+   "margin": 849.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110886973,
+   "version": "v4",
+   "opponent": "\u30b0\u30ec\u30a4\u30e9\u30c3\u30c8\u30eb\u30fc\u30c7\u30a6\u30b9",
+   "orig": -9206.0,
+   "margin": 1657.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110884331,
+   "version": "v4",
+   "opponent": "Levin",
+   "orig": -2.0,
+   "margin": 714.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110877343,
+   "version": "v4",
+   "opponent": "KouFu",
+   "orig": -2269.0,
+   "margin": 1701.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110877329,
+   "version": "v4",
+   "opponent": "ansheng jhang",
+   "orig": -1321.0,
+   "margin": 5175.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110876792,
+   "version": "v4",
+   "opponent": "Aura Farmers",
+   "orig": -589.0,
+   "margin": 1306.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110876323,
+   "version": "v4",
+   "opponent": "sam_the_rice_cake",
+   "orig": -1997.0,
+   "margin": 3158.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110869014,
+   "version": "v4",
+   "opponent": "minoneru",
+   "orig": -53.0,
+   "margin": -1564.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110866187,
+   "version": "v5",
+   "opponent": "Aura Farmers",
+   "orig": -213.0,
+   "margin": 1603.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110856090,
+   "version": "v5",
+   "opponent": "Claudex - An",
+   "orig": -166.0,
+   "margin": 5288.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110847664,
+   "version": "v5",
+   "opponent": "Georgy Mamarin",
+   "orig": -773.0,
+   "margin": 2409.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110841489,
+   "version": "v5",
+   "opponent": "Bohan Shao",
+   "orig": -306.0,
+   "margin": 2540.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110836042,
+   "version": "v4",
+   "opponent": "Hak",
+   "orig": -127.0,
+   "margin": 2596.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110834583,
+   "version": "v4",
+   "opponent": "Jaga",
+   "orig": -1789.0,
+   "margin": 1559.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110823149,
+   "version": "v4",
+   "opponent": "animal crossing",
+   "orig": -181.0,
+   "margin": 1349.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110818772,
+   "version": "v4",
+   "opponent": "Subramanya N",
+   "orig": -551.0,
+   "margin": 5514.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110812755,
+   "version": "v4",
+   "opponent": "Abhinav0370",
+   "orig": -847.0,
+   "margin": 283.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110805988,
+   "version": "v5",
+   "opponent": "UCAS_fish_wang",
+   "orig": -25.0,
+   "margin": 1070.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110792741,
+   "version": "v5",
+   "opponent": "Max64738CB",
+   "orig": -24.0,
+   "margin": 1327.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110776907,
+   "version": "v4",
+   "opponent": "Bryan Pauze",
+   "orig": -2438.0,
+   "margin": 663.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110774016,
+   "version": "v5",
+   "opponent": "PursueML",
+   "orig": -3186.0,
+   "margin": 2603.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110772897,
+   "version": "v5",
+   "opponent": "elmo",
+   "orig": -41.0,
+   "margin": 4188.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110770286,
+   "version": "v4",
+   "opponent": "Thomas Tschinkel",
+   "orig": -82.0,
+   "margin": 2237.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110763480,
+   "version": "v4",
+   "opponent": "Takamichi Toda",
+   "orig": -915.0,
+   "margin": 3690.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110752483,
+   "version": "v4",
+   "opponent": "pangzi233",
+   "orig": -402.0,
+   "margin": 974.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110749361,
+   "version": "v4",
+   "opponent": "yuya",
+   "orig": -2608.0,
+   "margin": 106.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110739805,
+   "version": "v4",
+   "opponent": "Sohshi Nakamura",
+   "orig": -832.0,
+   "margin": 682.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110737459,
+   "version": "v4",
+   "opponent": "higuuu",
+   "orig": -480.0,
+   "margin": -562.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110724429,
+   "version": "v3",
+   "opponent": "NayuNayu",
+   "orig": -1733.0,
+   "margin": 7395.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110718938,
+   "version": "v3",
+   "opponent": "NayuNayu",
+   "orig": -2800.0,
+   "margin": 10747.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110710981,
+   "version": "v3",
+   "opponent": "tongmian1314",
+   "orig": -749.0,
+   "margin": 3286.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110708698,
+   "version": "v3",
+   "opponent": "NineThree",
+   "orig": -2197.0,
+   "margin": 4021.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110706521,
+   "version": "v4",
+   "opponent": "xi luo",
+   "orig": -396.0,
+   "margin": 2824.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110705228,
+   "version": "v4",
+   "opponent": "UtaAzu",
+   "orig": -277.0,
+   "margin": 3628.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110701225,
+   "version": "v3",
+   "opponent": "loxigicck",
+   "orig": -721.0,
+   "margin": 1869.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110700105,
+   "version": "v4",
+   "opponent": "NonCaffeine",
+   "orig": -508.0,
+   "margin": 1630.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110697958,
+   "version": "v4",
+   "opponent": "Knight of Favonius",
+   "orig": -11106.0,
+   "margin": 1529.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110696754,
+   "version": "v3",
+   "opponent": "lc\u4eca\u5929\u5237\u4e86\u5417",
+   "orig": -38.0,
+   "margin": 376.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110685691,
+   "version": "v3",
+   "opponent": "kanno",
+   "orig": -2731.0,
+   "margin": -574.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110684103,
+   "version": "v3",
+   "opponent": "Gautier Marti",
+   "orig": -764.0,
+   "margin": 4924.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110659611,
+   "version": "v3",
+   "opponent": "JezzLynn",
+   "orig": -152.0,
+   "margin": 2618.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110650077,
+   "version": "v3",
+   "opponent": "Sakthei",
+   "orig": -400.0,
+   "margin": 2306.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110649372,
+   "version": "v3",
+   "opponent": "DECEM",
+   "orig": -3312.0,
+   "margin": 509.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110637935,
+   "version": "v4",
+   "opponent": "ziheng",
+   "orig": -123.0,
+   "margin": 413.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110637832,
+   "version": "v4",
+   "opponent": "Lucas Boesen",
+   "orig": -493.0,
+   "margin": 919.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110633007,
+   "version": "v4",
+   "opponent": "YUE WU",
+   "orig": -471.0,
+   "margin": 8327.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110632033,
+   "version": "v4",
+   "opponent": "HojunLee",
+   "orig": -893.0,
+   "margin": 2627.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110629775,
+   "version": "v3",
+   "opponent": "Talvenn",
+   "orig": -208.0,
+   "margin": 8301.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110627924,
+   "version": "v3",
+   "opponent": "Lebxgue.",
+   "orig": -6323.0,
+   "margin": 3191.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110621218,
+   "version": "v3",
+   "opponent": "YehHua001",
+   "orig": -174.0,
+   "margin": 7997.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110619356,
+   "version": "v4",
+   "opponent": "Sohshi Nakamura",
+   "orig": -904.0,
+   "margin": 9898.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110615050,
+   "version": "v4",
+   "opponent": "Junliang Ye",
+   "orig": -327.0,
+   "margin": 1890.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110605681,
+   "version": "v4",
+   "opponent": "SynthReaper",
+   "orig": -30.0,
+   "margin": 5916.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110601905,
+   "version": "v4",
+   "opponent": "xiao xiongwei",
+   "orig": -1960.0,
+   "margin": -61.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110601382,
+   "version": "v3",
+   "opponent": "Masashi Nishimoto",
+   "orig": -388.0,
+   "margin": 2483.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110597335,
+   "version": "v3",
+   "opponent": "Gaiar Baimuratov",
+   "orig": -448.0,
+   "margin": 18207.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110597027,
+   "version": "v4",
+   "opponent": "Yuyannnn",
+   "orig": -46.0,
+   "margin": 5154.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110587790,
+   "version": "v3",
+   "opponent": "loxigicck",
+   "orig": -202.0,
+   "margin": 2164.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110579150,
+   "version": "v4",
+   "opponent": "Artyom Lyan",
+   "orig": -558.0,
+   "margin": 1443.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110576395,
+   "version": "v4",
+   "opponent": "tetsu2131",
+   "orig": -782.0,
+   "margin": 11276.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110575915,
+   "version": "v3",
+   "opponent": "OceanMix",
+   "orig": -157.0,
+   "margin": 2258.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110570029,
+   "version": "v3",
+   "opponent": "Capitaalgain",
+   "orig": -228.0,
+   "margin": 4356.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110565774,
+   "version": "v3",
+   "opponent": "Sourabh Nirwanevht",
+   "orig": -1615.0,
+   "margin": 2230.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110560822,
+   "version": "v3",
+   "opponent": "Zhou Songyu",
+   "orig": -1058.0,
+   "margin": -752.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110557170,
+   "version": "v3",
+   "opponent": "Adam",
+   "orig": -681.0,
+   "margin": 3660.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110546945,
+   "version": "v3",
+   "opponent": "julien gaza",
+   "orig": -518.0,
+   "margin": 833.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110545989,
+   "version": "v3",
+   "opponent": "Matthew Labrador",
+   "orig": -783.0,
+   "margin": 40951.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110536658,
+   "version": "v3",
+   "opponent": "Zbigniew Kirchner",
+   "orig": -947.0,
+   "margin": 8528.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110532513,
+   "version": "v3",
+   "opponent": "Ray Roberts",
+   "orig": -1466.0,
+   "margin": 6139.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110490734,
+   "version": "v3",
+   "opponent": "quantara.cv",
+   "orig": -10712.0,
+   "margin": 51133.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110479733,
+   "version": "v3",
+   "opponent": "que la cuenten como quieran",
+   "orig": -7650.0,
+   "margin": -3578.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110479367,
+   "version": "v3",
+   "opponent": "DECEM",
+   "orig": -4658.0,
+   "margin": 28.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110473026,
+   "version": "v3",
+   "opponent": "Amy Yuan",
+   "orig": -30.0,
+   "margin": 3186.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110471934,
+   "version": "v3",
+   "opponent": "yuto083",
+   "orig": -3643.0,
+   "margin": 5505.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110469746,
+   "version": "v3",
+   "opponent": "shiiin9",
+   "orig": -583.0,
+   "margin": 6805.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110468648,
+   "version": "v3",
+   "opponent": "zszdl0530",
+   "orig": -458.0,
+   "margin": -135.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110460353,
+   "version": "v3",
+   "opponent": "Sergey Kutepov",
+   "orig": -266.0,
+   "margin": 7110.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110459905,
+   "version": "v3",
+   "opponent": "OxFFFs",
+   "orig": -6.0,
+   "margin": 5355.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110457706,
+   "version": "v3",
+   "opponent": "Emile Andrieu",
+   "orig": -1100.0,
+   "margin": 15590.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110456623,
+   "version": "v3",
+   "opponent": "Yichi",
+   "orig": -4490.0,
+   "margin": -742.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110452428,
+   "version": "v3",
+   "opponent": "pensukesan",
+   "orig": -377.0,
+   "margin": 1499.0,
+   "status": "DONE"
+  },
+  {
+   "ep": 110421536,
+   "version": "v3",
+   "opponent": "Kyoungwon Jeong",
+   "orig": -5137.0,
+   "margin": -617.0,
+   "status": "DONE"
+  }
+ ]
+}
