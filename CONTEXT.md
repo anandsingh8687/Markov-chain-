@@ -195,6 +195,8 @@ Per-version write-ups: `docs/V8.md` to `docs/V12.md`, and `docs/V10_RESEARCH.md`
 | Foreman planner (greedy dispatcher) | ~$62k against v9's $96k | V10_RESEARCH |
 | Circuit planner v12 (`agents/planner/`) | ~$44k against v11's ~$95k after 12 rounds (see §7) | V11.md |
 | Late selling tuned on replays only | great on replays, loses 3-5 games in 24 to reactive agents | V12.md |
+| v13 sweep of single settings on v12 (a1-a12) | no gain beyond noise | V13.md |
+| MDX aimed one hour before the rival's earliest dump | 78-79/98 against a fixed 5am's 81 | V13.md |
 | Annexes, patient seller, race tweaks, carrot ratio | small or negative | V9.md, V10_RESEARCH |
 
 ## 7. The adaptive planner (long-term track)
@@ -221,19 +223,26 @@ Per-version write-ups: `docs/V8.md` to `docs/V12.md`, and `docs/V10_RESEARCH.md`
 
 ## 8. Current work (v13)
 
-* A single-knob sweep over v12's selling stack, scored on v11's 98 ladder
-  replays (`research/tools/v12/mkvar.py` builds variants):
-  * FLOWPX on (`_FX_FLOW_MIN`);
-  * race horizon and margin;
-  * courier hour;
-  * EV and DP windows;
-  * RDX settings;
-  * counter D budget.
-* Winners are combined, then confirmed on v10's 127 replays.
+* **v13 candidate: `candidates/v13/main.py` (not submitted).** It is v12 plus
+  the MDX layer. From day 18, at 5am and 5pm, MDX sells the whole shed stock of
+  strawberries, milk and wool, first in the market queue. Full numbers are in
+  `docs/V13.md`:
+  * replays: 183/225 against v12's 172, +$168 a game paired;
+  * older 412-game archive: 386 against 382;
+  * 16/16 against v12;
+  * −1 to −3 games in 16 against reactive public agents (the same pattern as
+    v11).
+* Why it works: late in the game the tape's harvests reach the shed at
+  midnight. v12 trickled them out from mid-morning, while tape copies sold the
+  batch at the peak and we sold into their crash. Quotes only recover by the
+  daily drain, so the first seller wins.
+* The single-knob sweep over v12's selling stack (a1-a12) found nothing. Its
+  two "+1 win" variants won back the same $13 game.
 * Next ideas:
-  * RDX v2: also predict the rival's dumps from its visible harvests;
-  * a way to grow tomatoes mid-game without breaking the tape;
-  * continuing the planner.
+  * the Harvest Ledger / Shepherd's Ledger weakness of early selling;
+  * RDX v2: predict the rival's dumps from its visible harvests;
+  * growing tomatoes mid-game;
+  * the planner.
 
 ## 9. Repository map
 
