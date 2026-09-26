@@ -16,6 +16,8 @@ TMS_MIN_SHOPS = 1           # pizza shops + farmers markets unlocked
 TMS_MAX_SHOPS = 9
 TMS_MIN_PRICE = 40
 TMS_MIN_CASH = 1500
+TMS_WHEAT_MIN = 0           # swap only while shed+hands hold this much wheat (feed)
+TMS_FEED_TOPUP = 0          # while tomatoes live, buy wheat up to this stock
 TMS_HARVEST_AT = 2          # harvest a watered tomato once it holds this many
 _TMS_STATE = {}
 _TMS_REPORT = dict(tms_seed=0, tms_swaps=0, tms_water=0, tms_harvest=0, tms_errors=0)
@@ -41,10 +43,19 @@ def _tms_apply(observation, action):
     buyers = sum(s in ("PIZZA_SHOP", "FARMERS_MARKET") for s in shops)
     v219 = _V219_STATES.get(player, {})
     active = TMS_MIN_SHOPS <= buyers <= TMS_MAX_SHOPS and not v219.get("eligible") and not v219.get("committed")
+    wheat_held = int(private["shed"].get("WHEAT", 0)) + sum(int(i.get("WHEAT", 0)) for i in private["inventories"])
+    live = [p for p in st["swapped"] if isinstance(farm["tiles"][p[1]][p[0]], dict) and farm["tiles"][p[1]][p[0]].get("crop") == "TOMATO"]
+    if (TMS_FEED_TOPUP and live and wheat_held < TMS_FEED_TOPUP and len(market) < MAX_ORDERS
+            and not any(o[:2] == ["BUY_PRODUCT", "WHEAT"] for o in market if len(o) >= 2)):
+        qty = min(TMS_FEED_TOPUP - wheat_held, int((float(farm["money"]) - TMS_MIN_CASH) // max(1, int(prices.get("WHEAT", 99)) + 5)))
+        if qty > 0:
+            market.append(["BUY_PRODUCT", "WHEAT", qty]); changed = True
+            _TMS_REPORT["tms_feed"] = _TMS_REPORT.get("tms_feed", 0) + qty
     # 1. dawn seed purchase on swap days
     if (active and day in TMS_DAYS and hour == TMS_BUY_HOUR and day not in st["bought"]
             and int(prices.get("TOMATO", 0)) >= TMS_MIN_PRICE
-            and float(farm["money"]) >= TMS_MIN_CASH + 50 * TMS_K and len(market) < MAX_ORDERS):
+            and float(farm["money"]) >= TMS_MIN_CASH + 50 * TMS_K and len(market) < MAX_ORDERS
+            and wheat_held >= TMS_WHEAT_MIN):
         market.append(["BUY_SEED", "TOMATO", TMS_K])
         st["bought"][day] = TMS_K
         _TMS_REPORT["tms_seed"] += TMS_K
@@ -53,7 +64,7 @@ def _tms_apply(observation, action):
     left = st["bought"].get(day, 0) + st["bought"].get(day - 1, 0) - sum(
         1 for d in st["swapped"].values() if d in (day, day - 1))
     seeds = int(private["seeds"].get("TOMATO", 0))
-    if left > 0 and seeds > 0:
+    if left > 0 and seeds > 0 and wheat_held >= TMS_WHEAT_MIN:
         for i, c in enumerate(commands):
             if left <= 0 or seeds <= 0 or i >= len(pos):
                 break
