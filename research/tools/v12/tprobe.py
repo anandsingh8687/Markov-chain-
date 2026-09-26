@@ -17,5 +17,5 @@ for ep in [int(x) for x in sys.argv[2:]]:
     ag = [None, None]; ag[me] = wrap; ag[op] = ghost
     env = make("kaggriculture", configuration={"episodeSteps": 720, "seed": g['seed']}); env.run(ag)
     r = env.steps[-1]
-    out.append((ep, r[me]['reward'] - r[op]['reward'], dict(ns['_TMS_REPORT']), ns['_MDX_REPORT'], [x for x in TT if x[2] or x[4]]))
+    out.append((ep, r[me]['reward'] - r[op]['reward'], dict(ns.get('_STX_REPORT', ns.get('_TMS_REPORT', {}))), ns['_MDX_REPORT'], [x for x in TT if x[2] or x[4]]))
 open('tprobe.out', 'w').write('\n'.join(map(repr, out)))
