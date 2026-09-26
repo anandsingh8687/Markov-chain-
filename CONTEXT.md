@@ -223,6 +223,10 @@ Per-version write-ups: `docs/V8.md` to `docs/V12.md`, and `docs/V10_RESEARCH.md`
 
 ## 8. Current work (v13)
 
+* **Live on 2026-09-26 13:28 UTC:**
+  * v12 is 2446.3 (rank 391, 49-23), v11 2362.7, v10 2379.5; rank 100 is 2642.7.
+  * Replayed on v12's 72 live games (out of sample), v13 wins 59 to v12's 49.
+  * Band results are in `docs/V13.md` §7.
 * **v13 candidate: `candidates/v13/main.py` (not submitted).** It is v12 plus
   the MDX layer. From day 18, at 5am and 5pm, MDX sells the whole shed stock of
   strawberries, milk and wool, first in the market queue. Full numbers are in
