@@ -1,6 +1,8 @@
-# Kaggriculture v13
+# Kaggriculture v14
 
-**v13** (`main.py`) is v12 plus MDX: from day 18, at 5am and 5pm, it sells the whole shed stock of strawberries, milk and wool at the morning/evening peak instead of trickling it out, so we no longer sell into the crash left by tape copies. On v12's own 72 ladder games it wins 59 to v12's 49; see [docs/V13.md](docs/V13.md).
+**v14** (`main.py`) is v13 plus STX: in towns with at most one strawberry buyer and at least one tomato buyer, two extra hands on day 14 trade eight young strawberry plants next to the shed for tomatoes, which the tape's own workers then water, fertilize and harvest. Against v13: +$650-790 a game on three independent replay sets, 127/163 against 2450+ opponents (v13 121), 32/46 against 2600+ (v13 28); see [docs/V14.md](docs/V14.md).
+
+**v13** is v12 plus MDX: from day 18, at 5am and 5pm, it sells the whole shed stock of strawberries, milk and wool at the morning/evening peak instead of trickling it out, so we no longer sell into the crash left by tape copies. On v12's own 72 ladder games it wins 59 to v12's 49; see [docs/V13.md](docs/V13.md).
 
 **v12** is v11 plus opponent-aware sale timing (RDX) and a late-selling retune; see [docs/V12.md](docs/V12.md). **v11** was v10 plus later-game lead-selling: from day 18 the base's
 lead-sellers look 12 turns ahead instead of 8, except for strawberries. It wins
