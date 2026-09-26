@@ -5,7 +5,7 @@ api = KaggleApi(); api.authenticate()
 lb = {}
 f = sorted(glob.glob('lb4/*.csv'))[-1]
 for i, r in enumerate(csv.DictReader(open(f, encoding='utf-8-sig'))): lb[int(r['TeamId'])] = (i + 1, float(r['Score']), r['TeamName'])
-SUBS = {'v12': 56575662, 'v11': 56560456, 'v10': 56540053}
+SUBS = {'v14': 56586316, 'v13': 56581155, 'v12': 56575662}
 out = {}
 for name, sub in SUBS.items():
     with api.build_kaggle_client() as k:

@@ -223,6 +223,11 @@ Per-version write-ups: `docs/V8.md` to `docs/V12.md`, and `docs/V10_RESEARCH.md`
 
 ## 8. Current work
 
+* **Ladder on 2026-09-26 22:30 UTC:**
+  * v14 is 2502.6 (rank 225, 51-24, 11-12 against 2500-2600); rank 100 is 2625.
+  * v13 settled at 2262.5 and v12 at 2413.4.
+  * On v13's 85 live games, v14 wins 72 to v13's 69.
+  * See `docs/V14.md` §6.
 * **v14 = `main.py`, submitted as 56586316 on 2026-09-26** (v13 was 56581155, v12 56575662). It is v13 plus STX, the
   strawberry-to-tomato trade in towns with at most 1 strawberry buyer and at
   least 1 tomato buyer. Full results are in `docs/V14.md`:
