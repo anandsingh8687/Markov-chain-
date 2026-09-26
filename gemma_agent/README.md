@@ -79,4 +79,4 @@ submission should change one thing and be recorded in the log below.
 | --- | --- | --- | --- |
 | 2026-09-24 | v1: coder + analyzer + reviewer | 1/3 | **error: exceeded 12h runtime** (no eval_config, 60 min/task default) |
 | 2026-09-25 | v2d: analyst -> coder -> verifier, fresh contexts, T=1.0, 4k output | 3/6 (v2b), rich_3006 pass | **error: exceeded 12h runtime** (same cause) |
-| 2026-09-26 | v2e: v2d + eval_config.yaml, 18 min/task | - | scheduled |
+| 2026-09-26 | v2e: v2d + eval_config.yaml, 18 min/task (ref 56563641) | - | pending |
