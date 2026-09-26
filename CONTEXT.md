@@ -248,6 +248,35 @@ Per-version write-ups: `docs/V8.md` to `docs/V12.md`, and `docs/V10_RESEARCH.md`
   * growing tomatoes mid-game;
   * the planner.
 
+### v14 (in progress, aimed at 2500+ opponents)
+
+* The test set is `research/data/episodes/eps_hi.txt`: 163 of our recorded games
+  against opponents now rated 2450+ (`eps_hi25.txt` holds the 96 at 2500+).
+  * v12 wins 109, v13 121.
+  * v13's gain is almost all against 2450-2500 (56 vs 46). Against 2500+ it adds
+    only 2 wins.
+* `research/tools/v12/routeid.py` identifies both sides' route from their
+  daily seed and animal purchases. Nearly every opponent from 2000 to 2650
+  picks the same route as us (same shop table), so these are pure mirror
+  matches.
+* **Rejected:** switching to the other route designed for the same town (r1)
+  wins 81/163 against 121. Keep the router.
+* **Tomatoes** are the recurring gap in v13's losses to 2500+: 9 of 31 losses.
+  The opponent planted 5-15 tomatoes on days 11-18 and sold 40-120 at $50-160.
+  `research/tools/v12/oppprof.py` gives the profiles.
+  * Engine rule: a tomato fruits from age 8, +1 a day (+2 fertilized) for 4
+    days, holding up to 4 on the plant; seed $50.
+  * `research/v14/tms_layer.py` (TMS) swaps K of the tape's wheat plantings on
+    set days for tomatoes. The tape's workers water and harvest them, and MDX
+    sells them.
+  * TMS must not block the V219 tomato annex (3+ tomato buyers on day 18):
+    `build_tms.py` makes V219 ignore TMS tomatoes. Otherwise one game fell
+    from −$2.9k to −$12.8k.
+  * Variants t1-t6 are in `versions/experimental/`; results go to
+    `research/data/results/g12_t*.jsonl` and `ghi_t*.jsonl`.
+* 2700+ teams run a different game: all land bought by day 10, and 2-5 times
+  our carrots. That is the v15 track.
+
 ## 9. Repository map
 
 ```

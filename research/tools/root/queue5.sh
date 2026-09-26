@@ -1,0 +1,2 @@
+while pgrep -f "^.venv/bin/python topbench.py" >/dev/null; do sleep 20; done
+ONESIDE=1 .venv/bin/python field.py pool field_pub2.jsonl v9_hire p_herd-safe-v3-experimental-ri,p_kaggriculture-cloning-agent,p_kaggriculture-harvest-ledger,p_kaggriculture-herd-safe-sale,p_kaggriculture-population-rob,p_kaggriculture-thomas-2944-ca,p_kaggriculture-v40-challenger,p_kaggriculture-v55-one-turn-m,p_pioneers-of-kaggle-town-cand,p_the-2965-master-hybrid-engin,p_the-shepherds-ledger-herd-sa $(cat seeds_pub2.txt) > field_pub2.log 2>&1

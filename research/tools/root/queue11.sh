@@ -1,0 +1,3 @@
+cd /home/user/Markov-chain-
+for n in p1 n6; do /tmp/claude-0/-home-user-Markov-chain-/c59b383c-dabb-5acd-ba5b-4226a73ed24a/scratchpad/.venv/bin/python tools/ghost_bench.py --agent /tmp/claude-0/-home-user-Markov-chain-/c59b383c-dabb-5acd-ba5b-4226a73ed24a/scratchpad/pool/$n/main.py --workers 4 --report /tmp/claude-0/-home-user-Markov-chain-/c59b383c-dabb-5acd-ba5b-4226a73ed24a/scratchpad/v10/ghost_$n.json > /tmp/claude-0/-home-user-Markov-chain-/c59b383c-dabb-5acd-ba5b-4226a73ed24a/scratchpad/v10/ghost_$n.log 2>&1; echo "$n archive done" >> /tmp/claude-0/-home-user-Markov-chain-/c59b383c-dabb-5acd-ba5b-4226a73ed24a/scratchpad/v10/v13arch.log; done
+echo DONE >> /tmp/claude-0/-home-user-Markov-chain-/c59b383c-dabb-5acd-ba5b-4226a73ed24a/scratchpad/v10/v13arch.log

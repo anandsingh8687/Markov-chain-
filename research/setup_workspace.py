@@ -23,7 +23,7 @@ W = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else "workspace")
 POOL = {
     "my_v3": "versions/v3/main.py", "my_v6": "versions/v6/main.py", "my_v7": "versions/v7/main.py",
     "v8": "versions/v8/main.py", "v9_open8": "versions/v9/main.py", "v10d": "versions/v10/main.py",
-    "v11i": "versions/v11/main.py", "c1": "versions/v12/main.py", "v12": "versions/v12/main.py",
+    "v11i": "versions/v11/main.py", "c1": "versions/v12/main.py", "v12": "versions/v12/main.py", "v13": "versions/v13/main.py",
     "v10c": "candidates/v10c/main.py",
 }
 for d in sorted(os.listdir(os.path.join(ROOT, "versions", "experimental"))):
