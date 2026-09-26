@@ -116,10 +116,11 @@ def validate(bundle: Path) -> list[Path]:
     if ec.is_file():
         ev = (yaml.safe_load(ec.read_text()) or {}).get("evaluation", {})
         minutes = float(ev.get("max_time_minutes", 60))
-        assert minutes <= 30, f"eval_config max_time_minutes={minutes}: ~120 tasks must fit in 12h"
+        assert minutes <= 5, f"eval_config max_time_minutes={minutes}: ~120 tasks run SEQUENTIALLY and must fit in 12h"
+        assert int(ev.get("timeout_seconds", 300)) >= 180, "timeout_seconds is also the Phase 2 pytest timeout; keep it >= 180"
         print(f"  eval_config.yaml: {ev}")
     else:
-        print("  WARNING: no eval_config.yaml -> 60 min/task default; v1 exceeded the 12h runtime this way")
+        raise AssertionError("no eval_config.yaml: tasks run sequentially with no time limit and the run will exceed 12h")
     print(f"OK: {len(files)} files, {total:,} bytes, model {models.pop()}")
     return files
 
