@@ -6644,6 +6644,10 @@ def _fx_apply(observation, action, st):
 
 
 _EV_HOURS = (15, 16, 17, 18, 19, 20)
+_LATE_FROM = 432
+_LATE_H = 12
+_LATE_SKIP = ("STRAWBERRY",)
+_LATE_MP_HOURS = (10, 11, 12, 13)
 _EV_H = 8
 _EV_STATE = {}
 
@@ -6680,7 +6684,7 @@ def _ev_apply(observation, action, st):
         if vals and q < sum(vals) / len(vals):
             continue
         planned = 0
-        for t in range(step + 1, min(len(tape), step + _EV_H + 1)):
+        for t in range(step + 1, min(len(tape), step + (_EV_H if (step < _LATE_FROM or item in _LATE_SKIP) else _LATE_H) + 1)):
             for o in (tape[t] or {}).get("market") or []:
                 if len(o) >= 3 and o[0] == "SELL" and o[1] == item:
                     planned += max(0, int(o[2]))
@@ -6784,7 +6788,7 @@ def _dp_apply(observation, action):
         if vals and q < sum(vals) / len(vals):
             continue
         planned = 0
-        for t in range(step + 1, min(len(tape), step + _DP_H + 1)):
+        for t in range(step + 1, min(len(tape), step + (_DP_H if (step < _LATE_FROM or item in _LATE_SKIP) else _LATE_H) + 1)):
             for o in (tape[t] or {}).get("market") or []:
                 if len(o) >= 3 and o[0] == "SELL" and o[1] == item:
                     planned += max(0, int(o[2]))
@@ -6832,7 +6836,7 @@ def _mp_apply(observation, action):
     step = int(observation["step"])
     if step < 96 or step >= 700:
         return action
-    if (step % 24) not in _MP_HOURS:
+    if (step % 24) not in (_MP_HOURS if step < _LATE_FROM else _LATE_MP_HOURS):
         return action
     market = [list(o) for o in (action.get("market") or [])]
     if len(market) >= MAX_ORDERS:
@@ -6857,7 +6861,7 @@ def _mp_apply(observation, action):
         if vals and q < sum(vals) / len(vals):
             continue
         planned = 0
-        for t in range(step + 1, min(len(tape), step + _MP_H + 1)):
+        for t in range(step + 1, min(len(tape), step + (_MP_H if (step < _LATE_FROM or item in _LATE_SKIP) else _LATE_H) + 1)):
             for o in (tape[t] or {}).get("market") or []:
                 if len(o) >= 3 and o[0] == "SELL" and o[1] == item:
                     planned += max(0, int(o[2]))
