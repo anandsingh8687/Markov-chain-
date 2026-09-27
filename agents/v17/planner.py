@@ -170,6 +170,7 @@ class Planner:
     LAND_LAST_DAY = 12
     ROLE_LAST_DAY = 14
     SHARE = 0.5               # our expected share of each product's town demand
+    HERD_MIN = {"COW": 10, "SHEEP": 8, "GOOSE": 6}   # top-team herds: animals also yield ~$40/day of fertilizer
 
     def _exp_price(self, item):
         return max(1, int(self._prices.get(item, MARKET[item]["base"])))
@@ -178,7 +179,8 @@ class Planner:
         a = ANIMALS[animal]
         days_prod = max(0, 29 - (day + 1 + a["fyd"]))
         per_day = {"SHEEP": 4.0 / 3, "COW": 1.5, "GOOSE": 2.0}[animal]
-        return days_prod * per_day * min(self._exp_price(a["prod"]), MARKET[a["prod"]]["base"]) - a["cost"]
+        fert = min(self._exp_price("FERTILIZER"), 45) * max(0, 28 - day)
+        return days_prod * per_day * min(self._exp_price(a["prod"]), MARKET[a["prod"]]["base"]) * 0.6 + fert * 0.8 - a["cost"]
 
     def _crop_value(self, crop, day):
         c = CROPS[crop]; price = min(self._exp_price(crop), MARKET[crop]["base"])
@@ -210,7 +212,7 @@ class Planner:
                 elif isinstance(t, dict) and t.get("kind") == "PLANT" and t["crop"] in cnt:
                     cnt[t["crop"]] += 1
         per_day = {"SHEEP": ("WOOL", 4.0 / 3), "COW": ("MILK", 1.5), "GOOSE": ("EGG", 2.0)}
-        target = {an: int(self.SHARE * dem.get(prod, 0) / rate + 0.5) for an, (prod, rate) in per_day.items()}
+        target = {an: max(self.HERD_MIN[an], int(self.SHARE * dem.get(prod, 0) / rate + 0.5)) for an, (prod, rate) in per_day.items()}
         if day <= 14:
             prods = min(4, max(1, (28 - (day + 10)) // 2 + 1))
             target["STRAWBERRY"] = int(self.SHARE * dem.get("STRAWBERRY", 0) * 18 / (1.6 * prods) + 0.5)
@@ -310,8 +312,8 @@ class Planner:
                             and (age + dd + 1 - c["fyd"]) % c["interval"] == 0
                             and (age + dd + 1 - c["fyd"]) // c["interval"] < c["my"])
                 fprice = self._prices.get("FERTILIZER", 50)
-                if cover and not fert_eve(t, day, c, age) and price * cover > fprice and self._fert_ok and not last_day:
-                    jobs.append((price * cover - fprice * 0.5, "FERTILIZE"))
+                if cover and not fert_eve(t, day, c, age) and price * cover > fprice * 1.2 and self._fert_ok and not last_day:
+                    jobs.append((price * cover - fprice, "FERTILIZE"))
                 if not watered and not last_day and (cu >= 1 or (eve and fert)) and (prods_left > 0 or y > 0):
                     v = (prods_left + y) * price * self._late if cu >= 1 else price
                     jobs.append((v, "WATER"))
@@ -345,8 +347,8 @@ class Planner:
                             jobs.append((price * gain, "WATER"))            # a unit today
                 if in_window and not fert and not watered and y + 1 < c["my"] and self._fert_ok and age < c["myd"]:
                     gain_days = min(3, c["myd"] - age + 1, 29 - day + 1)
-                    fv = price * min(gain_days, c["my"] - y - 1) - self._prices.get("FERTILIZER", 50) * 0.5
-                    if fv > 5:
+                    fv = price * min(gain_days, c["my"] - y - 1) * 0.7 - self._prices.get("FERTILIZER", 50)
+                    if fv > 10:
                         jobs.append((fv, "FERTILIZE"))
         elif "animal" in t:
             a = ANIMALS[t["animal"]]; price = pr.get(a["prod"], 0)
