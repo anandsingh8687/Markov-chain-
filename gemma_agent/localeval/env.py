@@ -36,7 +36,7 @@ BASE_TEST_DEPS = ["pytest", "pytest-timeout==2.1.0", "typer"]
 REPO_TEST_DEPS = {
     "fastapi/fastapi": ["httpx", "python-multipart", "dirty-equals", "inline-snapshot", "sqlmodel", "pyyaml"],
     "Textualize/rich": ["attrs"],
-    "psf/requests": ["pytest-httpbin", "pytest-mock", "trustme"],
+    "psf/requests": ["pytest-httpbin", "pytest-mock", "trustme", "werkzeug<2.1", "flask<2.1"],
     "encode/httpx": ["trustme", "uvicorn", "chardet"],
 }
 
@@ -179,7 +179,7 @@ def _test_groups(ws: Path) -> str:
 
 def venv_for(task: dict, ws: Path) -> Path:
     """A shared venv matching this workspace's dependency files."""
-    key = f"{task['repo'].replace('/', '__')}-v3-{_dep_fingerprint(ws)}"
+    key = f"{task['repo'].replace('/', '__')}-v4-{_dep_fingerprint(ws)}"
     venv = VENVS / key
     with _locked(venv):
         if (venv / ".ready").exists():
