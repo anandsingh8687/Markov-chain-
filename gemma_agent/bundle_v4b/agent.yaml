@@ -1,0 +1,11 @@
+name: fixer
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Fast single-agent fixer. Localizes, edits early, checks once, submits.
+instruction: !include prompts/system.md
+tools:
+  - run_command
+  - read_file
+  - edit_file
+  - get_status
+  - submit_patch
+generate_content_config: !include configs/sampling.yaml
