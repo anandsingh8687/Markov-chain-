@@ -260,10 +260,13 @@ class Planner:
             fed, cared = bool(t.get("fed_today")), bool(t.get("cared_today"))
             wheat = pr.get("WHEAT", 40)
             if not last_day:
+                worth = price > wheat * 1.05          # the care bonus unit beats the wheat it eats
                 if not fed:
-                    v = (a["cost"] + 3 * price) * self._late if cuf >= 1 else max(0, price - wheat)
-                    jobs.append((v, "FEED"))
-                if not cared and (fed or cuf >= 0):
+                    if cuf >= 1:
+                        jobs.append(((a["cost"] + 3 * price) * self._late, "FEED"))
+                    elif worth:
+                        jobs.append((price - wheat, "FEED"))
+                if not cared and (fed or cuf >= 1 or worth):
                     jobs.append((price * 0.9, "CARE"))
             if t.get("fertilizer_available"):
                 jobs.append((pr.get("FERTILIZER", 0) * 0.9, "COLLECT_FERTILIZER"))
@@ -677,7 +680,7 @@ class Planner:
         action["market"] = (orders + self.market(obs, s, action, drop_now))[:MAXORD]
         return action
 
-    MAX_HANDS = 13
+    MAX_HANDS = 11
     PLANT_W = 0.8
     FERT_KEEP = 40
     DELIVER_AT = 40
