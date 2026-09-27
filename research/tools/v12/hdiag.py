@@ -30,4 +30,4 @@ out = []
 for name, r in (('v14', r1), ('hyb', r2)):
     out.append(f"{name} bank {r[0]:.0f} money@T0 {r[4]:.0f} shed_end {r[2]} inv_end {[i for i in r[3] if i]}")
     out.append('   ' + ', '.join(f"{k[0][:4]}:{k[1][:5]} {v[0]}u avg {v[1]/v[0]:.0f}" for k, v in sorted(r[1].items(), key=lambda kv: -kv[1][1])))
-open('hdiag.out', 'w').write('\n'.join(out) + '\n')
+open(os.environ.get('HD_OUT', 'hdiag.out'), 'w').write('\n'.join(out) + '\n')

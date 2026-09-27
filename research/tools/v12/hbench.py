@@ -30,4 +30,7 @@ if __name__ == '__main__':
     base = {s: b for s, b, o, ne, e in by[720]}
     for t in t0s:
         L = by[t]
-        print(f"T0={t:3d} (day {t/24:4.1f}) bank {sum(x[1] for x in L)/len(L):8.0f} opp {sum(x[2] for x in L)/len(L):8.0f}  vs v14 {sum(x[1]-base[x[0]] for x in L)/len(L):+7.0f}  errors {sum(x[3] for x in L)} {next((x[4] for x in L if x[4]), '')}")
+        if os.environ.get('PERSEED'):
+            print('   ', ' '.join(f"{x[0]}:{x[1]-base[x[0]]:+.0f}(opp{x[2]:.0f})" for x in L))
+        marg = [x[1] - x[2] for x in L]
+        print(f"T0={t:3d} (day {t/24:4.1f}) bank {sum(x[1] for x in L)/len(L):8.0f} opp {sum(x[2] for x in L)/len(L):8.0f}  vs v14 {sum(x[1]-base[x[0]] for x in L)/len(L):+7.0f}  MARGIN {sum(marg)/len(L):+7.0f} won {sum(m > 0 for m in marg)}/{len(L)}  errors {sum(x[3] for x in L)} {next((x[4] for x in L if x[4]), '')}")

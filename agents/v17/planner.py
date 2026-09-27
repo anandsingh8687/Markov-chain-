@@ -169,7 +169,7 @@ class Planner:
     LAND_RESERVE = 1500
     LAND_LAST_DAY = 12
     ROLE_LAST_DAY = 14
-    SHARE = 0.5               # our expected share of each product's town demand
+    SHARE = 0.5               # our expected share of each product demand
     HERD_MIN = {"COW": 10, "SHEEP": 8, "GOOSE": 6}   # top-team herds: animals also yield ~$40/day of fertilizer
 
     def _exp_price(self, item):
@@ -841,12 +841,14 @@ class Planner:
 
     MAX_HANDS = 11
     PLANT_W = 0.8
+    SELL_MODE = "curve"
+    PEAK_HOURS = (5, 17)
     FERT_KEEP = 40
     DELIVER_AT = 40
     LATE_K = 3.0
-    CROP_LOAD = 2.5
-    ANIMAL_LOAD = 5.0
-    UNIT_TURNS = 20
+    CROP_LOAD = 1.5
+    ANIMAL_LOAD = 3.0
+    UNIT_TURNS = 22
     DIG_W = 0.5
 
     def _owned(self, p):
@@ -887,6 +889,10 @@ class Planner:
                 continue
             if step >= LAST:
                 q = have
+            elif self.SELL_MODE == "peak":
+                # batch sales at the morning / evening peaks (first seller takes the top of the curve)
+                p0 = price_at(item, int(inv_mkt.get(item, I0)))
+                q = have if (hour in self.PEAK_HOURS and p0 >= 0.15 * MARKET[item]["base"]) or steps_left <= 24 else 0
             else:
                 # reservation price: what the unit would fetch later.  The book recovers by
                 # drain/day; spread sales over the remaining time, never below a floor.

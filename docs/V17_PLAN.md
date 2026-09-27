@@ -132,3 +132,45 @@ Remaining gaps, from the traces (`hops.py`, `hunit.py`, `hjob.py`):
 * the fertilizer economy and selling timing need work.
 
 The planner has to reach parity from early takeovers before it can replace v14.
+
+## v18 (2026-09-27 evening): planner status and the zero-sum lesson
+
+Numbering: ChatGPT's frontier line deployed v15 (56588731), v16 (56599604, **2513.8, rank
+185**, our best live score) and v17 (56605749, weak). The planner in `agents/v17/` is
+therefore **v18**.
+
+**What v16 is** (83 ladder games, `bands12.py`, `oppprof.py`):
+* NE on day 6, then SW and SE on day 8 (a top-team opening);
+* 10 cows, 8 geese, 8 sheep, 16 melons;
+* bank median $95k;
+* 22-1 against <2400, 19-8 against 2400-2500, 13-15 against 2500-2600 (13 of the
+  15 losses by more than $3k), 0-5 against 2600+ (−$12k to −$15k).
+
+Our v14 is 2460.
+
+**Planner milestones since the v17 log** (8 seeds against v14; "vs v14" = our bank
+minus v14's bank on the same seed):
+
+| Change | d6 | d9 | d15 | d21 | d25 |
+| --- | --- | --- | --- | --- | --- |
+| hire cap 11 (hands 12-13 cost $144-233/day each) | | | −4,737 (4 seeds) | −4,334 | −3,640 |
+| investment module: land (6/8/10), demand-sized roles, build + buy + place animals | −42,012 → −12,300 (4 seeds) | −4,496 (4 seeds) | | | |
+| on 8 seeds | −21,685 | −12,324 | −7,690 | | |
+| animals valued with ~$40/day of fertilizer, top-team herd minimums | −17,624 | | | | |
+| labour loads recalibrated (animal 3, crop 1.5, 22 turns a hand) | −17,872 | −22,967 | −6,221 | | −2,711 |
+
+**The zero-sum lesson.** Measured as the ladder counts it (our bank − rival bank), the
+planner loses far more: −$78k from day 6, −$23k from day 15 and −$5k from day 25, 0/8
+won. When it takes over, the v14 rival's bank rises by $10-80k.
+
+Sizing production to "our share of demand" hands the contested markets to the rival.
+In a zero-sum game, once we produce at least as much of a product as the rival, one
+more unit still raises the margin, because it lowers the rival's price too. That is
+why the tape (and the top teams) overproduce contested products.
+
+The planner's objective must be the **margin**, not its own profit. Its production
+choices must value "revenue + damage to the rival's price", and its selling must
+compete for the top of each curve. Next steps, in order:
+1. value production competitively, from the rival's observed supply;
+2. restore tape-level volumes of the contested products;
+3. only then diversify into unmet demand.
