@@ -150,6 +150,7 @@ def nearest_access(pos):
 class Planner:
     def __init__(self):
         self.S = {}
+        self._roles = {}
 
     # ------------------------------------------------------------------ state
     def _state(self, player, step):
@@ -163,6 +164,86 @@ class Planner:
         pass
 
     # ------------------------------------------------------------------- jobs
+    # -------------------------------------------------------------- investment
+    LAND_DAYS = (6, 8, 10)
+    LAND_RESERVE = 1500
+    LAND_LAST_DAY = 12
+    ROLE_LAST_DAY = 14
+    SHARE = 0.5               # our expected share of each product's town demand
+
+    def _exp_price(self, item):
+        return max(1, int(self._prices.get(item, MARKET[item]["base"])))
+
+    def _animal_value(self, animal, day):
+        a = ANIMALS[animal]
+        days_prod = max(0, 29 - (day + 1 + a["fyd"]))
+        per_day = {"SHEEP": 4.0 / 3, "COW": 1.5, "GOOSE": 2.0}[animal]
+        return days_prod * per_day * min(self._exp_price(a["prod"]), MARKET[a["prod"]]["base"]) - a["cost"]
+
+    def _crop_value(self, crop, day):
+        c = CROPS[crop]; price = min(self._exp_price(crop), MARKET[crop]["base"])
+        if c["ongoing"]:
+            n = sum(1 for k in range(c["my"]) if day + c["fyd"] + k * c["interval"] <= 28)
+            return n * 1.6 * price - c["seed"]
+        return (c["my"] * price - c["seed"]) if day + c["myd"] <= 29 else 0
+
+    def _demand(self, shops, day):
+        d = drain_per_day(shops)
+        fut = max(0, (29 - day) // 3) * 0.5
+        for sname, items in SHOPS.items():
+            mult = 2 if len(items) == 1 else 1
+            for it in items:
+                d[it] = d.get(it, 0) + fut / len(SHOPS) * 6 * mult
+        return d
+
+    def plan_roles(self, obs, s, farm, day):
+        """Assign roles to free tiles: animals near the shed, then long-season crops,
+        each sized to our share of the town's demand for its product."""
+        roles = s.setdefault("role", {})
+        dem = self._demand(obs["town"]["unlocked_shops"], day)
+        cnt = {k: 0 for k in ("SHEEP", "COW", "GOOSE", "STRAWBERRY", "TOMATO", "MELON")}
+        for y in range(BOARD):
+            for x in range(BOARD):
+                t = farm["tiles"][y][x]
+                if isinstance(t, dict) and "animal" in t:
+                    cnt[t["animal"]] += 1
+                elif isinstance(t, dict) and t.get("kind") == "PLANT" and t["crop"] in cnt:
+                    cnt[t["crop"]] += 1
+        per_day = {"SHEEP": ("WOOL", 4.0 / 3), "COW": ("MILK", 1.5), "GOOSE": ("EGG", 2.0)}
+        target = {an: int(self.SHARE * dem.get(prod, 0) / rate + 0.5) for an, (prod, rate) in per_day.items()}
+        if day <= 14:
+            prods = min(4, max(1, (28 - (day + 10)) // 2 + 1))
+            target["STRAWBERRY"] = int(self.SHARE * dem.get("STRAWBERRY", 0) * 18 / (1.6 * prods) + 0.5)
+        if day <= 18 and dem.get("TOMATO", 0) > 1.5:
+            target["TOMATO"] = int(self.SHARE * dem.get("TOMATO", 0) * 4 / (1.6 * 4) + 0.5)
+        pending = {}
+        for p, r in roles.items():
+            t = farm["tiles"][p[1]][p[0]]
+            if not (isinstance(t, dict) and (t.get("animal") == r or t.get("crop") == r)):
+                pending[r] = pending.get(r, 0) + 1
+        free = []
+        for p in SERP:
+            if not self._owned(p) or p in roles:
+                continue
+            t = farm["tiles"][p[1]][p[0]]
+            if t is None or (isinstance(t, dict) and t.get("kind") == "WEED") or \
+                    (isinstance(t, dict) and t.get("kind") == "PLANT" and not CROPS[t["crop"]]["ongoing"]):
+                free.append(p)
+        free.sort(key=lambda p: dist(p, nearest_access(p)))
+        load = self._load
+        for r, near in (("SHEEP", 1), ("COW", 1), ("GOOSE", 1), ("STRAWBERRY", 0), ("TOMATO", 0)):
+            want = target.get(r, 0) - cnt.get(r, 0) - pending.get(r, 0)
+            while want > 0 and free:
+                extra = self.ANIMAL_LOAD if r in ANIMALS else self.CROP_LOAD
+                if load + extra > self._capacity:
+                    break
+                if (r in ANIMALS and self._animal_value(r, day) <= 50) or (r not in ANIMALS and self._crop_value(r, day) <= 30):
+                    break
+                p = free.pop(0) if near else free.pop()
+                roles[p] = r; want -= 1; load += extra
+        s["targets"] = target
+        return roles
+
     @staticmethod
     def yield_by_end(crop, day, last=29):
         """Units a non-ongoing crop planted today yields if harvested by the last day."""
@@ -184,6 +265,19 @@ class Planner:
         t = farm["tiles"][p[1]][p[0]]
         pr = self._prices
         last_day = day >= 29
+        role = self._roles.get(p)
+        if role in ANIMALS:
+            a = ANIMALS[role]
+            if t is None:
+                return [(self._animal_value(role, day), "BUILD_" + a["struct"])]
+            if isinstance(t, dict) and t.get("kind") == "WEED":
+                return [(self._animal_value(role, day) * 0.8, "DIG")]
+            if isinstance(t, dict) and t.get("kind") == a["struct"] and "animal" not in t:
+                return [(self._animal_value(role, day), "PLACE:" + role)]
+        if role in ("STRAWBERRY", "TOMATO", "MELON") and (t is None or (isinstance(t, dict) and t.get("kind") == "WEED")):
+            v = self._crop_value(role, day)
+            if v > 30:
+                return [(v * 0.8, "DIG")] if t is not None else [(v, "PLANT:" + role)]
         crop = self._design.get(p) or ("WHEAT" if self._owned(p) else None)
         if t is None or (isinstance(t, dict) and t.get("kind") == "WEED"):
             if crop and crop in CROPS and not CROPS[crop]["ongoing"]:
@@ -302,6 +396,7 @@ class Planner:
         invs = priv.get("inventories") or []
         shed = dict(priv.get("shed") or {})
         self._prepare(obs, s, farm, shed, invs, day, hour)
+        self._roles_update(obs, s, farm, day, hour)
         tiles = self._all_jobs(farm, day, hour)
         # (re)cut the serpentine into one stretch per unit when the crew changes
         key = (day, len(units))
@@ -370,9 +465,19 @@ class Planner:
             # stock up on wheat / fertilizer for this stretch when at the shed or starting out
             need_w = sum(1 for p in seg if p in tiles and any(o == "FEED" for _, o in tiles[p]))
             need_f = sum(1 for p in seg if p in tiles and any(o == "FERTILIZE" for _, o in tiles[p]))
-            if dh == 0 or (dh <= 2 and ptr[i] == 0):
+            need_any = (need_w > int(inv.get("WHEAT", 0)) and free["WHEAT"] > 0 and int(inv.get("WHEAT", 0)) == 0) or \
+                any(o.startswith("PLACE:") and int(inv.get(o[6:], 0)) == 0 and int(shed.get(o[6:], 0)) > 0
+                    for p in seg for _, o in tiles.get(p, ()))
+            if dh == 0 or (dh <= 2 and ptr[i] == 0) or need_any:
                 got = None
-                for item, need in (("WHEAT", need_w), ("FERTILIZER", need_f)):
+                need_a = {}
+                for p in seg:
+                    for _, o in tiles.get(p, ()):
+                        if o.startswith("PLACE:"):
+                            need_a[o[6:]] = need_a.get(o[6:], 0) + 1
+                for an in need_a:
+                    free.setdefault(an, int(shed.get(an, 0)))
+                for item, need in [("WHEAT", need_w), ("FERTILIZER", need_f)] + list(need_a.items()):
                     have = int(inv.get(item, 0))
                     if need > have and free[item] > 0:
                         n = min(free[item], need - have)
@@ -399,6 +504,8 @@ class Planner:
                             op = o; break
                         continue
                     item = {"FEED": "WHEAT", "FERTILIZE": "FERTILIZER"}.get(o)
+                    if o.startswith("PLACE:"):
+                        item = o[6:]
                     if item and int(inv.get(item, 0)) <= 0:
                         continue
                     op = o; break
@@ -413,6 +520,8 @@ class Planner:
                 else:
                     if op.startswith("PLANT:"):
                         seeds_free[op[6:]] -= 1; cmd = ["PLANT", op[6:]]
+                    elif op.startswith("PLACE:"):
+                        cmd = ["PLACE", op[6:]]
                     else:
                         cmd = [op]
                 break
@@ -423,7 +532,7 @@ class Planner:
                     if p in helping:
                         continue
                     for v, o in jl:
-                        if o.startswith("PLANT:") or {"FEED": "WHEAT", "FERTILIZE": "FERTILIZER"}.get(o):
+                        if o.startswith("PLANT:") or o.startswith("PLACE:") or {"FEED": "WHEAT", "FERTILIZE": "FERTILIZER"}.get(o):
                             continue
                         sc = v / (dist(pos, p) + 1) ** 1.5
                         if bestp is None or sc > bestp[0]:
@@ -470,6 +579,18 @@ class Planner:
         self._fert_ok = int(shed.get("FERTILIZER", 0)) + sum(int(i.get("FERTILIZER", 0)) for i in invs if i) > 0 \
             or (day >= 28 and int(obs["market"]["prices"].get("FERTILIZER", 99)) <= 12)
 
+    def _roles_update(self, obs, s, farm, day, hour):
+        self._roles = s.setdefault("role", {})
+        if self.INVEST and day <= self.ROLE_LAST_DAY and (s.get("roles_day") != day or s.get("roles_quads") != len(self._quads)) and hour >= 1:
+            self.plan_roles(obs, s, farm, day)
+            s["roles_day"] = day; s["roles_quads"] = len(self._quads)
+        for p, r in list(self._roles.items()):
+            t = farm["tiles"][p[1]][p[0]]
+            if r in CROPS and not (isinstance(t, dict) and t.get("crop") == r) and self._crop_value(r, day) <= 30:
+                del self._roles[p]
+
+    INVEST = True
+
     def _all_jobs(self, farm, day, hour):
         tiles = {}
         for y in range(BOARD):
@@ -488,6 +609,33 @@ class Planner:
             money = float(farm["money"]); k = int(farm.get("hires_today", 0))
             while n > 0 and money > fib(k) + 200:
                 orders.append(["HIRE"]); money -= fib(k); k += 1; n -= 1
+        if self.INVEST and hour >= 2 and step < LAST - 48:
+            n_owned = len(self._quads) - 1
+            if n_owned < 3 and self.LAND_DAYS[n_owned] <= day <= self.LAND_LAST_DAY:
+                price_l = (1000, 2000, 4000)[n_owned]
+                if float(farm["money"]) >= price_l + self.LAND_RESERVE:
+                    orders.append(["BUY_LAND"])
+            empty = {}
+            for p, r in self._roles.items():
+                t = farm["tiles"][p[1]][p[0]]
+                if r in ANIMALS and isinstance(t, dict) and t.get("kind") == ANIMALS[r]["struct"] and "animal" not in t:
+                    empty[r] = empty.get(r, 0) + 1
+            room = SHED_CAP - sum(int(v) for v in shed.values()) - 2
+            money = float(farm["money"]) - 500
+            for r, n in empty.items():
+                have = int(shed.get(r, 0)) + sum(int(i.get(r, 0)) for i in invs if i)
+                q = min(n - have, room, int(money // ANIMALS[r]["cost"]))
+                if q > 0:
+                    orders.append(["BUY_ANIMAL", r, q]); room -= q; money -= q * ANIMALS[r]["cost"]
+        if hour in (0, 1, 12) and step < LAST - 24:
+            herd = sum(1 for row in farm["tiles"] for t in row if isinstance(t, dict) and "animal" in t)
+            herd += sum(int(shed.get(a, 0)) for a in ANIMALS)
+            have_w = int(shed.get("WHEAT", 0)) + sum(int(i.get("WHEAT", 0)) for i in invs if i)
+            if herd and have_w < herd + 5 and float(farm["money"]) > 800:
+                room = SHED_CAP - sum(int(v) for v in shed.values()) - 2
+                q = min(herd + 5 - have_w, max(0, room))
+                if q > 0:
+                    orders.append(["BUY_PRODUCT", "WHEAT", q])
         want_seed = {}
         for jl in tiles.values():
             for _, o in jl:
@@ -662,6 +810,15 @@ class Planner:
             money = float(farm["money"]); k = int(farm.get("hires_today", 0))
             while n > 0 and money > fib(k) + 200:
                 orders.append(["HIRE"]); money -= fib(k); k += 1; n -= 1
+        if hour in (0, 1, 12) and step < LAST - 24:
+            herd = sum(1 for row in farm["tiles"] for t in row if isinstance(t, dict) and "animal" in t)
+            herd += sum(int(shed.get(a, 0)) for a in ANIMALS)
+            have_w = int(shed.get("WHEAT", 0)) + sum(int(i.get("WHEAT", 0)) for i in invs if i)
+            if herd and have_w < herd + 5 and float(farm["money"]) > 800:
+                room = SHED_CAP - sum(int(v) for v in shed.values()) - 2
+                q = min(herd + 5 - have_w, max(0, room))
+                if q > 0:
+                    orders.append(["BUY_PRODUCT", "WHEAT", q])
         want_seed = {}
         for jl in tiles.values():
             for _, o in jl:
