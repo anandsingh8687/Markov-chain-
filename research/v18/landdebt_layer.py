@@ -11,6 +11,7 @@ import copy as _ld_copy
 _LD_PARENT = agent
 LD_FROM_DAY = 6
 LD_TO_DAY = 16
+LD_MAX_Q = 4
 LD_RESERVE = 0
 LD_HOLD = 0
 _LD_STATE = {}
@@ -34,8 +35,8 @@ def land_debt_agent(observation, configuration=None):
         nq = len(farm.get('unlocked_quadrants', []))
         orders = action.setdefault('market', [])
         asked = sum(1 for o in orders if o and o[0] == 'BUY_LAND')
-        st['target'] = max(st['target'], nq + asked, nq)
-        if not LD_FROM_DAY <= day <= LD_TO_DAY or asked or nq >= st['target'] or nq >= 4:
+        st["target"] = min(LD_MAX_Q, max(st["target"], nq + asked, nq))
+        if not LD_FROM_DAY <= day <= LD_TO_DAY or asked or nq >= st['target'] or nq >= LD_MAX_Q:
             return action
         _LD_REPORT['ld_debt_turns'] += 1
         price = _ld_price(nq)

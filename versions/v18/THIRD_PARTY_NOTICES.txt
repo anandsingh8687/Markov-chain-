@@ -1,0 +1,50 @@
+Frontier V15 attribution and modifications
+
+This distribution is an Apache-2.0 derivative of the frozen k23_look10
+Kaggriculture agent in this repository.
+
+Frozen k23_look10 main.py SHA-256:
+c0cb372a94a4d66b10079e0777bf29495f2044bbb8f9169b46cf9547fe359930
+
+k23_look10 is an experimental derivative of Abhinav0370's public
+"cha22 agent" notebook, identified by the notebook as Apache-2.0:
+https://www.kaggle.com/code/abhinav0370/cha22-agent
+
+The frozen source retains its upstream source comments and attributions. Those
+comments credit public Kaggriculture work by Ahmed Berat Ozer, aurax7, Rayk
+Kretzschmar, Thomas Tschinkel, Yusuke Hayashi (yhay81), destbreso, tetsutani,
+prvsiyan, Dmitrii Gluzdov, Seyit Kaan Gunes, lucifer19, Moon, and Kaggle's
+kaggle-environments contributors. The retained comments describe the specific
+mechanisms and source relationships. This notice does not claim endorsement by
+those authors or that this derivative inherits any historical public score.
+
+Local modifications in Frontier V15, 2026-09-27:
+
+1. Retain k23's default 10-turn ready-stock sale lookahead.
+2. During day 8, observe only public farm state and require four consecutive
+   matches of money, worker positions, unlocked land, and productive tile
+   layout before certifying a same-schedule opponent.
+3. After certification, and only while k23's existing public-state clone gate
+   remains active, use a 12-turn sale lookahead. Restore the default after
+   every call so state cannot leak between observations or games.
+4. Ignore stochastic weeds in the certification fingerprint. No hidden
+   opponent inventory, private state, replay identity, or external data is
+   used at runtime.
+
+The complete Apache License, Version 2.0 is included as
+LICENSE-APACHE-2.0.txt. The full modified source is included as main.py.
+
+Frontier V16 public competition replay data
+-------------------------------------------
+The route schedules added by Frontier V16 were derived from public
+Kaggriculture DSM competition replays. Kaggriculture Competition Data
+is made available under Apache-2.0 Data Access and Use terms. Exact
+episode IDs, submission IDs, seats, seeds and replay SHA-256 hashes
+are recorded in the repository artifact manifest. No DSM private
+source code is included.
+
+Frontier V17 observable capacity reallocation
+-----------------------------------------------
+Local Apache-2.0 modification: future livestock purchases, matching
+structures and placements are reallocated from days 6-18 only when
+one public town-shop demand family is the unique leader.
