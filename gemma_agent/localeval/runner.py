@@ -48,6 +48,7 @@ class Agent:
     output_key: str | None = None
     include_contents: str = "default"
     max_iterations: int = 500
+    skills: list[Path] = field(default_factory=list)
 
 
 def _load(path: Path, root: Path):
@@ -79,7 +80,8 @@ def _from_cfg(cfg: dict, base: Path, bundle: Path) -> Agent:
                  cfg.get("generate_content_config") or {}, names, agent_tools,
                  kind=cfg.get("agent_class", "LlmAgent"), sub_agents=subs, output_key=cfg.get("output_key"),
                  include_contents=cfg.get("include_contents", "default"),
-                 max_iterations=int(cfg.get("max_iterations", 500)))
+                 max_iterations=int(cfg.get("max_iterations", 500)),
+                 skills=[bundle / s for s in cfg.get("skills") or []])
 
 
 def compile_bundle(bundle: Path, cfg_path: Path | None = None) -> Agent:
@@ -170,11 +172,44 @@ class Trace:
 
 def _declarations(agent: Agent) -> list[dict]:
     decls = [tools.declaration(n) for n in agent.tools if n in tools.TOOLS]
+    if agent.skills:
+        decls.append(SKILL_DECL)
     for sub, _ in agent.agent_tools:
         decls.append({"type": "function", "function": {
             "name": sub.name, "description": sub.description,
             "parameters": {"type": "object", "properties": {"request": {"type": "string"}}, "required": ["request"]}}})
     return decls
+
+
+SKILL_DECL = {"type": "function", "function": {
+    "name": "run_skill_script", "description": "Executes a script from a skill's scripts/ directory.",
+    "parameters": {"type": "object", "properties": {
+        "skill_name": {"type": "string", "description": "The name of the skill."},
+        "file_path": {"type": "string", "description": "The relative path to the script (e.g., 'scripts/setup.py')."},
+        "args": {"type": "array", "items": {"type": "string"}, "description": "Optional arguments."}},
+        "required": ["skill_name", "file_path"]}}}
+
+
+def run_skill_script(agent: Agent, ctx: tools.Context, args: dict) -> str:
+    """ADK SkillToolset semantics: the skill is materialized in a temp dir and the script runs there."""
+    import shutil
+    import tempfile
+    skill = next((s for s in agent.skills if s.name == args.get("skill_name")), None)
+    if skill is None:
+        return json.dumps({"error": f"Skill '{args.get('skill_name')}' not found.", "error_code": "SKILL_NOT_FOUND"})
+    rel = args.get("file_path", "")
+    rel = rel if rel.startswith("scripts/") else "scripts/" + rel
+    if not (skill / rel).is_file():
+        return json.dumps({"error": f"Script '{rel}' not found.", "error_code": "SCRIPT_NOT_FOUND"})
+    ctx.tool_calls_used += 1
+    with tempfile.TemporaryDirectory() as td:
+        shutil.copytree(skill, td, dirs_exist_ok=True)
+        extra = [str(a) for a in (args.get("args") or [])] if isinstance(args.get("args"), list) else []
+        cmd = "python3 " + rel + "".join(" " + json.dumps(a) for a in extra)
+        e = env.command_env(ctx.venv, ctx.tmp)
+        e["PWD"] = str(ctx.ws)
+        r = env.run_sandboxed(cmd, Path(td), e, 120)
+    return json.dumps({"stdout": ctx.to_agent(r.stdout)[:5000], "stderr": ctx.to_agent(r.stderr)[:2000]})
 
 
 # Session events, as ADK records them:
@@ -277,6 +312,8 @@ def run_llm(agent: Agent, events: list[dict], ctx: tools.Context, state: dict, t
                 sub, skip = subs[name]
                 out = run_subagent(sub, str(args.get("request", "")), ctx, state, trace, depth + 1)
                 end_turn = end_turn or skip
+            elif name == "run_skill_script" and agent.skills:
+                out = run_skill_script(agent, ctx, args)
             elif name in agent.tools and name in tools.TOOLS:
                 out = tools.call(ctx, name, args)
             else:
