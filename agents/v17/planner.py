@@ -115,6 +115,20 @@ def step_toward(pos, tgt):
     return None
 
 
+def _serpentine():
+    order = []
+    for q, (ax, ay) in (("NW", (4, 4)), ("NE", (5, 4)), ("SW", (4, 5)), ("SE", (5, 5))):
+        xs = list(range(4, -1, -1)) if q[1] == "W" else list(range(5, 10))
+        ys = list(range(4, -1, -1)) if q[0] == "N" else list(range(5, 10))
+        for k, y in enumerate(ys):
+            row = xs if k % 2 == 0 else list(reversed(xs))
+            order.extend((x, y) for x in row)
+    return order
+
+
+SERP = _serpentine()
+
+
 def quad(p):
     return ("N" if p[1] < 5 else "S") + ("W" if p[0] < 5 else "E")
 
@@ -160,7 +174,7 @@ class Planner:
         t = farm["tiles"][p[1]][p[0]]
         pr = self._prices
         last_day = day >= 29
-        crop = self._design.get(p)
+        crop = self._design.get(p) or ("WHEAT" if self._owned(p) else None)
         if t is None or (isinstance(t, dict) and t.get("kind") == "WEED"):
             if crop and crop in CROPS and not CROPS[crop]["ongoing"]:
                 best = max(("WHEAT", "CARROT"), key=lambda c: self.yield_by_end(c, day) * pr.get(c, 0) - CROPS[c]["seed"])
@@ -168,8 +182,8 @@ class Planner:
                         self.yield_by_end(crop, day) * pr.get(crop, 0) - CROPS[crop]["seed"] + 10:
                     crop = best
                 gain = self.yield_by_end(crop, day) * pr.get(crop, 0) - CROPS[crop]["seed"]
-                if gain > 15 and day <= 27:
-                    return [(gain * 0.35, "DIG")] if t is not None else [(gain * 0.5, "PLANT:" + crop)]
+                if gain > 15 and day <= 27 and self._load + self.CROP_LOAD <= self._capacity:
+                    return [(gain * self.DIG_W, "DIG")] if t is not None else [(gain * self.PLANT_W, "PLANT:" + crop)]
             return []
         if not isinstance(t, dict):
             return []
@@ -188,7 +202,7 @@ class Planner:
                     urgent = last_day or age >= last_prod or y >= 2 or hour >= 16
                     jobs.append((y * price * (1.0 if urgent else 0.4), "HARVEST"))
                 if not watered and not last_day and cu >= 1 and (prods_left > 0 or y > 0):
-                    jobs.append(((prods_left + y) * price, "WATER"))
+                    jobs.append(((prods_left + y) * price * self._late, "WATER"))
             else:
                 ws = (c["myd"] + 1) // 2
                 in_window = ws <= age <= c["myd"]
@@ -211,7 +225,7 @@ class Planner:
                     if not watered:
                         future = min(c["my"], y + max(0, min(c["myd"], 29 - day + age) - max(age, ws) + 1))
                         if cu >= 1:
-                            jobs.append((future * price, "WATER"))          # would die tonight
+                            jobs.append((future * price * self._late, "WATER"))   # would die tonight
                         elif in_window:
                             jobs.append((price * gain, "WATER"))            # a unit today
                     if in_window and not fert and not watered and y + 1 < c["my"] and self._fert_ok \
@@ -224,7 +238,7 @@ class Planner:
             wheat = pr.get("WHEAT", 40)
             if not last_day:
                 if not fed:
-                    v = (a["cost"] + 3 * price) if cuf >= 1 else max(0, price - wheat)
+                    v = (a["cost"] + 3 * price) * self._late if cuf >= 1 else max(0, price - wheat)
                     jobs.append((v, "FEED"))
                 if not cared and (fed or cuf >= 0):
                     jobs.append((price * 0.9, "CARE"))
@@ -237,7 +251,223 @@ class Planner:
         return sorted(jobs, key=lambda j: order.get(j[1].split(":")[0], 5))
 
     # ---------------------------------------------------------------- dispatch
+    ROUTES = True
+
     def act(self, obs, cfg=None):
+        if self.ROUTES:
+            return self.act_routes(obs, cfg)
+        return self.act_greedy(obs, cfg)
+
+    def _tile_weight(self, farm, p):
+        t = farm["tiles"][p[1]][p[0]]
+        if isinstance(t, dict) and "animal" in t:
+            return 4.0
+        if isinstance(t, dict) and t.get("kind") == "PLANT":
+            return 1.6
+        if self._design.get(p) or (t is None and self._owned(p)) or (isinstance(t, dict) and t.get("kind") == "WEED" and self._owned(p)):
+            return 0.6
+        return 0.0
+
+    def act_routes(self, obs, cfg=None):
+        step = int(obs["step"]); day, hour = divmod(step, 24)
+        me = int(obs["player"]); s = self._state(me, step)
+        farm = obs["farms"][me]; priv = obs["private"]
+        units = [tuple(farm["farmer"])] + [tuple(h) for h in farm["hands"]]
+        invs = priv.get("inventories") or []
+        shed = dict(priv.get("shed") or {})
+        self._prepare(obs, s, farm, shed, invs, day, hour)
+        tiles = self._all_jobs(farm, day, hour)
+        # (re)cut the serpentine into one stretch per unit when the crew changes
+        key = (day, len(units))
+        if s.get("seg_key") != key:
+            k = len(units)
+            qpath = {}
+            for p in SERP:
+                wgt = self._tile_weight(farm, p)
+                if wgt > 0:
+                    qpath.setdefault(quad(p), []).append((p, wgt))
+            qw = {q: sum(w for _, w in v) for q, v in qpath.items()}
+            # units per quadrant: proportional to load, at least one per loaded quadrant if possible
+            alloc = {q: 0 for q in qw}
+            for _ in range(k):
+                q = max(qw, key=lambda q: qw[q] / (alloc[q] + 1)) if qw else None
+                if q is None:
+                    break
+                alloc[q] += 1
+            segs = []
+            for q, n in alloc.items():
+                if n == 0:
+                    continue
+                path = qpath[q]; tot = sum(w for _, w in path) or 1.0
+                parts = [[] for _ in range(n)]; acc = 0.0
+                for p, wgt in path:
+                    parts[min(n - 1, int(acc / tot * n))].append(p); acc += wgt
+                segs.extend(parts)
+            while len(segs) < k:
+                segs.append([])
+            s["segs"] = segs; s["seg_key"] = key; s["ptr"] = [0] * k
+        segs, ptr = s["segs"], s["ptr"]
+        free = {"WHEAT": int(shed.get("WHEAT", 0)), "FERTILIZER": int(shed.get("FERTILIZER", 0))}
+        seeds_free = {k2: int(v) for k2, v in (priv.get("seeds") or {}).items()}
+        cmds = []; drop_now = {}; steps_left = LAST - step; helping = set()
+        for i, pos in enumerate(units):
+            inv = invs[i] if i < len(invs) else {}
+            cargo = sum(int(v) for k2, v in inv.items() if k2 in PRODUCTS and k2 != "WHEAT")
+            home = nearest_access(pos); dh = dist(pos, home)
+            if cargo and steps_left <= dh + 1:
+                w = step_toward(pos, home)
+                if w:
+                    cmds.append([w]); continue
+                cmds.append(["DROP"])
+                for k2, v in inv.items():
+                    drop_now[k2] = drop_now.get(k2, 0) + int(v)
+                continue
+            if dh == 0 and cargo >= 5:
+                item = max((k2 for k2 in inv if k2 in PRODUCTS and k2 not in ("WHEAT", "FERTILIZER")), key=lambda k2: int(inv[k2]), default=None)
+                if item:
+                    cmds.append(["PLACE", item, int(inv[item])])
+                    drop_now[item] = drop_now.get(item, 0) + int(inv[item])
+                    continue
+            seg = segs[i] if i < len(segs) else []
+            # stock up on wheat / fertilizer for this stretch when at the shed or starting out
+            need_w = sum(1 for p in seg if p in tiles and any(o == "FEED" for _, o in tiles[p]))
+            need_f = sum(1 for p in seg if p in tiles and any(o == "FERTILIZE" for _, o in tiles[p]))
+            if dh == 0 or (dh <= 2 and ptr[i] == 0):
+                got = None
+                for item, need in (("WHEAT", need_w), ("FERTILIZER", need_f)):
+                    have = int(inv.get(item, 0))
+                    if need > have and free[item] > 0:
+                        n = min(free[item], need - have)
+                        w = step_toward(pos, home)
+                        if w:
+                            got = [w]
+                        else:
+                            free[item] -= n; got = ["PICKUP", item, n]
+                        break
+                if got:
+                    cmds.append(got); continue
+            cmd = None
+            n = len(seg)
+            for off in range(n):
+                j = (ptr[i] + off) % n if n else 0
+                p = seg[j]
+                jl = tiles.get(p)
+                if not jl:
+                    continue
+                op = None
+                for v, o in jl:
+                    if o.startswith("PLANT:"):
+                        if seeds_free.get(o[6:], 0) > 0:
+                            op = o; break
+                        continue
+                    item = {"FEED": "WHEAT", "FERTILIZE": "FERTILIZER"}.get(o)
+                    if item and int(inv.get(item, 0)) <= 0:
+                        continue
+                    op = o; break
+                if op is None:
+                    continue
+                if steps_left < dist(pos, p) + dist(p, nearest_access(p)) and cargo:
+                    continue
+                ptr[i] = j
+                w = step_toward(pos, p)
+                if w:
+                    cmd = [w]
+                else:
+                    if op.startswith("PLANT:"):
+                        seeds_free[op[6:]] -= 1; cmd = ["PLANT", op[6:]]
+                    else:
+                        cmd = [op]
+                break
+            if cmd is None:
+                # nothing left on our stretch: help with the nearest valuable job elsewhere
+                bestp = None
+                for p, jl in tiles.items():
+                    if p in helping:
+                        continue
+                    for v, o in jl:
+                        if o.startswith("PLANT:") or {"FEED": "WHEAT", "FERTILIZE": "FERTILIZER"}.get(o):
+                            continue
+                        sc = v / (dist(pos, p) + 1) ** 1.5
+                        if bestp is None or sc > bestp[0]:
+                            bestp = (sc, p, o)
+                        break
+                if bestp is not None and bestp[0] > 3:
+                    helping.add(bestp[1])
+                    w = step_toward(pos, bestp[1])
+                    cmd = [w] if w else [bestp[2]]
+            if cmd is None:
+                if cargo and (hour >= 20 or day >= 29):
+                    w = step_toward(pos, home)
+                    cmd = [w] if w else ["DROP"]
+                    if not w:
+                        for k2, v in inv.items():
+                            drop_now[k2] = drop_now.get(k2, 0) + int(v)
+                else:
+                    cmd = ["PASS"]
+            cmds.append(cmd)
+        action = {"farmer": cmds[0] if cmds else ["PASS"], "hands": cmds[1:], "market": []}
+        action["market"] = self._orders(obs, s, farm, priv, shed, invs, tiles, day, hour, step, drop_now)
+        return action
+
+    def _prepare(self, obs, s, farm, shed, invs, day, hour):
+        des = s.setdefault("design", {})
+        for y in range(BOARD):
+            for x in range(BOARD):
+                t = farm["tiles"][y][x]
+                if isinstance(t, dict) and t.get("kind") == "PLANT" and not CROPS[t["crop"]]["ongoing"]:
+                    des[(x, y)] = t["crop"]
+        self._design = des
+        self._late = 1.0 + self.LATE_K * hour / 23.0
+        self._quads = set(farm.get("unlocked_quadrants") or ["NW"]) | {"NW"}
+        n_crop = n_anim = 0
+        for row in farm["tiles"]:
+            for t in row:
+                if isinstance(t, dict) and t.get("kind") == "PLANT":
+                    n_crop += 1
+                elif isinstance(t, dict) and "animal" in t:
+                    n_anim += 1
+        self._load = n_crop * self.CROP_LOAD + n_anim * self.ANIMAL_LOAD
+        self._capacity = (self.MAX_HANDS + 1) * self.UNIT_TURNS
+        self._prices = obs["market"]["prices"]
+        self._fert_ok = int(shed.get("FERTILIZER", 0)) + sum(int(i.get("FERTILIZER", 0)) for i in invs if i) > 0 \
+            or (day >= 28 and int(obs["market"]["prices"].get("FERTILIZER", 99)) <= 12)
+
+    def _all_jobs(self, farm, day, hour):
+        tiles = {}
+        for y in range(BOARD):
+            for x in range(BOARD):
+                j = self.tile_jobs(farm, (x, y), day, hour)
+                if j and sum(v for v, _ in j) > 2:
+                    tiles[(x, y)] = j
+        return tiles
+
+    def _orders(self, obs, s, farm, priv, shed, invs, tiles, day, hour, step, drop_now):
+        orders = []
+        if hour <= 1 and step < LAST - 4:
+            work = sum(self._tile_weight(farm, p) for p in SERP) * 1.6
+            need = min(self.MAX_HANDS, max(0, int(-(-work // self.TURNS_PER_HAND)) - 1))
+            n = max(0, need - len(farm["hands"]))
+            money = float(farm["money"]); k = int(farm.get("hires_today", 0))
+            while n > 0 and money > fib(k) + 200:
+                orders.append(["HIRE"]); money -= fib(k); k += 1; n -= 1
+        want_seed = {}
+        for jl in tiles.values():
+            for _, o in jl:
+                if o.startswith("PLANT:"):
+                    want_seed[o[6:]] = want_seed.get(o[6:], 0) + 1
+        for crop, n in want_seed.items():
+            short = n - int((priv.get("seeds") or {}).get(crop, 0))
+            if short > 0 and float(farm["money"]) > CROPS[crop]["seed"] * short + 300 and day <= 27:
+                orders.append(["BUY_SEED", crop, short])
+        if day >= 28 and hour in (0, 1, 2, 12):
+            want = sum(1 for jl in tiles.values() if any(o == "FERTILIZE" for _, o in jl))
+            have_f = int(shed.get("FERTILIZER", 0)) + sum(int(i.get("FERTILIZER", 0)) for i in invs if i)
+            fp = int(obs["market"]["prices"].get("FERTILIZER", 99))
+            if want > have_f and fp <= 12 and float(farm["money"]) > 500:
+                orders.append(["BUY_PRODUCT", "FERTILIZER", want - have_f])
+        return (orders + self.market(obs, s, {"market": []}, drop_now))[:MAXORD]
+
+    def act_greedy(self, obs, cfg=None):
         step = int(obs["step"]); day, hour = divmod(step, 24)
         me = int(obs["player"]); s = self._state(me, step)
         farm = obs["farms"][me]; priv = obs["private"]
@@ -253,6 +483,18 @@ class Planner:
                 if isinstance(t, dict) and t.get("kind") == "PLANT" and not CROPS[t["crop"]]["ongoing"]:
                     des[(x, y)] = t["crop"]
         self._design = des
+        self._late = 1.0 + self.LATE_K * hour / 23.0
+        self._quads = set(farm.get("unlocked_quadrants") or ["NW"]) | {"NW"}
+        # daily labour load of the farm as it stands, against what the crew can do
+        n_crop = n_anim = 0
+        for row in farm["tiles"]:
+            for t in row:
+                if isinstance(t, dict) and t.get("kind") == "PLANT":
+                    n_crop += 1
+                elif isinstance(t, dict) and "animal" in t:
+                    n_anim += 1
+        self._load = n_crop * self.CROP_LOAD + n_anim * self.ANIMAL_LOAD
+        self._capacity = (self.MAX_HANDS + 1) * self.UNIT_TURNS
         self._prices = obs["market"]["prices"]
         # every tile's pending ops
         tiles = {}
@@ -336,7 +578,7 @@ class Planner:
                 d = dist(pos, p)
                 if steps_left < d + dist(p, nearest_access(p)):
                     continue
-                sc = pr / (d + 1) ** 1.5
+                sc = pr / (d + 1) ** self.DIST_EXP
                 if zone.get(i) is not None and quad(p) != zone[i]:
                     sc *= 0.5
                 if keep == p:
@@ -401,6 +643,16 @@ class Planner:
         return action
 
     MAX_HANDS = 13
+    PLANT_W = 0.8
+    LATE_K = 3.0
+    CROP_LOAD = 2.5
+    ANIMAL_LOAD = 5.0
+    UNIT_TURNS = 20
+    DIG_W = 0.5
+
+    def _owned(self, p):
+        return p not in ((4, 4), (5, 4), (4, 5), (5, 5)) and quad(p) in self._quads
+    DIST_EXP = 1.5
     TURNS_PER_HAND = 14
 
     # ------------------------------------------------------------------ market
@@ -414,6 +666,11 @@ class Planner:
         orders = []
         steps_left = LAST - step
         drain = drain_per_day(obs["town"]["unlocked_shops"])
+        carried = sum(int(v) for i in (priv.get("inventories") or []) if i for v in i.values())
+        # midnight drop must fit: shed + everything carried <= capacity
+        must_free = 0
+        if hour >= 19:
+            must_free = max(0, sum(int(v) for v in shed.values()) + carried - (SHED_CAP - 4))
         for item in PRODUCTS:
             have = int(shed.get(item, 0))
             if item == "FERTILIZER" and day >= 28 and step < LAST - 6:
@@ -439,4 +696,22 @@ class Planner:
                     q += 1; cur += 1
             if q > 0:
                 orders.append(["SELL", item, q])
+                must_free -= q
+        if must_free > 0:
+            # sell the cheapest-to-give-up units first until the drop fits
+            sold = {o[1]: o[2] for o in orders}
+            cand = sorted((it for it in PRODUCTS if int(shed.get(it, 0)) - sold.get(it, 0) > 0),
+                          key=lambda it: price_at(it, int(inv_mkt.get(it, I0))))
+            for it in cand:
+                if must_free <= 0:
+                    break
+                avail = int(shed.get(it, 0)) - sold.get(it, 0)
+                q = min(avail, must_free)
+                if it in sold:
+                    for o in orders:
+                        if o[1] == it:
+                            o[2] += q
+                else:
+                    orders.append(["SELL", it, q])
+                must_free -= q
         return orders[:MAXORD]
