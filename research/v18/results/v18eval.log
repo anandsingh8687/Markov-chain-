@@ -16,3 +16,8 @@ ld3h: won 41/49 (orig 41), mean +16126 (orig +11071), exact 44
 LDDONE
 H2H_A
 H2H_B
+u16L: won 57/89 (orig 57), mean +3458 (orig +3458), exact 88
+u16s: won 58/89 (orig 57), mean +4234 (orig +3458), exact 59
+u16sL: won 58/89 (orig 57), mean +4234 (orig +3458), exact 59
+u16smL: won 58/89 (orig 57), mean +4156 (orig +3458), exact 4
+U16DONE
