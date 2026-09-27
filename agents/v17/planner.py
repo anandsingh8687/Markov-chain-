@@ -129,6 +129,16 @@ def _serpentine():
 SERP = _serpentine()
 
 
+def fert_eve(t, day, c, age):
+    """Already fertilized through the next production eve (within 3 days)."""
+    fu = int(t.get("fertilized_until_day", -1))
+    for dd in range(3):
+        k = age + dd + 1 - c["fyd"]
+        if k >= 0 and k % c["interval"] == 0:
+            return fu >= day + dd
+    return True
+
+
 def quad(p):
     return ("N" if p[1] < 5 else "S") + ("W" if p[0] < 5 else "E")
 
@@ -198,11 +208,22 @@ class Planner:
                 last_prod = c["fyd"] + c["interval"] * (c["my"] - 1)
                 prods_left = 0 if age > last_prod else (c["my"] if age < c["fyd"] else (last_prod - age) // c["interval"] + (0 if (age - c["fyd"]) % c["interval"] == 0 else 1))
                 prods_left = max(0, min(prods_left, 29 - day))
+                # production happens at the refresh ending day D when D+1-planted-fyd is a
+                # multiple of interval; the +1 bonus needs watering on D and fertilizer through D
+                k0 = age + 1 - c["fyd"]
+                eve = k0 >= 0 and k0 % c["interval"] == 0 and k0 // c["interval"] < c["my"] and day < 29
+                cover = sum(1 for dd in range(3) if day + dd < 29 and (age + dd + 1 - c["fyd"]) >= 0
+                            and (age + dd + 1 - c["fyd"]) % c["interval"] == 0
+                            and (age + dd + 1 - c["fyd"]) // c["interval"] < c["my"])
+                fprice = self._prices.get("FERTILIZER", 50)
+                if cover and not fert_eve(t, day, c, age) and price * cover > fprice and self._fert_ok and not last_day:
+                    jobs.append((price * cover - fprice * 0.5, "FERTILIZE"))
+                if not watered and not last_day and (cu >= 1 or (eve and fert)) and (prods_left > 0 or y > 0):
+                    v = (prods_left + y) * price * self._late if cu >= 1 else price
+                    jobs.append((v, "WATER"))
                 if y > 0:
                     urgent = last_day or age >= last_prod or y >= 2 or hour >= 16
                     jobs.append((y * price * (1.0 if urgent else 0.4), "HARVEST"))
-                if not watered and not last_day and cu >= 1 and (prods_left > 0 or y > 0):
-                    jobs.append(((prods_left + y) * price * self._late, "WATER"))
             else:
                 ws = (c["myd"] + 1) // 2
                 in_window = ws <= age <= c["myd"]
@@ -228,9 +249,11 @@ class Planner:
                             jobs.append((future * price * self._late, "WATER"))   # would die tonight
                         elif in_window:
                             jobs.append((price * gain, "WATER"))            # a unit today
-                    if in_window and not fert and not watered and y + 1 < c["my"] and self._fert_ok \
-                            and self._prices.get("FERTILIZER", 999) < price * 0.8:
-                        jobs.append((price * min(3, c["myd"] - age + 1) - self._prices.get("FERTILIZER", 0), "FERTILIZE"))
+                if in_window and not fert and not watered and y + 1 < c["my"] and self._fert_ok and age < c["myd"]:
+                    gain_days = min(3, c["myd"] - age + 1, 29 - day + 1)
+                    fv = price * min(gain_days, c["my"] - y - 1) - self._prices.get("FERTILIZER", 50) * 0.5
+                    if fv > 5:
+                        jobs.append((fv, "FERTILIZE"))
         elif "animal" in t:
             a = ANIMALS[t["animal"]]; price = pr.get(a["prod"], 0)
             y = int(t.get("yield_units", 0)); cuf = int(t.get("consecutive_unfed", 0))
@@ -310,6 +333,8 @@ class Planner:
         free = {"WHEAT": int(shed.get("WHEAT", 0)), "FERTILIZER": int(shed.get("FERTILIZER", 0))}
         seeds_free = {k2: int(v) for k2, v in (priv.get("seeds") or {}).items()}
         cmds = []; drop_now = {}; steps_left = LAST - step; helping = set()
+        carried_all = sum(int(v) for i in invs if i for v in i.values())
+        self._overflow = carried_all + sum(int(v) for v in shed.values()) - (SHED_CAP - 4)
         for i, pos in enumerate(units):
             inv = invs[i] if i < len(invs) else {}
             cargo = sum(int(v) for k2, v in inv.items() if k2 in PRODUCTS and k2 != "WHEAT")
@@ -329,9 +354,10 @@ class Planner:
                      for k2, v in inv.items() if k2 in PRODUCTS}
             spare = {k2: v for k2, v in spare.items() if v > 0}
             load = sum(spare.values())
-            if load and (load >= self.DELIVER_AT or hour >= 20 or (dh == 0 and load >= 3)):
+            evening = hour >= 20 and self._overflow > 0
+            if load and (load >= self.DELIVER_AT or evening or (dh == 0 and load >= 3)):
                 w = step_toward(pos, home)
-                if w and dh > 0 and (load >= self.DELIVER_AT or hour >= 20):
+                if w and dh > 0 and (load >= self.DELIVER_AT or evening):
                     cmds.append([w]); continue
                 if dh == 0:
                     item = max(spare, key=lambda k2: spare[k2])
@@ -653,7 +679,8 @@ class Planner:
 
     MAX_HANDS = 13
     PLANT_W = 0.8
-    DELIVER_AT = 15
+    FERT_KEEP = 40
+    DELIVER_AT = 40
     LATE_K = 3.0
     CROP_LOAD = 2.5
     ANIMAL_LOAD = 5.0
@@ -683,8 +710,12 @@ class Planner:
             must_free = max(0, sum(int(v) for v in shed.values()) + carried - (SHED_CAP - 4))
         for item in PRODUCTS:
             have = int(shed.get(item, 0))
-            if item == "FERTILIZER" and day >= 28 and step < LAST - 6:
-                continue
+            if item == "FERTILIZER":
+                if day >= 28 and step < LAST - 6:
+                    continue
+                have = max(0, have - (0 if step >= LAST - 6 else self.FERT_KEEP))
+                if have <= 0:
+                    continue
             if item == "WHEAT":
                 # keep feed for the herd until the last day
                 animals = sum(1 for row in farm["tiles"] for t in row if isinstance(t, dict) and "animal" in t)
