@@ -322,13 +322,22 @@ class Planner:
                 for k2, v in inv.items():
                     drop_now[k2] = drop_now.get(k2, 0) + int(v)
                 continue
-            if dh == 0 and cargo >= 5:
-                item = max((k2 for k2 in inv if k2 in PRODUCTS and k2 not in ("WHEAT", "FERTILIZER")), key=lambda k2: int(inv[k2]), default=None)
-                if item:
-                    cmds.append(["PLACE", item, int(inv[item])])
-                    drop_now[item] = drop_now.get(item, 0) + int(inv[item])
-                    continue
             seg = segs[i] if i < len(segs) else []
+            feed_left = sum(1 for p in seg if p in tiles and any(o == "FEED" for _, o in tiles[p]))
+            fert_left = sum(1 for p in seg if p in tiles and any(o == "FERTILIZE" for _, o in tiles[p]))
+            spare = {k2: int(v) - (feed_left if k2 == "WHEAT" else fert_left if k2 == "FERTILIZER" else 0)
+                     for k2, v in inv.items() if k2 in PRODUCTS}
+            spare = {k2: v for k2, v in spare.items() if v > 0}
+            load = sum(spare.values())
+            if load and (load >= self.DELIVER_AT or hour >= 20 or (dh == 0 and load >= 3)):
+                w = step_toward(pos, home)
+                if w and dh > 0 and (load >= self.DELIVER_AT or hour >= 20):
+                    cmds.append([w]); continue
+                if dh == 0:
+                    item = max(spare, key=lambda k2: spare[k2])
+                    cmds.append(["PLACE", item, spare[item]])
+                    drop_now[item] = drop_now.get(item, 0) + spare[item]
+                    continue
             # stock up on wheat / fertilizer for this stretch when at the shed or starting out
             need_w = sum(1 for p in seg if p in tiles and any(o == "FEED" for _, o in tiles[p]))
             need_f = sum(1 for p in seg if p in tiles and any(o == "FERTILIZE" for _, o in tiles[p]))
@@ -644,6 +653,7 @@ class Planner:
 
     MAX_HANDS = 13
     PLANT_W = 0.8
+    DELIVER_AT = 15
     LATE_K = 3.0
     CROP_LOAD = 2.5
     ANIMAL_LOAD = 5.0

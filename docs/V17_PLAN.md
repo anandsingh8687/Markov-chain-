@@ -120,7 +120,10 @@ game from the same model, with an efficient labour router (the gap to DSM's
 | old circuit2 prototype | | −10,274 | −16,838 | −26,956 |
 | v0 (tend, harvest, sell) | −1,876 | −2,931 | | |
 | + last-day water/fertilize before harvest, delivery, hiring | −501 | −2,386 | −10,689 | |
-| + dollar-valued jobs in engine order, zones, two-pass assignment, ongoing-harvest urgency | −650 | −2,706 | **−8,881** | −16,502 |
+| + dollar-valued jobs in engine order, zones, two-pass assignment, ongoing-harvest urgency | −650 | −2,706 | −8,881 | −16,502 |
+| + route dispatcher (per-quadrant serpentine stretches, one per unit, idle units help) | −939 | −2,875 | −11,342 | −16,582 |
+| + **shed-capacity-aware selling** (the midnight drop was overflowing: up to 110 units discarded a night) | −924 | −2,255 | −6,988 | −10,719 (d15 −10,462) |
+| + deliver cargo during the day (≥15 units, or from hour 20) | −1,020 | **−1,880** | **−5,740** | **−10,435** (d15 −15,074) |
 
 Remaining gaps, from the traces (`hops.py`, `hunit.py`, `hjob.py`):
 * the planner walks about 1.7× more than the tape;
