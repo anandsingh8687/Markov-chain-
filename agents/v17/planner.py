@@ -170,6 +170,7 @@ class Planner:
     LAND_LAST_DAY = 12
     ROLE_LAST_DAY = 14
     SHARE = 0.5               # our expected share of each product demand
+    STRAW_MIN = 33
     HERD_MIN = {"COW": 10, "SHEEP": 8, "GOOSE": 6}   # top-team herds: animals also yield ~$40/day of fertilizer
 
     def _exp_price(self, item):
@@ -215,7 +216,7 @@ class Planner:
         target = {an: max(self.HERD_MIN[an], int(self.SHARE * dem.get(prod, 0) / rate + 0.5)) for an, (prod, rate) in per_day.items()}
         if day <= 14:
             prods = min(4, max(1, (28 - (day + 10)) // 2 + 1))
-            target["STRAWBERRY"] = int(self.SHARE * dem.get("STRAWBERRY", 0) * 18 / (1.6 * prods) + 0.5)
+            target["STRAWBERRY"] = max(self.STRAW_MIN, int(self.SHARE * dem.get("STRAWBERRY", 0) * 18 / (1.6 * prods) + 0.5))
         if day <= 18 and dem.get("TOMATO", 0) > 1.5:
             target["TOMATO"] = int(self.SHARE * dem.get("TOMATO", 0) * 4 / (1.6 * 4) + 0.5)
         pending = {}
