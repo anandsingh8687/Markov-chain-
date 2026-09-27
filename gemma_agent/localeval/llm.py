@@ -55,7 +55,9 @@ def _body(model: str, messages: list[dict], tools: list[dict], gen: dict, max_to
         if k_src in gen and (not free or k_src in ("top_p", "seed")):
             body[k_dst] = gen[k_src]
     thinking = gen.get("thinking_config") or {}
-    if str(thinking.get("thinking_level", "")).upper() == "NONE":
+    level = str(thinking.get("thinking_level", "")).upper()
+    # adk_submission sends enable_thinking=false unless thoughts are included or a level is set.
+    if level == "NONE" or (not level and not thinking.get("include_thoughts", False)):
         body["reasoning"] = {"enabled": False}
     else:
         body["reasoning"] = {"max_tokens": int(thinking.get("thinking_budget", 4096)), "exclude": True}

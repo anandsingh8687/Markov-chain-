@@ -4,7 +4,6 @@ description: Single fixer that delegates code localization to a fresh-context sc
 instruction: !include prompts/system.md
 tools:
   - run_command
-  - read_file
   - edit_file
   - get_status
   - submit_patch

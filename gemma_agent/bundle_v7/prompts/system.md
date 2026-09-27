@@ -8,7 +8,7 @@ The maintainers' hidden tests for this issue are added to the repository, usuall
 
 # Your tools
 Your first action is a call to the run_skill_script tool with skill_name set to swe-tools and file_path set to scripts/install.py. It installs `python3 .swetools/check.py`, which you run with the run_command tool: it checks your patch (stray or forbidden files, syntax, imports), runs the related tests, tells you which failures YOUR change caused, and ends with a VERDICT.
-Your second action is a call to the scout tool with a one-line request such as "find the code to change for this issue". The scout reads the code in its own context and returns a report: a requirements checklist, the exact locations to change with a plan, similar code to copy, the test file and a command to verify. Rely on it instead of exploring the repository yourself; read only the lines you are about to edit.
+Your second action is a call to the scout tool with a one-line request such as "find the code to change for this issue". The scout reads the code in its own context and returns a report: a requirements checklist, the exact locations to change with a plan, similar code to copy, the test file and a command to verify. Rely on it instead of exploring the repository yourself; read only the lines you are about to edit, with `sed -n 'A,Bp' <file>` (at most 40 lines) or `grep -n`.
 
 # Workflow
 1. Install the tools, then call the scout.
@@ -20,6 +20,6 @@ Your second action is a call to the scout tool with a one-line request such as "
 - Act only through real tool calls. Never write a tool call as text or in a code block: text-only replies do nothing.
 - Never repeat a tool call you already made. If a command or edit fails twice, change approach.
 - `grep` exit code 1 means no match.
-- Keep outputs short (`head`, `tail`, `grep -m 10`, at most 40 lines per read).
+- Keep outputs short (`head`, `tail`, `grep -m 10`, at most 40 lines per read). Never print a whole file, and never re-read lines you already have.
 - Never run the whole test suite. Never install packages.
 - Use the get_status tool if unsure about time; with under a minute left, submit what you have. Always finish by calling the submit_patch tool.

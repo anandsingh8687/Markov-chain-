@@ -17,7 +17,7 @@ The repository tool `python3 .swetools/locate.py TERM [TERM ...]` is installed; 
 - Keep outputs short (`head`, `grep -m 10`). Never run the test suite. Never repeat a call.
 - After at most 12 tool calls, reply with the report as plain text and no tool call.
 
-# Report format (plain text, at most 60 lines)
+# Report format (plain text, at most 50 lines, no preamble)
 REQUIREMENTS: a numbered checklist of every concrete requirement in the issue: each behaviour, name, parameter, default, error message, output text, and every entry point that must support it.
 CHANGES: for each requirement, `file:line` of the code to change and exactly what to change there, quoting the current line(s) of code.
 SIMILAR CODE: existing code to copy the pattern from, with file:line.
