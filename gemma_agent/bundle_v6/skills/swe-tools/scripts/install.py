@@ -5,7 +5,7 @@ FILES = {'_ws.py': '"""Shared helpers: find the repository, run commands, keep o
 
 
 def find_ws():
-    for cand in (os.environ.get("PWD"), "/workspace"):
+    for cand in (os.environ.get("PWD"), os.environ.get("SWE_WS"), "/workspace"):
         if cand and os.path.isdir(os.path.join(cand, ".git")):
             return cand
     d = os.getcwd()

@@ -205,10 +205,10 @@ def run_skill_script(agent: Agent, ctx: tools.Context, args: dict) -> str:
     with tempfile.TemporaryDirectory() as td:
         shutil.copytree(skill, td, dirs_exist_ok=True)
         extra = [str(a) for a in (args.get("args") or [])] if isinstance(args.get("args"), list) else []
-        cmd = "python3 " + rel + "".join(" " + json.dumps(a) for a in extra)
-        e = env.command_env(ctx.venv, ctx.tmp)
-        e["PWD"] = str(ctx.ws)
-        r = env.run_sandboxed(cmd, Path(td), e, 120)
+        wrapper = (f"import os, runpy, sys; os.chdir({td!r}); sys.argv = {[rel] + extra!r}; "
+                   f"runpy.run_path({rel!r}, run_name='__main__')")
+        cmd = "python3 -c " + json.dumps(wrapper)
+        r = env.run_sandboxed(cmd, ctx.ws, env.command_env(ctx.venv, ctx.tmp), 120)
     return json.dumps({"stdout": ctx.to_agent(r.stdout)[:5000], "stderr": ctx.to_agent(r.stderr)[:2000]})
 
 
