@@ -21,3 +21,10 @@ u16s: won 58/89 (orig 57), mean +4234 (orig +3458), exact 59
 u16sL: won 58/89 (orig 57), mean +4234 (orig +3458), exact 59
 u16smL: won 58/89 (orig 57), mean +4156 (orig +3458), exact 4
 U16DONE
+fr17: won 62/89 (orig 57), mean +5212 (orig +3458), exact 31
+ld3: won 62/89 (orig 57), mean +5212 (orig +3458), exact 31
+u16sH: won 63/89 (orig 57), mean +5979 (orig +3458), exact 17
+G16DONE
+u16sX2: won 58/89 (orig 57), mean +4244 (orig +3458), exact 58
+u16sX1: won 58/89 (orig 57), mean +3405 (orig +3458), exact 48
+X16DONE
