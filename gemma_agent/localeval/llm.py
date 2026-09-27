@@ -27,7 +27,9 @@ class LLMError(Exception):
 
 PAID_MODEL = os.environ.get("LLM_PAID_MODEL", "google/gemma-4-31b-it")
 # fp4 hosts are closest to the harness's W4A16 QAT weights, and cheapest.
-PAID_PROVIDERS = os.environ.get("LLM_PAID_PROVIDERS", "CoreWeave,Chutes,Novita").split(",")
+PAID_PROVIDERS = [p for p in os.environ.get("LLM_PAID_PROVIDERS", "").split(",") if p]
+# "throughput" (default) routes to the fastest host: agent steps are sequential, so latency is wall time.
+PROVIDER_SORT = os.environ.get("LLM_PROVIDER_SORT", "throughput")
 SPEND_CAP = float(os.environ.get("LLM_SPEND_CAP", "2.5"))
 _spent = {"usd": 0.0, "free_calls": 0, "paid_calls": 0}
 _lock = threading.Lock()
@@ -58,8 +60,10 @@ def _body(model: str, messages: list[dict], tools: list[dict], gen: dict, max_to
     else:
         body["reasoning"] = {"max_tokens": int(thinking.get("thinking_budget", 4096)), "exclude": True}
     if not free:
-        body["provider"] = {"order": PAID_PROVIDERS, "allow_fallbacks": True, "require_parameters": True,
-                            "sort": "price"}
+        body["provider"] = {"allow_fallbacks": True, "require_parameters": True, "sort": PROVIDER_SORT,
+                            "max_price": {"prompt": 0.5, "completion": 1.5}}
+        if PAID_PROVIDERS:
+            body["provider"]["order"] = PAID_PROVIDERS
     return body
 
 
