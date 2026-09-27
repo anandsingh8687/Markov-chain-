@@ -93,3 +93,39 @@ we deviate (median bank $110k → $77k; `gbtop.py`, `spec_top.txt`).
 A full demand-matched planner that schedules land, crops and herds for the whole
 game from the same model, with an efficient labour router (the gap to DSM's
 ~$130k banks). HERD is its first building block.
+
+## Progress log
+
+### Rejected on the way (2026-09-27)
+
+| Idea | Result |
+| --- | --- |
+| Sheep ranch on SE with a 3-hand crew (RNC, `research/tools/v12/rnc_layer.py`), 2+ yarn stores | −$33k in both test games: hands 13-15 cost fib(12-14) = $233-610 **each per day**. Extra labour cannot pay; value must come from redeploying the existing ~12 hands. |
+| Carrot swap threshold `V9_CARROT_RATIO` 1.3 / 1.5 / 1.7 (v14 uses 2.0), 203 live games | 125 / 138 / 138 won against 139; paired −$242 / −$11 / −$5 |
+| Benchmarking against top-team ghosts (`gbtop.py`) | invalid: ghost banks collapse from $110k to $77k when we deviate |
+
+**Market facts at day 22 of v14's 118 live games** (price ÷ base):
+* wool is glutted unless the town has 2+ yarn stores (3-4 stores: $200-240 all game);
+* milk is glutted after day 18;
+* tomatoes (1.05-1.53×), carrots (1.06-1.61×) and eggs (1.0-1.16×) are under-supplied.
+
+### Planner (`agents/v17/planner.py`), measured by takeover
+
+`agents/v17/hybrid.py` plays v14 until turn T0, then hands over to the planner.
+`research/tools/v12/hbench.py` compares its bank with pure v14 on the same seeds
+(s8, 4 seeds, against v14):
+
+| Version | Takeover day 29 | 28 | 25 | 21 |
+| --- | --- | --- | --- | --- |
+| old circuit2 prototype | | −10,274 | −16,838 | −26,956 |
+| v0 (tend, harvest, sell) | −1,876 | −2,931 | | |
+| + last-day water/fertilize before harvest, delivery, hiring | −501 | −2,386 | −10,689 | |
+| + dollar-valued jobs in engine order, zones, two-pass assignment, ongoing-harvest urgency | −650 | −2,706 | **−8,881** | −16,502 |
+
+Remaining gaps, from the traces (`hops.py`, `hunit.py`, `hjob.py`):
+* the planner walks about 1.7× more than the tape;
+* it produces less wheat and carrots in the last 5 days: the tape replants on a
+  choreographed cycle, and uses fertilizer;
+* the fertilizer economy and selling timing need work.
+
+The planner has to reach parity from early takeovers before it can replace v14.

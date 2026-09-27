@@ -115,6 +115,10 @@ def step_toward(pos, tgt):
     return None
 
 
+def quad(p):
+    return ("N" if p[1] < 5 else "S") + ("W" if p[0] < 5 else "E")
+
+
 def nearest_access(pos):
     return min(ACCESS, key=lambda a: (dist(pos, a), a))
 
@@ -159,6 +163,10 @@ class Planner:
         crop = self._design.get(p)
         if t is None or (isinstance(t, dict) and t.get("kind") == "WEED"):
             if crop and crop in CROPS and not CROPS[crop]["ongoing"]:
+                best = max(("WHEAT", "CARROT"), key=lambda c: self.yield_by_end(c, day) * pr.get(c, 0) - CROPS[c]["seed"])
+                if self.yield_by_end(best, day) * pr.get(best, 0) - CROPS[best]["seed"] > \
+                        self.yield_by_end(crop, day) * pr.get(crop, 0) - CROPS[crop]["seed"] + 10:
+                    crop = best
                 gain = self.yield_by_end(crop, day) * pr.get(crop, 0) - CROPS[crop]["seed"]
                 if gain > 15 and day <= 27:
                     return [(gain * 0.35, "DIG")] if t is not None else [(gain * 0.5, "PLANT:" + crop)]
@@ -177,8 +185,8 @@ class Planner:
                 prods_left = 0 if age > last_prod else (c["my"] if age < c["fyd"] else (last_prod - age) // c["interval"] + (0 if (age - c["fyd"]) % c["interval"] == 0 else 1))
                 prods_left = max(0, min(prods_left, 29 - day))
                 if y > 0:
-                    urgent = last_day or age > last_prod or y >= c["my"] - 1
-                    jobs.append((y * price * (1.0 if urgent else 0.3), "HARVEST"))
+                    urgent = last_day or age >= last_prod or y >= 2 or hour >= 16
+                    jobs.append((y * price * (1.0 if urgent else 0.4), "HARVEST"))
                 if not watered and not last_day and cu >= 1 and (prods_left > 0 or y > 0):
                     jobs.append(((prods_left + y) * price, "WATER"))
             else:
@@ -223,7 +231,7 @@ class Planner:
             if t.get("fertilizer_available"):
                 jobs.append((pr.get("FERTILIZER", 0) * 0.9, "COLLECT_FERTILIZER"))
             if y > 0:
-                urgent = last_day or y >= a["held"] - 1
+                urgent = last_day or y >= a["held"] - 2 or day >= 28
                 jobs.append((y * price * (1.0 if urgent else 0.15), "HARVEST"))
         order = {"FERTILIZE": 0, "DIG": 0, "PLANT": 1, "FEED": 1, "WATER": 2, "CARE": 2, "COLLECT_FERTILIZER": 3, "HARVEST": 4}
         return sorted(jobs, key=lambda j: order.get(j[1].split(":")[0], 5))
@@ -255,7 +263,27 @@ class Planner:
                     tiles[(x, y)] = j
         free = {"WHEAT": int(shed.get("WHEAT", 0)), "FERTILIZER": int(shed.get("FERTILIZER", 0))}
         seeds_free = {k: int(v) for k, v in (priv.get("seeds") or {}).items()}
+        # zones: split units over quadrants in proportion to each quadrant's job value
+        qval = {}
+        for p, jl in tiles.items():
+            qval[quad(p)] = qval.get(quad(p), 0) + sum(v for v, _ in jl)
+        zone = {}
+        if qval:
+            tot = sum(qval.values()) or 1
+            order = sorted(qval, key=lambda q: -qval[q])
+            quota = {q: max(1, round(len(units) * qval[q] / tot)) for q in order}
+            k = 0
+            for q in order:
+                for _ in range(quota[q]):
+                    if k < len(units):
+                        zone[k] = q; k += 1
         claimed = set()
+        # pass 1: units walking to a still-valid target keep it
+        prev = s.get("tgt", {})
+        for i, pos in enumerate(units):
+            p = prev.get(i)
+            if p is not None and p in tiles and p != pos and p not in claimed:
+                claimed.add(p)
         cmds = []
         drop_now = {}
         steps_left = LAST - step
@@ -275,6 +303,9 @@ class Planner:
                 continue
             # choose a job: value / (distance + 1)
             best = None
+            keep = prev.get(i)
+            if keep is not None and keep in tiles and keep != pos:
+                claimed.discard(keep)          # our own reservation
             for p, jl in tiles.items():
                 if p in claimed:
                     continue
@@ -305,9 +336,11 @@ class Planner:
                 d = dist(pos, p)
                 if steps_left < d + dist(p, nearest_access(p)):
                     continue
-                sc = pr / (d + 1)
-                if s.get("tgt", {}).get(i) == p:
-                    sc *= 1.5          # keep yesterday's-turn target: no oscillation
+                sc = pr / (d + 1) ** 1.5
+                if zone.get(i) is not None and quad(p) != zone[i]:
+                    sc *= 0.5
+                if keep == p:
+                    sc *= 3.0          # finish the walk already started
                 if best is None or sc > best[0]:
                     best = (sc, p, op)
             if best is None:
