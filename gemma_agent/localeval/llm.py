@@ -95,57 +95,13 @@ def _vllm_body(messages: list[dict], tools: list[dict], gen: dict, max_tokens: i
     return body
 
 
-def _post_stream(body: dict, key: str) -> dict:
-    """Streamed chat completion reassembled into a normal response.
-
-    Streaming keeps bytes flowing through the RunPod HTTP proxy, which cuts idle
-    requests after 100 s (HTTP 524); the reassembled message is identical.
-    """
-    body = dict(body, stream=True, stream_options={"include_usage": True})
-    headers = {"Content-Type": "application/json", "User-Agent": "gemma-agent-localeval/1.0",
-               "Authorization": f"Bearer {key}", "Accept": "text/event-stream"}
-    req = urllib.request.Request(f"{API_BASE}/chat/completions", json.dumps(body).encode(), headers)
-    content, calls, finish, usage = [], {}, None, {}
-    with urllib.request.urlopen(req, timeout=900) as resp:
-        for raw in resp:
-            line = raw.decode("utf-8", "replace").strip()
-            if not line.startswith("data:"):
-                continue
-            payload = line[5:].strip()
-            if payload == "[DONE]":
-                break
-            chunk = json.loads(payload)
-            if chunk.get("usage"):
-                usage = chunk["usage"]
-            for ch in chunk.get("choices") or []:
-                delta = ch.get("delta") or {}
-                if delta.get("content"):
-                    content.append(delta["content"])
-                for tc in delta.get("tool_calls") or []:
-                    slot = calls.setdefault(tc.get("index", 0), {"id": None, "type": "function",
-                                                                 "function": {"name": "", "arguments": ""}})
-                    if tc.get("id"):
-                        slot["id"] = tc["id"]
-                    fn = tc.get("function") or {}
-                    if fn.get("name"):
-                        slot["function"]["name"] += fn["name"]
-                    if fn.get("arguments"):
-                        slot["function"]["arguments"] += fn["arguments"]
-                if ch.get("finish_reason"):
-                    finish = ch["finish_reason"]
-    message = {"role": "assistant", "content": "".join(content) or None}
-    if calls:
-        message["tool_calls"] = [calls[i] for i in sorted(calls)]
-    return {"choices": [{"message": message, "finish_reason": finish}], "usage": usage}
-
-
 def _complete_vllm(messages: list[dict], tools: list[dict], gen: dict) -> dict:
     max_tokens = int(gen.get("max_output_tokens", 16384))
     body = _vllm_body(messages, tools, gen, max_tokens)
     delay, last = 2.0, ""
     for _ in range(6):
         try:
-            data = _post_stream(body, key=os.environ.get("VLLM_API_KEY", "EMPTY"))
+            data = _post(body, key=os.environ.get("VLLM_API_KEY", "EMPTY"))
             choice = data["choices"][0]
             with _lock:
                 _spent["paid_calls"] += 1
