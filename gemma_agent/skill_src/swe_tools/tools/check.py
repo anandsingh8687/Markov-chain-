@@ -1,6 +1,9 @@
 """Check the current patch before submit_patch().
 
-usage: python3 .swetools/check.py [TEST_FILE ...]
+usage: python3 .swetools/check.py --repro /tmp/repro.py [TEST_FILE ...]
+
+0. With --repro, runs the reproduction script WITHOUT your change and WITH it:
+   a correct repro exits non-zero (AssertionError) before and 0 after.
 
 1. Lists what the patch contains and flags problems: files under tests/,
    conftest.py / pytest.ini changes, stray new files (scratch scripts).
@@ -58,8 +61,43 @@ def failed_ids(out):
     return sorted(set(re.findall(r"^(?:FAILED|ERROR) (\S+)", out, re.M)))
 
 
+def run_repro(ws, repro):
+    """Run the repro with the change stashed (before) and applied (after)."""
+    if not os.path.isfile(repro):
+        return ["repro script %s not found: write it first (in /tmp)" % repro]
+    cmd = "timeout 90 python3 -B %s 2>&1 | tail -6" % repro
+    _, st, _ = sh("git stash push -q -u -- . && echo ok", ws, timeout=60)
+    try:
+        code0, out0, _ = sh(["bash", "-c", "set -o pipefail; " + cmd], ws, timeout=120)
+    finally:
+        if "ok" in st:
+            sh("git stash pop -q", ws, timeout=60)
+    code1, out1, _ = sh(["bash", "-c", "set -o pipefail; " + cmd], ws, timeout=120)
+    print("REPRO %s" % repro)
+    print("  without your change: %s" % ("FAILS (exit %d)" % code0 if code0 else "passes"))
+    for line in out0.strip().splitlines()[-3:]:
+        print("      " + line[:200])
+    print("  with your change:    %s" % ("FAILS (exit %d)" % code1 if code1 else "passes"))
+    for line in out1.strip().splitlines()[-4:]:
+        print("      " + line[:200])
+    problems = []
+    if not code0:
+        problems.append("the repro passes WITHOUT your change, so it does not reproduce the issue: make it use the "
+                        "public API exactly as the issue describes and assert the expected result; if it truly "
+                        "passes, the bug is elsewhere - try other input shapes and entry points")
+    if code1:
+        problems.append("the repro still fails WITH your change: the fix does not work yet")
+    return problems
+
+
 def main():
     ws = workspace()
+    args = sys.argv[1:]
+    repro = None
+    if "--repro" in args:
+        i = args.index("--repro")
+        repro = args[i + 1] if i + 1 < len(args) else ""
+        del args[i:i + 2]
     modified, new = changed_files(ws)
     problems = []
     print("PATCH CONTENTS")
@@ -93,7 +131,10 @@ def main():
             last = (err or out).strip().splitlines()[-1:] or ["?"]
             problems.append("import %s fails: %s" % (mod, last[0][:200]))
 
-    tests = [t for t in sys.argv[1:] if t.strip()] or related_tests(ws, changed_src)
+    if repro is not None:
+        print()
+        problems += run_repro(ws, repro)
+    tests = [t for t in args if t.strip()] or related_tests(ws, changed_src)
     print("\nTESTS: " + (" ".join(tests) if tests else "no related test files found"))
     caused = []
     if tests:
@@ -121,12 +162,15 @@ def main():
     problems += ["fix failing test %s" % c for c in caused]
 
     print()
+    if repro is None and not problems:
+        problems.append("NOT VERIFIED: write /tmp/repro.py that uses the public API the way the issue describes and "
+                        "asserts the expected result, then run check.py --repro /tmp/repro.py")
     if problems:
         print("VERDICT: FIX BEFORE SUBMITTING")
         for p in problems:
             print("  - " + p)
     else:
-        print("VERDICT: OK - patch is clean; make sure every requirement of the issue is implemented, then submit_patch()")
+        print("VERDICT: OK - repro fails before and passes after, tests pass; make sure every requirement of the issue is implemented, then submit_patch()")
 
 
 if __name__ == "__main__":
