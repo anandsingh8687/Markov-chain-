@@ -31,6 +31,7 @@ Leader: about 0.15. Top 10: about 0.13.
 | Test bed | What it is | Strength | Weakness |
 | --- | --- | --- | --- |
 | Leaderboard submission | host runs the bundle on the hidden tasks | the real score | 1 per day, one number only, no logs |
+| RunPod GPU replica (`gpu/runpod_lab.py`) | one rented 48 GB GPU serving the exact Kaggle stack (vLLM 0.19.1, the Kaggle weights, gemma4 parsers); localeval with LLM_BACKEND=vllm | same serving stack as the scorer, no queue, about $1 per 32-task run of one bundle | 6 tasks at a time (KV cache ~131k tokens); local grader, not the hidden tasks |
 | Kaggle GPU lab (`lab/make_lab.py`) | private notebook running the official harness and the exact model on 4x L4 | real harness, full traces, free | Kaggle GPU queue can take hours; one run of 2 bundles x 16 tasks takes about 2.5 h |
 | OpenRouter replica (`localeval/`) | our copy of the harness; Gemma 4 31B served by OpenRouter hosts | fast (16 tasks in about 20 min), full traces | paid; different hosts and tool-call parser than the real vLLM |
 
@@ -48,6 +49,19 @@ same public task file, so improvements are checked on tasks we did not tune on.
 | v8 | - | 5/16 |
 | v9 | - | 6/16 |
 | v11 | queued (Lab 4) | - (OpenRouter credit used up) |
+
+## RunPod GPU replica results (2026-09-28, 16 lab + 16 held-out tasks)
+
+| Bundle | Lab 16 | Held-out 16 | Total |
+| --- | --- | --- | --- |
+| v7 | 5 | 7 | 12/32 |
+| v11 | 6 | 5 | 11/32 |
+| v12 | 6 | 4 | 10/32 |
+
+14 of 32 tasks are solved by at least one bundle. No tool-call corruption appeared on the replica
+for any bundle; v11/v12 lose tasks to context overflow (6 each) from reading many lines. The
+replica still overestimates the public score (v7: 37% here vs 0.08 public), so the hidden tasks are
+harder than ours. GPU spend: $3.20 of $10.
 
 ## What we learned
 
