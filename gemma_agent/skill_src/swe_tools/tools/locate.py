@@ -47,6 +47,15 @@ def main():
     if not terms:
         print(__doc__)
         return
+    # "padding width" -> padding_width / paddingWidth, so phrases also match identifiers.
+    for t in list(terms):
+        words = re.findall(r"[A-Za-z][A-Za-z0-9]*", t)
+        if 2 <= len(words) <= 3 and " " in t.strip():
+            snake = "_".join(w.lower() for w in words)
+            camel = words[0].lower() + "".join(w.capitalize() for w in words[1:])
+            for v in (snake, camel):
+                if v not in terms:
+                    terms.append(v)
     ws = workspace()
     files = tracked_py(ws)
     src = [f for f in files if not is_test_path(f)]

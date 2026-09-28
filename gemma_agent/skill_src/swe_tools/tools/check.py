@@ -19,7 +19,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _ws import changed_files, is_test_path, sh, tracked_py, warn_if_repeated, workspace  # noqa: E402
+from _ws import changed_files, is_test_path, load_state, save_state, sh, tracked_py, warn_if_repeated, workspace  # noqa: E402
 
 PYTEST = "python3 -m pytest -q -p no:cacheprovider -o addopts='' -p no:anyio --import-mode=importlib"
 
@@ -55,6 +55,66 @@ def related_tests(ws, changed_src):
         if s:
             scores[t] = s
     return [t for t, _ in sorted(scores.items(), key=lambda kv: -kv[1])[:4]]
+
+
+def removed_lines(ws):
+    """Non-trivial lines the patch removed or replaced, with their file."""
+    _, diff, _ = sh(["git", "diff", "-U0", "HEAD", "--", "*.py"], ws)
+    out, cur = [], None
+    skip = ("#", '"' * 3, "'" * 3, "import ", "from ")
+    for line in diff.splitlines():
+        if line.startswith("--- a/"):
+            cur = line[6:]
+        elif line.startswith("-") and not line.startswith("---") and cur and not is_test_path(cur):
+            text = line[1:].strip()
+            if len(text) >= 14 and not text.startswith(skip):
+                out.append((cur, text))
+    return out
+
+
+def sibling_sweep(ws):
+    """Places that still contain code the patch changed elsewhere (same bug, other copy)."""
+    notes, seen = [], set()
+    for f, text in removed_lines(ws)[:12]:
+        if text in seen:
+            continue
+        seen.add(text)
+        _, out, _ = sh(["git", "grep", "-n", "-F", "-e", text, "--", "*.py"], ws)
+        for hit in out.splitlines()[:4]:
+            path = hit.split(":", 1)[0]
+            if not is_test_path(path):
+                notes.append("%s  still has: %s" % (":".join(hit.split(":", 2)[:2]), text[:90]))
+    return notes[:6]
+
+
+def changed_names(ws):
+    """Functions/classes around the changed hunks (from the diff hunk headers)."""
+    _, diff, _ = sh(["git", "diff", "HEAD", "--", "*.py"], ws)
+    names = set()
+    for m in re.finditer(r"^@@[^@]*@@\s*(?:async\s+)?(?:def|class)\s+(\w+)", diff, re.M):
+        names.add(m.group(1))
+    for m in re.finditer(r"^\+\s*(?:async\s+)?(?:def|class)\s+(\w+)", diff, re.M):
+        names.add(m.group(1))
+    return [n for n in names if not n.startswith("__") and len(n) > 3]
+
+
+def tests_mentioning(ws, names, exclude):
+    if not names:
+        return []
+    tests = [t for t in tracked_py(ws) if is_test_path(t) and os.path.basename(t) != "conftest.py"]
+    hits = {}
+    for t in tests:
+        if t in exclude:
+            continue
+        try:
+            with open(os.path.join(ws, t), encoding="utf-8", errors="replace") as fh:
+                text = fh.read()
+        except OSError:
+            continue
+        c = sum(text.count(n) for n in names)
+        if c:
+            hits[t] = c
+    return [t for t, _ in sorted(hits.items(), key=lambda kv: -kv[1])[:2]]
 
 
 def failed_ids(out):
@@ -97,10 +157,17 @@ def main():
     warn_if_repeated(sys.argv + [diff])
     args = sys.argv[1:]
     repro = None
+    state = load_state()
     if "--repro" in args:
         i = args.index("--repro")
         repro = args[i + 1] if i + 1 < len(args) else ""
         del args[i:i + 2]
+        if repro:
+            state["repro"] = repro
+            save_state(state)
+    elif state.get("repro") and os.path.isfile(state["repro"]):
+        repro = state["repro"]
+        print("(using your repro from earlier: %s)" % repro)
     modified, new = changed_files(ws)
     problems = []
     print("PATCH CONTENTS")
@@ -142,6 +209,7 @@ def main():
     extra_src = [t for t in given if not is_test_path(t) and t.endswith(".py")]
     if not tests:
         tests = related_tests(ws, changed_src + [f for f in extra_src if f not in changed_src])
+        tests = (tests + tests_mentioning(ws, changed_names(ws), tests))[:5]
     print("\nTESTS: " + (" ".join(tests) if tests else "no related test files found"))
     caused = []
     if tests:
@@ -160,15 +228,27 @@ def main():
                 if "ok" in st:
                     sh("git stash pop -q", ws, timeout=60)
             before = set(failed_ids(out0))
+            empty_patch = not modified and not new
             for fid in fails:
-                tag = "ALSO FAILS WITHOUT YOUR CHANGE (ignore)" if fid in before else "CAUSED BY YOUR CHANGE"
+                is_caused = fid not in before and not empty_patch
+                tag = "CAUSED BY YOUR CHANGE" if is_caused else "ALSO FAILS WITHOUT YOUR CHANGE (ignore)"
                 print("  %s  <- %s" % (fid, tag))
-                if fid not in before:
+                if is_caused:
                     caused.append(fid)
-            detail = [l for l in out.splitlines() if l.startswith("E ")][:8]
-            if caused and detail:
-                print("  first errors:\n    " + "\n    ".join(d[:160] for d in detail))
-    problems += ["fix failing test %s" % c for c in caused]
+            if caused:
+                _, detail, _ = sh(PYTEST.replace("-q", "-q --tb=short") + " " + " ".join(caused[:3]) +
+                                  " 2>&1 | grep -E '^(E |>|[^ ].*:[0-9]+: )' | head -24", ws, timeout=200)
+                if detail.strip():
+                    print("  why they fail:\n    " + "\n    ".join(l[:170] for l in detail.splitlines()))
+                print("  If a failing test's expected value is exactly the buggy behaviour the issue asks to change, "
+                      "that test is outdated (the maintainers update it): keep your fix. Otherwise fix your code.")
+    problems += ["fix failing test %s (or confirm it encodes the old buggy behaviour)" % c for c in caused]
+    siblings = sibling_sweep(ws)
+    if siblings:
+        print("\nSAME CODE ELSEWHERE (you changed this code in one place; these copies may have the same bug):")
+        for n in siblings:
+            print("  " + n)
+        problems.append("check the SAME CODE ELSEWHERE list: apply the same fix there if it has the same bug")
 
     print()
     if repro is None and not problems:

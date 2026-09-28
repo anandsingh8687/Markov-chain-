@@ -63,3 +63,31 @@ def warn_if_repeated(argv):
                 fh.write(key + "\n")
         except OSError:
             pass
+
+
+def _state_path():
+    import tempfile
+    return os.path.join(tempfile.gettempdir(), ".swetools_state.json")
+
+
+def load_state():
+    import json
+    try:
+        with open(_state_path()) as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return {}
+
+
+def save_state(state):
+    import json
+    try:
+        with open(_state_path(), "w") as fh:
+            json.dump(state, fh)
+    except OSError:
+        pass
+
+
+def digest(*parts):
+    import hashlib
+    return hashlib.sha1("\0".join(parts).encode("utf-8", "replace")).hexdigest()[:16]

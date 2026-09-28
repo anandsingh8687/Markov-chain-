@@ -10,7 +10,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _ws import workspace, warn_if_repeated  # noqa: E402
+from _ws import digest, load_state, save_state, workspace  # noqa: E402
 
 
 def main():
@@ -23,7 +23,20 @@ def main():
             lines = fh.read().split("\n")
     except OSError as exc:
         sys.exit("error: %s" % exc)
-    warn_if_repeated(sys.argv + ["\n".join(lines)])
+    state = load_state()
+    rel = sys.argv[1]
+    key = digest(*(sys.argv[1:] + ["\n".join(lines)]))
+    seen = state.setdefault("shown", [])
+    moved = state.get("moved", {})
+    if rel in moved:
+        del moved[rel]
+    if key in seen:
+        save_state(state)
+        print("UNCHANGED: you already viewed exactly these lines and the file has not changed since, so they "
+              "are not printed again. Use what you read, or view a different range.")
+        return
+    seen.append(key)
+    save_state(state)
     arg = sys.argv[2]
     if arg.startswith("/") and arg.endswith("/") and len(arg) > 1:
         pat = re.compile(arg[1:-1])
