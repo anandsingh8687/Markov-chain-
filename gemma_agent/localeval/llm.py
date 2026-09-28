@@ -14,7 +14,7 @@ API_BASE = os.environ.get("LLM_API_BASE", "https://openrouter.ai/api/v1")
 # The free variant costs nothing (1,000 requests/day on a funded key); switch with LLM_MODEL.
 MODEL = os.environ.get("LLM_MODEL", "google/gemma-4-31b-it:free")
 MAX_MODEL_LEN = 32768
-RETRY_STATUS = {429, 500, 502, 503, 504}
+RETRY_STATUS = {429, 500, 502, 503, 504, 524}
 
 
 class ContextOverflow(Exception):
