@@ -51,3 +51,27 @@ beats Fieldbook 16-0.
 
 V14's single-tape core plus the V18 fixes (herd swap with wool weight 3, land retry,
 land debt), measured on the whole league (`h2h2_x6league.jsonl`).
+
+## 4. Final results (2026-09-28)
+
+**Wider league** (the game is seat-symmetric, so each seed is one distinct game):
+
+| Agent | Distinct games won | Rate |
+| --- | --- | --- |
+| V14 (x6) | 119 / 136 | 87.5% |
+| V14 + herd swap | 99 / 136 | 73% |
+| V14 + land fixes | 41 / 80 (first league only) | 51% |
+
+* V14 beats every public family (Fieldbook and v58 8-0) and loses only to V16 and V17
+  (3-5, −$1-2k a game).
+* The V18 layers transfer badly to V14: the land retry fights V14's own land schedule.
+
+**Top-team route transplant (V19), rejected.**
+* 6 of the top 10 teams (M&M&P&Q, DSM, Vadim, DECEM, Mother-Goose, mtmr) use V16's exact
+  opening. `buildroutes.py` swapped V16's route library for their current highest-margin
+  tapes, one per first shop.
+* DSM-only library: 24/64 (−$13.9k a game). Six-team library: 12/64 (−$57.6k a game).
+* A top team's strength is its live adaptive logic, which is private, not its tapes.
+
+**Status when the work stopped:** v18c (56618384) and v18d (56621918) are live. No
+further submissions.
