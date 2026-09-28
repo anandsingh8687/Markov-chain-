@@ -99,7 +99,7 @@ def _complete_vllm(messages: list[dict], tools: list[dict], gen: dict) -> dict:
     max_tokens = int(gen.get("max_output_tokens", 16384))
     body = _vllm_body(messages, tools, gen, max_tokens)
     delay, last = 2.0, ""
-    for _ in range(6):
+    for _ in range(8):
         try:
             data = _post(body, key=os.environ.get("VLLM_API_KEY", "EMPTY"))
             choice = data["choices"][0]
@@ -113,7 +113,8 @@ def _complete_vllm(messages: list[dict], tools: list[dict], gen: dict) -> dict:
                                     or "context length" in text):
                 raise ContextOverflow(text) from None
             last = f"HTTP {exc.code}: {text}"
-            if exc.code not in RETRY_STATUS:
+            # The RunPod HTTP proxy intermittently answers 404 for a healthy pod: retry it too.
+            if exc.code not in RETRY_STATUS and exc.code != 404:
                 break
         except (urllib.error.URLError, TimeoutError, ConnectionError, LLMError) as exc:
             last = str(exc)[:800]
