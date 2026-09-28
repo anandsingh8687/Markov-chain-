@@ -16,7 +16,7 @@ import sys
 from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _ws import is_test_path, tracked_py, workspace  # noqa: E402
+from _ws import is_test_path, tracked_py, workspace, warn_if_repeated  # noqa: E402
 
 WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
@@ -42,6 +42,7 @@ def defs_in(path, text):
 
 
 def main():
+    warn_if_repeated(sys.argv)
     terms = [t for t in sys.argv[1:] if t.strip()]
     if not terms:
         print(__doc__)

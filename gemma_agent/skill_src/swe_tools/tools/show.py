@@ -10,7 +10,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _ws import workspace  # noqa: E402
+from _ws import workspace, warn_if_repeated  # noqa: E402
 
 
 def main():
@@ -23,6 +23,7 @@ def main():
             lines = fh.read().split("\n")
     except OSError as exc:
         sys.exit("error: %s" % exc)
+    warn_if_repeated(sys.argv + ["\n".join(lines)])
     arg = sys.argv[2]
     if arg.startswith("/") and arg.endswith("/") and len(arg) > 1:
         pat = re.compile(arg[1:-1])

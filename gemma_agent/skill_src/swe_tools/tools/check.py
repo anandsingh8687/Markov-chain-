@@ -19,7 +19,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _ws import changed_files, is_test_path, sh, tracked_py, workspace  # noqa: E402
+from _ws import changed_files, is_test_path, sh, tracked_py, warn_if_repeated, workspace  # noqa: E402
 
 PYTEST = "python3 -m pytest -q -p no:cacheprovider -o addopts='' -p no:anyio --import-mode=importlib"
 
@@ -84,7 +84,8 @@ def run_repro(ws, repro):
     if not code0:
         problems.append("the repro passes WITHOUT your change, so it does not reproduce the issue: make it use the "
                         "public API exactly as the issue describes and assert the expected result; if it truly "
-                        "passes, the bug is elsewhere - try other input shapes and entry points")
+                        "passes, the bug is elsewhere - try other input shapes and entry points. (If the issue "
+                        "asks for no behaviour change, e.g. a refactor or speed-up, run check.py without --repro.)")
     if code1:
         problems.append("the repro still fails WITH your change: the fix does not work yet")
     return problems
@@ -92,6 +93,8 @@ def run_repro(ws, repro):
 
 def main():
     ws = workspace()
+    _, diff, _ = sh(["git", "diff", "HEAD"], ws)
+    warn_if_repeated(sys.argv + [diff])
     args = sys.argv[1:]
     repro = None
     if "--repro" in args:
@@ -169,14 +172,13 @@ def main():
 
     print()
     if repro is None and not problems:
-        problems.append("NOT VERIFIED: write /tmp/repro.py that uses the public API the way the issue describes and "
-                        "asserts the expected result, then run check.py --repro /tmp/repro.py")
+        print("note: no --repro given; for a behaviour change, verify with check.py --repro /tmp/repro.py")
     if problems:
         print("VERDICT: FIX BEFORE SUBMITTING")
         for p in problems:
             print("  - " + p)
     else:
-        print("VERDICT: OK - repro fails before and passes after, tests pass; make sure every requirement of the issue is implemented, then submit_patch()")
+        print("VERDICT: OK - make sure every requirement of the issue is implemented, then call submit_patch")
 
 
 if __name__ == "__main__":

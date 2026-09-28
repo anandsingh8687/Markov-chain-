@@ -41,3 +41,25 @@ def changed_files(ws):
     _, mod, _ = sh(["git", "diff", "--name-only", "HEAD"], ws)
     _, new, _ = sh(["git", "ls-files", "--others", "--exclude-standard"], ws)
     return [f for f in mod.splitlines() if f], [f for f in new.splitlines() if f]
+
+
+def warn_if_repeated(argv):
+    """Tell the model when it re-runs an identical tool command (Gemma tends to loop)."""
+    import hashlib
+    import tempfile
+    key = hashlib.sha1("\0".join(argv).encode()).hexdigest()[:16]
+    path = os.path.join(tempfile.gettempdir(), ".swetools_seen")
+    try:
+        with open(path) as fh:
+            seen = set(fh.read().split())
+    except OSError:
+        seen = set()
+    if key in seen:
+        print("NOTE: you already ran this exact command. Repeating it gives the same answer: use what you "
+              "learned and take the next step (edit, check.py, or submit_patch).\n")
+    else:
+        try:
+            with open(path, "a") as fh:
+                fh.write(key + "\n")
+        except OSError:
+            pass
