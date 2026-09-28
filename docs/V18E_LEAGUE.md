@@ -75,3 +75,41 @@ land debt), measured on the whole league (`h2h2_x6league.jsonl`).
 
 **Status when the work stopped:** v18c (56618384) and v18d (56621918) are live. No
 further submissions.
+
+## 5. Breakthrough: FUNDGUARD (2026-09-28)
+
+The overview says the market is shared: orders from both players interleave unit by unit.
+So an opponent's day-0 orders move the prices that a fixed route plan was tuned on.
+
+**The failure, traced turn by turn** (`divstep.py`, `dbg24.py`; seed 18079083):
+
+* V16's day-0 tape buys wheat seed one at a time ($10) until its cash runs out.
+* Against Pipe-7 it ends day 0 with $7, and its day-1 hires ($4) go through.
+* Against Fieldbook, Fieldbook's day-0 wheat orders shift prices by $3. V16 buys one more
+  seed and ends day 0 with **$0**.
+* Every day-1 HIRE fails. Day 1 runs with no hands, and the plan cascades into a
+  −$77k loss.
+
+**The fix** (`fundguard_layer.py`): each turn,
+
+1. keep tomorrow's hiring money (the cost of at least 3 hires, plus $3), dropping any seed
+   or fertilizer buy that would spend it;
+2. if a HIRE, land, animal or seed order would still be unaffordable, sell shed stock first
+   to cover it.
+
+**League, 8 seeds, one seat** (the game is seat-symmetric):
+
+| Opponent | V18d | V18d + FUNDGUARD | V16 + FUNDGUARD |
+| --- | --- | --- | --- |
+| Fieldbook | 1-7 | **8-0, +$25.4k** | 8-0, +$25.3k |
+| v58 Known Streams | 1-7 | **8-0, +$30.0k** | 8-0, +$27.8k |
+| boatlee v13 | 4-4 | 8-0, +$47.0k | 8-0, +$40.8k |
+| kaito v21 | 4-4 | 8-0, +$46.8k | 8-0, +$42.3k |
+| haideptry | 7-1 | 7-1, +$6.9k | 7-1 |
+| Pipe-7 | 8-0 | 6-2, +$6.9k | 7-1 |
+| V14 | | 7-1, +$4.7k | 7-1 |
+| V16 / V17 / V18d | ~even | ~even | ~even |
+| **All 12 opponents** | | **75/96** | **78/96** |
+| **The 9 non-V16-family opponents** | | **64/72 (89%)** | **67/72 (93%)** |
+
+Wider validation (new seeds, the second league, V14 + FUNDGUARD) is in progress.
