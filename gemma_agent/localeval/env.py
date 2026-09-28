@@ -118,6 +118,23 @@ def configure_pytest_ini(ws: Path) -> None:
     ini.write_text(content)
 
 
+# Phase 2 (swegemma container_setup.setup_workspace_test_config, overwrite=True)
+# replaces pytest.ini with this, so grading runs in pytest's default prepend mode.
+VERIFY_PYTEST_INI = """[pytest]
+addopts = -p no:anyio
+norecursedirs = .* build dist venv
+python_classes = Test* *Test
+python_files = test_*.py *_test.py
+filterwarnings =
+    ignore::DeprecationWarning
+    ignore::UserWarning
+"""
+
+
+def configure_verify_pytest_ini(ws: Path) -> None:
+    (ws / "pytest.ini").write_text(VERIFY_PYTEST_INI)
+
+
 def configure_conftest(ws: Path) -> None:
     path = ws / "conftest.py"
     existing = path.read_text(errors="replace") if path.exists() else ""

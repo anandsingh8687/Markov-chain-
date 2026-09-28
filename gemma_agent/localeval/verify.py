@@ -62,7 +62,7 @@ def verify(task: dict, agent_patch: str, workdir: Path | None = None, timeout: i
     if not ok:
         result["error"] = "Failed to apply test_patch: " + how[-1500:]
         return result
-    env.configure_pytest_ini(ws)
+    env.configure_verify_pytest_ini(ws)
     env.configure_conftest(ws)
 
     targets = [f for f in files if f.endswith(".py") and (ws / f).exists()]

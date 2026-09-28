@@ -134,13 +134,19 @@ def main():
     if repro is not None:
         print()
         problems += run_repro(ws, repro)
-    tests = [t for t in args if t.strip()] or related_tests(ws, changed_src)
+    given = [t for t in args if t.strip()]
+    tests = [t for t in given if is_test_path(t)]
+    extra_src = [t for t in given if not is_test_path(t) and t.endswith(".py")]
+    if not tests:
+        tests = related_tests(ws, changed_src + [f for f in extra_src if f not in changed_src])
     print("\nTESTS: " + (" ".join(tests) if tests else "no related test files found"))
     caused = []
     if tests:
         code, out, err = sh(PYTEST + " " + " ".join(tests) + " 2>&1 | tail -40", ws, timeout=200)
         summary = [l for l in out.splitlines() if re.search(r"\b(passed|failed|error)", l)]
         print("  " + (summary[-1] if summary else out.strip().splitlines()[-1:] and out.strip().splitlines()[-1] or "no output"))
+        if "no tests ran" in out or not summary:
+            problems.append("no tests ran from %s: pass the test file(s) for the code you changed" % " ".join(tests))
         fails = failed_ids(out)
         if fails:
             _, st, _ = sh("git stash push -q --keep-index -- . && echo ok", ws, timeout=60)
