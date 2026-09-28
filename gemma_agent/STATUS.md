@@ -63,6 +63,21 @@ for any bundle; v11/v12 lose tasks to context overflow (6 each) from reading man
 replica still overestimates the public score (v7: 37% here vs 0.08 public), so the hidden tasks are
 harder than ours. GPU spend: $3.20 of $10.
 
+
+### v13 (2026-09-28 evening), clean GPU-replica runs
+
+| Set | v13 | v7 | v11 | v12 |
+| --- | --- | --- | --- | --- |
+| 32 analysed tasks | 10 | 12 | 11 | 10 |
+| 16 fresh tasks (never used for design) | 7 | 5 | - | - |
+| total 48 | 17 | 17 | - | - |
+
+v13 = fixes for every failure cause found in 96 traced runs (edit guards, run.py loop breaker, repro
+memory, same-code sweep, public-API repro, evidence-based scout). It solves tasks no earlier version
+solved (rich_3480, fastapi_14873, fastapi_14349) but loses others; the net is a tie. Single runs of 32-48
+tasks cannot resolve differences of 2-3 tasks, so bigger evaluations (all 125 valid tasks) are needed to
+measure real progress. RunPod spend so far: $6.86 of $10 (including ~$2 lost to proxy/host problems).
+
 ## What we learned
 
 1. **Runtime**: without a per-task time cap the hidden run exceeds 12 hours (3 failed submissions).
