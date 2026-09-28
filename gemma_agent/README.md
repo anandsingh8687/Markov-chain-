@@ -104,3 +104,17 @@ Note: before 2026-09-28 the replica sent a hidden 4096-token reasoning budget wh
 the scorer sends `enable_thinking=false`; only runs after commit 83769f5 match the scorer.
 Lab 3 (real harness, v6): at the 5-minute cutoff the harness keeps working-tree edits even
 without submit_patch, but 6 of the first 11 tasks ended with no edits at all after 35-140 calls.
+
+### 2026-09-28 findings (Lab 3 on the real harness + trace analysis)
+
+- Lab 3, official harness, regraded with the corrected grader: v5 6/16, v6 5/16. 7 of 16 v6 tasks
+  ended with no patch.
+- Cause on the real harness: vLLM's Gemma 4 tool-call parser corrupts calls with several string
+  arguments when the model closes a string with a backtick instead of its string delimiter,
+  e.g. run_skill_script got file_path="scripts/install.py`,skill_name:" and failed 105 times;
+  edit_file lost old_string 65 times; read_file got a mangled start_line key. The model then
+  copies its own malformed call. OpenRouter hosts do not show this, so only the Kaggle lab can.
+- v11 therefore uses single-argument tools only (run_command + .swetools edit.py/show.py, scout
+  AgentTool, submit_patch, get_status), has no backticks in any prompt, and tells the model to
+  rewrite a malformed call from scratch instead of repeating it.
+- OpenRouter replica (before credits ran out): v7 5/16 lab and 5/16 held-out; v8 5/16; v9 6/16.
