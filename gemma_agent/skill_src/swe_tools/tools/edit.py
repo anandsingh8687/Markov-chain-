@@ -17,7 +17,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _ws import is_test_path, workspace  # noqa: E402
+from _ws import is_test_path, warn_if_repeated, workspace  # noqa: E402
 
 
 def unescape_if_flattened(text):
@@ -26,6 +26,32 @@ def unescape_if_flattened(text):
     if "\n" not in body and "\\n" in body:
         return body.replace("\\n", "\n").replace("\\t", "\t").replace('\\"', '"') + "\n", True
     return text, False
+
+
+def _compiles(text, rel):
+    try:
+        compile(text, rel, "exec")
+        return None
+    except SyntaxError as exc:
+        return exc
+
+
+def _reindent(block, target):
+    """Shift a block so its first non-blank line starts at column `target`."""
+    first = next((l for l in block if l.strip()), None)
+    if first is None:
+        return block
+    delta = target - (len(first) - len(first.lstrip(" ")))
+    out = []
+    for l in block:
+        if not l.strip():
+            out.append(l)
+        elif delta >= 0:
+            out.append(" " * delta + l)
+        else:
+            cut = min(-delta, len(l) - len(l.lstrip(" ")))
+            out.append(l[cut:])
+    return out
 
 
 def main():
@@ -54,14 +80,32 @@ def main():
         sys.exit("error: file has %d lines; need 1 <= START <= END <= %d (or END = START-1 to insert)"
                  % (len(lines), len(lines)))
     new_text = "" if sys.stdin.isatty() else sys.stdin.read()
+    bad = [l for l in new_text.split("\n") if l.strip().startswith("EOF")]
+    if bad:
+        sys.exit("error: nothing written - the heredoc end marker is malformed (%r). End the command with a line "
+                 "that is exactly EOF, with nothing after it." % bad[0].strip())
+    warn_if_repeated(sys.argv + [new_text, old])
     new_text, fixed = unescape_if_flattened(new_text)
     new_lines = new_text.split("\n")
     if new_lines and new_lines[-1] == "":
         new_lines = new_lines[:-1]
     removed = lines[start - 1:end]
+    reindented = False
+    if rel.endswith(".py") and new_lines:
+        candidate = lines[:start - 1] + new_lines + lines[end:]
+        if _compiles("\n".join(candidate) + "\n", rel) is not None:
+            anchor = next((l for l in removed if l.strip()), None) or next(
+                (l for l in reversed(lines[:start - 1]) if l.strip()), "")
+            target = len(anchor) - len(anchor.lstrip(" "))
+            fixed_lines = _reindent(new_lines, target)
+            if fixed_lines != new_lines and _compiles(
+                    "\n".join(lines[:start - 1] + fixed_lines + lines[end:]) + "\n", rel) is None:
+                new_lines, reindented = fixed_lines, True
     lines[start - 1:end] = new_lines
     with open(path, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + ("\n" if trailing else ""))
+    if reindented:
+        print("note: your lines were mis-indented; shifted them to match the replaced code so the file compiles")
     if fixed:
         print("note: input had literal \\n sequences and no real newlines; decoded them")
     print("replaced %d line(s) %d-%d with %d line(s); later lines shift by %+d"
