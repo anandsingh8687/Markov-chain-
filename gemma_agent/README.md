@@ -98,7 +98,7 @@ submission should change one thing and be recorded in the log below.
 | 2026-09-25 | v2d: analyst -> coder -> verifier, fresh contexts, T=1.0, 4k output | 3/6 (v2b), rich_3006 pass | **error: exceeded 12h runtime** (same cause) |
 | 2026-09-26 | v2e: v2d + eval_config.yaml, 18 min/task (ref 56563641) | - | **error: exceeded 12h runtime** (tasks run sequentially; 18 min too long) |
 | 2026-09-27 | v3: single lean agent, thinking off, 4 min/task, timeout_seconds 300 (ref 56592163) | - | **0.05** (first score; ~3/58) |
-| 2026-09-28 | v7: fixer + fresh-context `scout` AgentTool, swe-tools skill (locate.py / check.py), no read_file (bounded `sed -n`), 5 min | thinking-off replica 5/16 (v6 5/16, but v6 overflowed 32k on 5 tasks, v7 on none) | pending |
+| 2026-09-28 | v7: fixer + fresh-context `scout` AgentTool, swe-tools skill (locate.py / check.py), no read_file (bounded `sed -n`), 5 min | thinking-off replica 5/16 (v6 5/16, but v6 overflowed 32k on 5 tasks, v7 on none) | **0.08** (ref 56623288) |
 
 Note: before 2026-09-28 the replica sent a hidden 4096-token reasoning budget while
 the scorer sends `enable_thinking=false`; only runs after commit 83769f5 match the scorer.
