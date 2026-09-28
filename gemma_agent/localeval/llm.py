@@ -26,6 +26,9 @@ class LLMError(Exception):
 
 
 PAID_MODEL = os.environ.get("LLM_PAID_MODEL", "google/gemma-4-31b-it")
+# LLM_BACKEND=vllm talks to our own vLLM server (gemma_agent/gpu/runpod_lab.py): same vLLM, weights
+# and tool-call parser as the Kaggle scorer, billed per GPU hour instead of per token.
+BACKEND = os.environ.get("LLM_BACKEND", "openrouter")
 # fp4 hosts are closest to the harness's W4A16 QAT weights, and cheapest.
 PAID_PROVIDERS = [p for p in os.environ.get("LLM_PAID_PROVIDERS", "").split(",") if p]
 # "throughput" (default) routes to the fastest host: agent steps are sequential, so latency is wall time.
@@ -69,8 +72,59 @@ def _body(model: str, messages: list[dict], tools: list[dict], gen: dict, max_to
     return body
 
 
-def _post(body: dict) -> dict:
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"}
+def _vllm_body(messages: list[dict], tools: list[dict], gen: dict, max_tokens: int) -> dict:
+    """The request adk_submission's LiteLlm bridge sends to vLLM (resolvers/generation.py)."""
+    body = {"model": MODEL, "messages": messages, "max_tokens": max_tokens,
+            "temperature": gen.get("temperature", 1.0)}
+    if tools:
+        body["tools"] = tools
+    for k_src, k_dst in (("top_p", "top_p"), ("top_k", "top_k"), ("seed", "seed"),
+                         ("presence_penalty", "presence_penalty"), ("frequency_penalty", "frequency_penalty"),
+                         ("stop_sequences", "stop")):
+        if k_src in gen:
+            body[k_dst] = gen[k_src]
+    thinking = gen.get("thinking_config") or {}
+    include = thinking.get("include_thoughts")
+    level = str(thinking.get("thinking_level", "") or "").lower() or None
+    if include is False or level == "none":
+        body["chat_template_kwargs"] = {"enable_thinking": False}
+    elif include is True or level in {"minimal", "low", "medium", "high"}:
+        body["chat_template_kwargs"] = {"enable_thinking": True}
+        if level in {"low", "medium", "high"}:
+            body["reasoning_effort"] = level
+    return body
+
+
+def _complete_vllm(messages: list[dict], tools: list[dict], gen: dict) -> dict:
+    max_tokens = int(gen.get("max_output_tokens", 16384))
+    body = _vllm_body(messages, tools, gen, max_tokens)
+    delay, last = 2.0, ""
+    for _ in range(6):
+        try:
+            data = _post(body, key=os.environ.get("VLLM_API_KEY", "EMPTY"))
+            choice = data["choices"][0]
+            with _lock:
+                _spent["paid_calls"] += 1
+            return {"message": choice["message"], "finish_reason": choice.get("finish_reason"),
+                    "usage": data.get("usage") or {}, "model": MODEL}
+        except urllib.error.HTTPError as exc:
+            text = exc.read().decode(errors="replace")[:800]
+            if exc.code == 400 and ("maximum context length" in text or "max_model_len" in text
+                                    or "context length" in text):
+                raise ContextOverflow(text) from None
+            last = f"HTTP {exc.code}: {text}"
+            if exc.code not in RETRY_STATUS:
+                break
+        except (urllib.error.URLError, TimeoutError, ConnectionError, LLMError) as exc:
+            last = str(exc)[:800]
+        time.sleep(min(60.0, delay) * random.uniform(0.8, 1.2))
+        delay *= 2
+    raise LLMError(last or "vLLM request failed")
+
+
+def _post(body: dict, key: str | None = None) -> dict:
+    headers = {"Content-Type": "application/json", "User-Agent": "gemma-agent-localeval/1.0",
+               "Authorization": f"Bearer {key or os.environ['OPENROUTER_API_KEY']}"}
     req = urllib.request.Request(f"{API_BASE}/chat/completions", json.dumps(body).encode(), headers)
     with urllib.request.urlopen(req, timeout=600) as resp:
         data = json.loads(resp.read())
@@ -84,6 +138,8 @@ def complete(messages: list[dict], tools: list[dict], gen: dict) -> dict:
 
     Returns {'message', 'finish_reason', 'usage'}.
     """
+    if BACKEND == "vllm":
+        return _complete_vllm(messages, tools, gen)
     max_tokens = int(gen.get("max_output_tokens", 16384))
     models = [MODEL] + ([PAID_MODEL] if MODEL.endswith(":free") and SPEND_CAP > 0 else [])
     last = ""
