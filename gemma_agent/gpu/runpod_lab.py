@@ -107,13 +107,18 @@ def up() -> None:
     api_key = secrets.token_urlsafe(24)
     body = {
         "name": "gemma-agent-lab", "imageName": IMAGE, "gpuCount": 1,
-        "gpuTypeIds": [g for g, _ in gpus], "gpuTypePriority": "custom", "cloudType": "ALL",
+        "gpuTypeIds": [g for g, _ in gpus], "gpuTypePriority": "custom", "cloudType": "COMMUNITY",
         "containerDiskInGb": 80, "volumeInGb": 0, "ports": ["8000/http"],
         "env": {"KAGGLE_API_TOKEN": kaggle_token, "VLLM_API_KEY": api_key, "HF_HUB_OFFLINE": "1"},
         "dockerEntrypoint": ["bash", "-c"],
         "dockerStartCmd": [START.format(handle=MODEL_HANDLE, served=SERVED_NAME)],
     }
-    pod = _req("POST", f"{REST}/pods", body)
+    try:
+        pod = _req("POST", f"{REST}/pods", body)
+    except SystemExit as exc:
+        print("community cloud:", str(exc)[:200], "- trying secure cloud")
+        body["cloudType"] = "SECURE"
+        pod = _req("POST", f"{REST}/pods", body)
     state = {"id": pod["id"], "api_key": api_key, "created": time.time(),
              "gpu": (pod.get("machine") or {}).get("gpuTypeId") or pod.get("gpuTypeId"),
              "cost_per_hr": pod.get("costPerHr")}
