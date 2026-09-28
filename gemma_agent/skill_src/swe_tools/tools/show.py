@@ -1,6 +1,6 @@
 """Show numbered lines of a file.
 
-usage: python3 .swetools/show.py FILE START [END]     (at most 80 lines)
+usage: python3 .swetools/show.py FILE START [END]     (at most 40 lines)
        python3 .swetools/show.py FILE /regex/          (every matching line, numbered)
 The numbers are what edit.py expects.
 """
@@ -27,7 +27,7 @@ def main():
     arg = sys.argv[2]
     if arg.startswith("/") and arg.endswith("/") and len(arg) > 1:
         pat = re.compile(arg[1:-1])
-        hits = [i for i, l in enumerate(lines) if pat.search(l)][:40]
+        hits = [i for i, l in enumerate(lines) if pat.search(l)][:25]
         for i in hits:
             print("%5d| %s" % (i + 1, lines[i]))
         if not hits:
@@ -35,9 +35,9 @@ def main():
         return
     start = max(1, int(arg))
     end = int(sys.argv[3]) if len(sys.argv) > 3 else start + 39
-    end = min(end, start + 79, len(lines))
+    end = min(end, start + 39, len(lines))
     for i in range(start - 1, end):
-        print("%5d| %s" % (i + 1, lines[i]))
+        print("%5d| %s" % (i + 1, lines[i][:200]))
     if end < len(lines):
         print("  ... (%d lines in file)" % len(lines))
 

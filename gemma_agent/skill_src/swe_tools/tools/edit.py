@@ -110,10 +110,16 @@ def main():
         print("note: input had literal \\n sequences and no real newlines; decoded them")
     print("replaced %d line(s) %d-%d with %d line(s); later lines shift by %+d"
           % (len(removed), start, end, len(new_lines), len(new_lines) - len(removed)))
-    lo, hi = max(1, start - 3), min(len(lines), start + len(new_lines) + 2)
-    for i in range(lo - 1, hi):
+    lo, hi = max(1, start - 1), min(len(lines), start + len(new_lines))
+    shown = list(range(lo - 1, hi))
+    if len(shown) > 14:
+        shown = shown[:6] + [None] + shown[-6:]
+    for i in shown:
+        if i is None:
+            print("   ...")
+            continue
         mark = ">" if start - 1 <= i < start - 1 + len(new_lines) else " "
-        print("%s%5d| %s" % (mark, i + 1, lines[i]))
+        print("%s%5d| %s" % (mark, i + 1, lines[i][:200]))
     if path.endswith(".py"):
         try:
             compile("\n".join(lines) + "\n", rel, "exec")
