@@ -30,13 +30,14 @@ def main():
     moved = state.get("moved", {})
     if rel in moved:
         del moved[rel]
-    if key in seen:
-        save_state(state)
-        print("UNCHANGED: you already viewed exactly these lines and the file has not changed since, so they "
-              "are not printed again. Use what you read, or view a different range.")
-        return
-    seen.append(key)
+    repeated = key in seen
+    if not repeated:
+        seen.append(key)
     save_state(state)
+    if repeated:
+        # Printing nothing made the model repeat the same view ~20 times; show it again and push forward.
+        print("REPEAT VIEW: these lines are unchanged since you last viewed them. Next step: edit them with "
+              "edit.py, run your public-API repro, or look at a different range. Do not view them again.")
     arg = sys.argv[2]
     if arg.startswith("/") and arg.endswith("/") and len(arg) > 1:
         pat = re.compile(arg[1:-1])

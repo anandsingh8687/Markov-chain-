@@ -48,7 +48,7 @@ def warn_if_repeated(argv):
     import hashlib
     import tempfile
     key = hashlib.sha1("\0".join(argv).encode()).hexdigest()[:16]
-    path = os.path.join(tempfile.gettempdir(), ".swetools_seen")
+    path = _workspace_state_path(".swetools_seen")
     try:
         with open(path) as fh:
             seen = set(fh.read().split())
@@ -65,9 +65,16 @@ def warn_if_repeated(argv):
             pass
 
 
-def _state_path():
+def _workspace_state_path(name):
+    """Keep guard state separate when several sandbox workspaces share TMPDIR."""
+    import hashlib
     import tempfile
-    return os.path.join(tempfile.gettempdir(), ".swetools_state.json")
+    marker = hashlib.sha256(os.path.realpath(workspace()).encode("utf-8")).hexdigest()[:16]
+    return os.path.join(tempfile.gettempdir(), "%s-%s" % (name, marker))
+
+
+def _state_path():
+    return _workspace_state_path(".swetools_state.json")
 
 
 def load_state():
