@@ -37,6 +37,7 @@ INSTALL_TEMPLATE = '''"""Install swe_tools into the repository (git-excluded).""
 import os, sys
 
 FILES = __FILES__
+MAPS = __MAPS__
 
 
 def find_ws():
@@ -63,6 +64,14 @@ existing = open(excl).read() if os.path.exists(excl) else ""
 if ".swetools/" not in existing:
     with open(excl, "a") as fh:
         fh.write("\\n.swetools/\\n")
+for name, text in MAPS.items():
+    pkg_dirs = {"fastapi": ["fastapi"], "rich": ["rich"], "requests": ["src/requests", "requests"], "httpx": ["httpx"]}[name]
+    if any(os.path.isfile(os.path.join(ws, d, "__init__.py")) for d in pkg_dirs):
+        with open(os.path.join(dest, "map.txt"), "w") as fh:
+            fh.write(text)
+        print("REPOSITORY MAP (also saved as .swetools/map.txt):")
+        print(text)
+        break
 print("installed .swetools/ in the repository (git-excluded). Use with run_command:")
 print("  python3 .swetools/locate.py TERM [TERM ...]      # find the code for the issue")
 print("  python3 .swetools/show.py FILE START [END]         # numbered lines")
@@ -78,7 +87,10 @@ def main():
     skill = bundle / "skills" / "swe-tools"
     (skill / "scripts").mkdir(parents=True, exist_ok=True)
     (skill / "SKILL.md").write_text(SKILL_MD)
-    (skill / "scripts" / "install.py").write_text(INSTALL_TEMPLATE.replace("__FILES__", repr(files)))
+    maps_dir = HERE.parent / "maps"
+    maps = {p.stem: p.read_text() for p in sorted(maps_dir.glob("*.txt"))} if maps_dir.is_dir() else {}
+    (skill / "scripts" / "install.py").write_text(
+        INSTALL_TEMPLATE.replace("__FILES__", repr(files)).replace("__MAPS__", repr(maps)))
     print("wrote", skill)
 
 

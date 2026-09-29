@@ -345,7 +345,13 @@ def run_subagent(agent: Agent, request: str, ctx: tools.Context, state: dict, tr
     """AgentTool: a fresh session with the parent's state; returns the sub-agent's final text."""
     events = [{"author": "user", "type": "user", "text": request or "Proceed."}]
     trace.add(agent=agent.name, depth=depth, kind="subagent_start", request=request)
-    return run_agent(agent, events, ctx, dict(state), trace, depth)["text"]
+    sub_state = dict(state)
+    text = run_agent(agent, events, ctx, sub_state, trace, depth)["text"]
+    # ADK's AgentTool forwards the sub-session's state delta (e.g. output_key) to the parent.
+    for k, v in sub_state.items():
+        if state.get(k) != v:
+            state[k] = v
+    return text
 
 
 def run_task(task: dict, bundle: Path, workdir: Path, budget: tools.Budget) -> dict:
