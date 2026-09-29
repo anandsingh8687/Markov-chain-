@@ -72,7 +72,8 @@ def check_agent(path: Path, bundle: Path, models: set, seen: set) -> None:
         print(f"  {rel}: {cfg['agent_class']} with {len(cfg['sub_agents'])} stages")
         return
     assert cfg.get("include_contents", "default") in ("default", "none"), f"{rel}: bad include_contents"
-    for key in ("name", "model", "instruction", "tools"):
+    cfg.setdefault("tools", [])  # a tool-less LlmAgent (pure reasoning) is valid
+    for key in ("name", "model", "instruction"):
         assert cfg.get(key), f"{rel}: missing {key}"
     assert isinstance(cfg["instruction"], str) and cfg["instruction"].strip(), f"{rel}: empty instruction"
     models.add(cfg["model"])
