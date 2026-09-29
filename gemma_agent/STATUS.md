@@ -78,6 +78,22 @@ solved (rich_3480, fastapi_14873, fastapi_14349) but loses others; the net is a 
 tasks cannot resolve differences of 2-3 tasks, so bigger evaluations (all 125 valid tasks) are needed to
 measure real progress. RunPod spend so far: $6.86 of $10 (including ~$2 lost to proxy/host problems).
 
+
+### v14 (2026-09-29): public-baseline settings, GPU replica
+
+v14 = the settings shared by the public 0.10-0.12 notebooks (temperature 0.2 / top_k 40, native
+read_file/edit_file/write_file, short low-temperature scout, 50 tool calls) plus our checks.
+Result: 8/48 (v7 17/48, v13 17/48). Two causes:
+- Measurement: read_file contexts tripled prompt tokens per task (394k vs 135k), so with 6 tasks
+  sharing one GPU each call took 9.4 s and 11 tasks hit the 15-minute wall clock after only 20-40
+  calls (on Kaggle one task runs alone at ~2.5 s/call). The replica's wall-clock cap is unfair to
+  context-heavy bundles; future runs should cap LLM turns and tool calls instead.
+- Real: at temperature 0.2 the model repeats itself exactly when stuck: 32 identical failing
+  edit_file calls (requests_7505), 48 identical git grep calls in the scout (rich_3067), the same
+  pattern that made us leave T=0.2 in v4b. The public 0.10-0.12 vs our 0.08 is 2-3 public tasks,
+  within noise; no public design explains 0.13-0.15.
+Not submitted.
+
 ## What we learned
 
 1. **Runtime**: without a per-task time cap the hidden run exceeds 12 hours (3 failed submissions).
