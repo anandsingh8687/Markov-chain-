@@ -100,7 +100,7 @@ submission should change one thing and be recorded in the log below.
 | 2026-09-27 | v3: single lean agent, thinking off, 4 min/task, timeout_seconds 300 (ref 56592163) | - | **0.05** (first score; ~3/58) |
 | 2026-09-28 | v7: fixer + fresh-context `scout` AgentTool, swe-tools skill (locate.py / check.py), no read_file (bounded `sed -n`), 5 min | thinking-off replica 5/16 (v6 5/16, but v6 overflowed 32k on 5 tasks, v7 on none) | **0.08** (ref 56623288) |
 
-| 2026-09-29 | v13: single-argument tools (edit.py/show.py/run.py via run_command), guarded edits, loop breakers, repro memory, same-code sweep, evidence-based scout, 5 min | GPU replica (exact Kaggle stack): 17/48 = v7 17/48 (32 analysed 10 vs 12; 16 fresh 7 vs 5) | pending |
+| 2026-09-29 | v13: single-argument tools (edit.py/show.py/run.py via run_command), guarded edits, loop breakers, repro memory, same-code sweep, evidence-based scout, 5 min | GPU replica (exact Kaggle stack): 17/48 = v7 17/48 (32 analysed 10 vs 12; 16 fresh 7 vs 5) | **0.10** (ref 56656319) |
 Note: before 2026-09-28 the replica sent a hidden 4096-token reasoning budget while
 the scorer sends `enable_thinking=false`; only runs after commit 83769f5 match the scorer.
 Lab 3 (real harness, v6): at the 5-minute cutoff the harness keeps working-tree edits even
