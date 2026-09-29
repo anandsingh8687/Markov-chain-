@@ -10,7 +10,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _ws import digest, load_state, save_state, workspace  # noqa: E402
+from _ws import digest, load_state, save_state, sh, workspace  # noqa: E402
 
 
 def main():
@@ -26,18 +26,41 @@ def main():
     state = load_state()
     rel = sys.argv[1]
     key = digest(*(sys.argv[1:] + ["\n".join(lines)]))
-    seen = state.setdefault("shown", [])
+    seen = state.get("shown")
+    if not isinstance(seen, dict):
+        seen = state["shown"] = {}
     moved = state.get("moved", {})
     if rel in moved:
         del moved[rel]
-    repeated = key in seen
-    if not repeated:
-        seen.append(key)
+    count = seen.get(key, 0)
+    seen[key] = count + 1
     save_state(state)
-    if repeated:
-        # Printing nothing made the model repeat the same view ~20 times; show it again and push forward.
+    if count >= 2:
+        # Reprinting the same lines (v16) or printing nothing (v13) both let the model loop 20+ times.
+        # Refuse, and show where the work stands instead.
+        ws = workspace()
+        print("REFUSED: you have viewed these exact unchanged lines %d times already. Viewing them again cannot "
+              "tell you anything new. Here is where your work stands:" % count)
+        _, stat, _ = sh(["git", "diff", "HEAD", "--stat"], ws)
+        _, diff, _ = sh(["git", "diff", "HEAD", "-U1"], ws)
+        if diff.strip():
+            print(stat.rstrip())
+            print("\n".join(diff.splitlines()[:40]))
+        else:
+            print("  your patch is EMPTY: you have not changed any file yet.")
+        repro = state.get("repro")
+        if repro and os.path.isfile(repro):
+            code, out, _ = sh(["bash", "-c", "timeout 60 python3 -B %s 2>&1 | tail -4; exit ${PIPESTATUS[0]}" % repro],
+                              ws, timeout=90)
+            print("your repro %s now: %s" % (repro, "passes" if code == 0 else "FAILS (exit %d)" % code))
+            print("  " + "\n  ".join(out.strip().splitlines()[-4:]))
+        print("Next step: %s" % ("make the change with edit.py now, using the line numbers you already have."
+                                 if not diff.strip() else
+                                 "run check.py --repro /tmp/repro.py, fix what its VERDICT lists, then submit_patch."))
+        return
+    if count == 1:
         print("REPEAT VIEW: these lines are unchanged since you last viewed them. Next step: edit them with "
-              "edit.py, run your public-API repro, or look at a different range. Do not view them again.")
+              "edit.py, run your public-API repro, or look at a different range. A third view is refused.")
     arg = sys.argv[2]
     if arg.startswith("/") and arg.endswith("/") and len(arg) > 1:
         pat = re.compile(arg[1:-1])

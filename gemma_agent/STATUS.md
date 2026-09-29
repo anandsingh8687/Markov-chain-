@@ -154,3 +154,28 @@ gemma_agent/
   build.py, official_check.py submission build and official compile check
   README.md                   design notes and submission log
 ```
+
+## 09-29 late: v15/v16 paired result, v17 built
+
+- Paired GPU replica (holdout + fresh):
+  - v16 9/30 vs v13 9/30 on the same tasks (won fastapi_5077, lost rich_4077).
+  - v15 8/28 vs v13 8/28.
+  - Both are ties, so neither is submitted.
+- The diagnosis of the v15/v16 traces found:
+  - The planner mostly hurts: wrong fixes, and empty replies when its thinking hit the token cap.
+  - The maps describe the newest commits, so they mislead on older checkouts.
+  - Loops on repeated views persist.
+  - The "EOF%" junk made bash exit 1 after an applied edit.
+  - The slowness comes from LLM time, not tools.
+- v17 = v13 plus general fixes only:
+  - show.py refuses a third view of the same unchanged lines and shows the diff and repro result instead.
+  - edit.py ends with EDIT APPLIED and reruns the remembered repro.
+  - run.py writes and runs a heredoc script in one call and remembers repro*.py.
+  - New where.py lists definition, set/pass and read sites.
+  - locate.py adds case-insensitive and sub-token fallbacks.
+  - check.py's sibling sweep ignores the patch's own added lines, always adds tests by changed names, and fails an empty patch.
+  - Prompt:
+    - seed the repro from the closest existing test;
+    - check every value of settings and environment variables;
+    - never submit an empty patch.
+  - No maps, no planner.

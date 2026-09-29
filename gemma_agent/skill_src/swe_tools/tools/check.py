@@ -72,16 +72,33 @@ def removed_lines(ws):
     return out
 
 
+def added_lines(ws):
+    """{file: set of line numbers} that the patch added (so they are not reported as old copies)."""
+    _, diff, _ = sh(["git", "diff", "-U0", "HEAD", "--", "*.py"], ws)
+    out, cur = {}, None
+    for line in diff.splitlines():
+        if line.startswith("+++ b/"):
+            cur = line[6:]
+        m = re.match(r"^@@ -\S+ \+(\d+)(?:,(\d+))? @@", line)
+        if m and cur:
+            start, count = int(m.group(1)), int(m.group(2) or 1)
+            out.setdefault(cur, set()).update(range(start, start + count))
+    return out
+
+
 def sibling_sweep(ws):
     """Places that still contain code the patch changed elsewhere (same bug, other copy)."""
     notes, seen = [], set()
+    mine = added_lines(ws)
     for f, text in removed_lines(ws)[:12]:
         if text in seen:
             continue
         seen.add(text)
         _, out, _ = sh(["git", "grep", "-n", "-F", "-e", text, "--", "*.py"], ws)
-        for hit in out.splitlines()[:4]:
-            path = hit.split(":", 1)[0]
+        for hit in out.splitlines()[:6]:
+            path, lineno = hit.split(":", 2)[:2]
+            if lineno.isdigit() and int(lineno) in mine.get(path, ()):
+                continue
             if not is_test_path(path):
                 notes.append("%s  still has: %s" % (":".join(hit.split(":", 2)[:2]), text[:90]))
     return notes[:6]
@@ -177,6 +194,7 @@ def main():
         print("  A " + f)
     if not modified and not new:
         print("  (empty) - you have not changed anything yet")
+        problems.append("the patch is EMPTY: an empty patch always fails. Make the change with edit.py first")
 
     for f in modified + new:
         base = os.path.basename(f)
@@ -209,7 +227,8 @@ def main():
     extra_src = [t for t in given if not is_test_path(t) and t.endswith(".py")]
     if not tests:
         tests = related_tests(ws, changed_src + [f for f in extra_src if f not in changed_src])
-        tests = (tests + tests_mentioning(ws, changed_names(ws), tests))[:5]
+    # Also the tests that use the changed functions, even when a test file was given.
+    tests = (tests + tests_mentioning(ws, changed_names(ws), tests))[:5]
     print("\nTESTS: " + (" ".join(tests) if tests else "no related test files found"))
     caused = []
     if tests:
@@ -229,12 +248,15 @@ def main():
                     sh("git stash pop -q", ws, timeout=60)
             before = set(failed_ids(out0))
             empty_patch = not modified and not new
-            for fid in fails:
+            for n, fid in enumerate(fails):
                 is_caused = fid not in before and not empty_patch
                 tag = "CAUSED BY YOUR CHANGE" if is_caused else "ALSO FAILS WITHOUT YOUR CHANGE (ignore)"
-                print("  %s  <- %s" % (fid, tag))
+                if n < 10:
+                    print("  %s  <- %s" % (fid[:150], tag))
                 if is_caused:
                     caused.append(fid)
+            if len(fails) > 10:
+                print("  ... %d failing tests in total, %d caused by your change" % (len(fails), len(caused)))
             if caused:
                 _, detail, _ = sh(PYTEST.replace("-q", "-q --tb=short") + " " + " ".join(caused[:3]) +
                                   " 2>&1 | grep -E '^(E |>|[^ ].*:[0-9]+: )' | head -24", ws, timeout=200)
@@ -242,7 +264,9 @@ def main():
                     print("  why they fail:\n    " + "\n    ".join(l[:170] for l in detail.splitlines()))
                 print("  If a failing test's expected value is exactly the buggy behaviour the issue asks to change, "
                       "that test is outdated (the maintainers update it): keep your fix. Otherwise fix your code.")
-    problems += ["fix failing test %s (or confirm it encodes the old buggy behaviour)" % c for c in caused]
+    problems += ["fix failing test %s (or confirm it encodes the old buggy behaviour)" % c for c in caused[:4]]
+    if len(caused) > 4:
+        problems.append("... and %d more tests your change broke" % (len(caused) - 4))
     siblings = sibling_sweep(ws)
     if siblings:
         print("\nSAME CODE ELSEWHERE (you changed this code in one place; these copies may have the same bug):")

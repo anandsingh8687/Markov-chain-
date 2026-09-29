@@ -76,7 +76,7 @@ print("installed .swetools/ in the repository (git-excluded). Use with run_comma
 print("  python3 .swetools/locate.py TERM [TERM ...]      # find the code for the issue")
 print("  python3 .swetools/show.py FILE START [END]         # numbered lines")
 print("  python3 .swetools/edit.py FILE START END <<'EOF'   # replace lines START..END with the heredoc text")
-print("  python3 .swetools/run.py /tmp/script.py              # run a Python script")
+print("  python3 .swetools/run.py /tmp/script.py <<'EOF'       # write the script from the heredoc and run it")
 print("  python3 .swetools/check.py --repro /tmp/repro.py   # before/after repro + tests; VERDICT")
 '''
 
@@ -89,6 +89,9 @@ def main():
     (skill / "SKILL.md").write_text(SKILL_MD)
     maps_dir = HERE.parent / "maps"
     maps = {p.stem: p.read_text() for p in sorted(maps_dir.glob("*.txt"))} if maps_dir.is_dir() else {}
+    if "--no-maps" in sys.argv:
+        # The maps were written from the newest commits and mislead on older checkouts (v15/v16 traces).
+        maps = {}
     (skill / "scripts" / "install.py").write_text(
         INSTALL_TEMPLATE.replace("__FILES__", repr(files)).replace("__MAPS__", repr(maps)))
     print("wrote", skill)

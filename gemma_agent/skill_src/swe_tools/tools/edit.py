@@ -184,6 +184,16 @@ def main():
                 print("syntax OK, import OK")
         else:
             print("syntax OK")
+    repro = state.get("repro")
+    if repro and os.path.isfile(repro) and rel.endswith(".py"):
+        # Immediate feedback on the change; check.py still does the full before/after run and the tests.
+        code, out, _ = sh(["bash", "-c", "timeout 60 python3 -B %s 2>&1 | tail -3; exit ${PIPESTATUS[0]}" % repro],
+                          ws, timeout=90)
+        print("your repro %s now: %s" % (repro, "passes" if code == 0 else "FAILS (exit %d)" % code))
+        for l in out.strip().splitlines()[-3:]:
+            print("    " + l[:200])
+    print("EDIT APPLIED to %s. Any shell error printed after this line comes from text after the EOF marker "
+          "and did not undo the edit." % rel)
 
 
 if __name__ == "__main__":

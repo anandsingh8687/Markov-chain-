@@ -133,22 +133,34 @@ def main():
             break
 
     print("\nEXACT TEXT HITS (first 4 per term, library code first)")
-    ordered = sorted(src, key=lambda f: f.startswith(("docs_src/", "docs/", "examples/", "scripts/")))
-    for t in terms:
+    ordered = sorted(src, key=lambda f: f.startswith(("docs_src/", "docs/", "examples/", "scripts/", "benchmarks/", "tools/")))
+    def find(needle, exact):
         hits = []
-        needle = t if WORD.fullmatch(t) else t.lower()
         for f in ordered:
             text = texts.get(f, "")
-            hay = text if WORD.fullmatch(t) else text.lower()
+            hay = text if exact else text.lower()
             if needle in hay:
                 for i, line in enumerate(hay.splitlines(), 1):
                     if needle in line:
                         hits.append("%s:%d" % (f, i))
                         if len(hits) >= 4:
-                            break
-            if len(hits) >= 4:
-                break
-        print('  "%s": %s' % (t[:40], ", ".join(hits) if hits else "no match in source"))
+                            return hits
+        return hits
+
+    for t in terms:
+        exact = bool(WORD.fullmatch(t))
+        hits = find(t if exact else t.lower(), exact)
+        label = ""
+        if not hits and exact:
+            # "proxy" should still find FileProxy / _proxy_for.
+            hits, label = find(t.lower(), False), " (ignoring case)"
+        if not hits:
+            # Fall back to the longest words of the term: "render markup" -> "markup".
+            for w in sorted(set(s for x in WORD.findall(t) for s in subtokens(x)), key=len, reverse=True)[:2]:
+                if len(w) >= 4:
+                    hits += ["%s -> %s" % (w, h) for h in find(w, False)[:2]]
+            label = " (no exact match; parts of the term)" if hits else ""
+        print('  "%s"%s: %s' % (t[:40], label, ", ".join(hits) if hits else "no match in source"))
 
     top_names = []
     for score, f, start, end, sig, why in scored[:8]:
