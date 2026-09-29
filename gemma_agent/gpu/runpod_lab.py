@@ -33,9 +33,10 @@ MODEL_HANDLE = "google/gemma-4/other/gemma-4-31b-it-qat-w4a16-ct/2"
 SERVED_NAME = "gemma-4-31b-it-qat-w4a16-ct"
 # Same chip generation as Kaggle's L4 first, then other 48 GB+ cards, cheapest first within a tier.
 GPU_PREFERENCE = [
+    # Ada cards (same generation as Kaggle's L4) have loaded reliably in 10-15 minutes;
+    # an A100 PCIe pod never became ready within 20 minutes (2026-09-29), so it is not used.
     "NVIDIA L40S", "NVIDIA RTX 6000 Ada Generation", "NVIDIA L40",
-    "NVIDIA A40", "NVIDIA RTX A6000", "NVIDIA A100 80GB PCIe", "NVIDIA A100-SXM4-80GB",
-    "NVIDIA RTX PRO 6000 Blackwell Server Edition", "NVIDIA H100 80GB HBM3",
+    "NVIDIA A40", "NVIDIA RTX A6000",
 ]
 MAX_PRICE = 1.8  # USD per hour; never rent anything more expensive
 
