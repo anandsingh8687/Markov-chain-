@@ -104,7 +104,7 @@ def digest(*parts):
 
 # The model has a 32k-token context and every command and its output stay in it. Count the text our
 # tools add and warn before the context overflows (which ends the task with whatever is in the tree).
-CONTEXT_WARN, CONTEXT_STOP = 66000, 80000  # characters; the fixer overflowed at ~62k of its own, and the scout adds ~35% more to this count
+CONTEXT_WARN, CONTEXT_STOP = 10**9, 10**9  # disabled: the real harness compacts history at ~14k tokens, so a cumulative count misleads
 
 
 def add_context(n):
