@@ -260,3 +260,16 @@ gemma_agent/
 - Compaction is real in the official harness: at 14336 tokens it fired in 24/42 tasks, and the prompt dropped from about 14.5k to about 5.5k tokens. Whether the Kaggle scorer uses 14336 (host notebook) or 32768 (README) is unanswered.
 - Kaggle GPU lab 5 is running v17 vs v20 on 16 tasks with real 4x L4 timing, the official harness and compaction at 14336.
 - New tool: status.py (patch, repro result, last verdict, files viewed) to re-orient after compaction.
+
+## 09-30 evening: Kaggle lab 5, thinking test, v21
+
+- Kaggle lab 5 (real 4x L4, official harness, 5 min, compaction 14336; patches regraded locally):
+  - v17 11/16, including all 8 of the replica's always-solved tasks. The agent behaves on Kaggle as it does on the replica.
+  - v20 9/16. Its native read_file (multi-argument) came back corrupted by the real parser (`start_line\"`). The scout looped on it until the context overflowed, and the patch was dropped.
+  - Rule: never add multi-argument tools.
+- Thinking test (O2 oracle with thinking on, 2048 budget): 1/17 never-solved and 2/12 coin flips, against 3/17 and 9/12 with thinking off.
+  - 20/29 hit the time budget, with a median of 21 calls in 15 minutes.
+  - Thinking is too slow for a 5-minute budget: keep it off.
+- v21 = v17 + status.py, edit range repair, show.py range syntax, a private-import repro check, and the submit-after-check and keep-behaviour rules.
+  - Context warnings are disabled: under compaction the cumulative count is wrong.
+  - Kaggle lab 6 (v17 vs v21, 16 improvable tasks) is running.
