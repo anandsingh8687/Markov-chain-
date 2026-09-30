@@ -18,7 +18,8 @@ import select
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _ws import digest, load_state, save_state, sh, workspace  # noqa: E402
+import _ws  # noqa: E402
+from _ws import digest, load_state, save_state, sh, workspace, track_context  # noqa: E402
 
 
 def _stdin_text():
@@ -39,6 +40,7 @@ def main():
     ws = workspace()
     script = sys.argv[1]
     given = _stdin_text()
+    _ws.add_context(len(given))
     if given.strip():
         bad = [l for l in given.split("\n") if re.match(r"\s*EOF\S", l) or l.strip() == "EOF"]
         if bad:
@@ -77,4 +79,5 @@ def main():
 
 
 if __name__ == "__main__":
+    track_context(len(" ".join(sys.argv)))
     main()

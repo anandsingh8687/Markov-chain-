@@ -10,7 +10,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _ws import digest, load_state, save_state, sh, workspace  # noqa: E402
+from _ws import digest, load_state, save_state, sh, workspace, track_context  # noqa: E402
 
 
 def main():
@@ -80,4 +80,5 @@ def main():
 
 
 if __name__ == "__main__":
+    track_context(len(" ".join(sys.argv)))
     main()

@@ -179,3 +179,18 @@ gemma_agent/
     - check every value of settings and environment variables;
     - never submit an empty patch.
   - No maps, no planner.
+
+## 09-30 early: v17 result (38 of 42 so far) and v18
+
+- v17 on the GPU replica, counted by resolved_env:
+  - 18/38 solved, where v13 solved 15 of the same 38.
+  - Won 5 tasks v13 failed: rich_3676, fastapi_5077, rich_3777, rich_4075, rich_3718.
+  - Lost fastapi_14616 and fastapi_14349.
+- New failure class: 6 context overflows (32k tokens), where earlier versions had 1-2.
+  - One is a loop: an edit whose range also covered a needed line, `) -> Dict[str, Any]:`, was refused about 50 times in a row.
+  - The others are long explorations of 50-70 calls, most of them file views.
+- v18 = v17 plus two fixes:
+  - edit.py:
+    - when a refused edit compiles with a one-line range change, it names that exact command;
+    - if the same refused edit is sent again, it applies that correction and says so.
+  - The tools count how much text has entered the model's context (about 2.7 characters per token), warn at about 45k characters and demand check-and-submit at about 58k.

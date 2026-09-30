@@ -57,12 +57,14 @@ def warn_if_repeated(argv):
     if key in seen:
         print("NOTE: you already ran this exact command. Repeating it gives the same answer: use what you "
               "learned and take the next step (edit, check.py, or submit_patch).\n")
+        return True
     else:
         try:
             with open(path, "a") as fh:
                 fh.write(key + "\n")
         except OSError:
             pass
+    return False
 
 
 def _workspace_state_path(name):
@@ -98,3 +100,52 @@ def save_state(state):
 def digest(*parts):
     import hashlib
     return hashlib.sha1("\0".join(parts).encode("utf-8", "replace")).hexdigest()[:16]
+
+
+# The model has a 32k-token context and every command and its output stay in it. Count the text our
+# tools add and warn before the context overflows (which ends the task with whatever is in the tree).
+CONTEXT_WARN, CONTEXT_STOP = 45000, 58000  # characters; traces overflowed at ~62k characters (2.7 per token), scout included
+
+
+def add_context(n):
+    pass
+
+
+def track_context(extra=0):
+    import atexit
+
+    real = sys.stdout
+
+    class _Counter:
+        n = extra
+
+        def write(self, s):
+            _Counter.n += len(s)
+            return real.write(s)
+
+        def flush(self):
+            real.flush()
+
+        def __getattr__(self, name):
+            return getattr(real, name)
+
+    sys.stdout = _Counter()
+    global add_context
+
+    def add_context(n):  # text the model sent (e.g. a heredoc) also stays in its context
+        _Counter.n += n
+
+    def _done():
+        state = load_state()
+        total = state.get("context_chars", 0) + _Counter.n + 400  # plus the model's own reply
+        state["context_chars"] = total
+        save_state(state)
+        if total >= CONTEXT_STOP:
+            real.write("\nCONTEXT ALMOST FULL: the session ends soon. Now: run check.py once, fix only a blocking "
+                       "problem, then call submit_patch. Do not read more code.\n")
+        elif total >= CONTEXT_WARN:
+            real.write("\nCONTEXT 75% USED: stop exploring. Make your change now if you have not, verify it with "
+                       "check.py, and submit_patch within about 8 calls.\n")
+        real.flush()
+
+    atexit.register(_done)

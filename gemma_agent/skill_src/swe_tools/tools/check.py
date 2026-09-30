@@ -19,7 +19,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _ws import changed_files, is_test_path, load_state, save_state, sh, tracked_py, warn_if_repeated, workspace  # noqa: E402
+from _ws import changed_files, is_test_path, load_state, save_state, sh, tracked_py, warn_if_repeated, workspace, track_context  # noqa: E402
 
 PYTEST = "python3 -m pytest -q -p no:cacheprovider -o addopts='' -p no:anyio --import-mode=importlib"
 
@@ -286,4 +286,5 @@ def main():
 
 
 if __name__ == "__main__":
+    track_context(len(" ".join(sys.argv)))
     main()

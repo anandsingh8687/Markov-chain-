@@ -21,7 +21,8 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _ws import digest, is_test_path, load_state, save_state, sh, warn_if_repeated, workspace  # noqa: E402
+import _ws  # noqa: E402
+from _ws import digest, is_test_path, load_state, save_state, sh, warn_if_repeated, workspace, track_context  # noqa: E402
 
 
 def _compile_error(text, rel):
@@ -100,7 +101,8 @@ def main():
     if bad:
         sys.exit("REFUSED, file unchanged: the heredoc end marker is malformed (%r). The command must end with a "
                  "line that is exactly EOF, with nothing after it." % bad[0].strip())
-    warn_if_repeated(sys.argv + [new_text, old])
+    repeated = warn_if_repeated(sys.argv + [new_text, old])
+    _ws.add_context(len(new_text))
 
     def build(text):
         nl = text.split("\n")
@@ -130,6 +132,32 @@ def main():
                 if _compile_error(result(alt), rel) is None:
                     new_lines, err = alt, None
                     notes.append("note: shifted your lines by %+d spaces to match the code they replace" % delta)
+        if err is not None and new_lines:
+            # The most common cause: the range also covers a line the new text forgot (a closing
+            # bracket, a signature end, the next statement). Find the range that compiles with the same text.
+            fits = []
+            for s2, e2 in [(start, e) for e in range(end - 1, start - 2, -1)] + [(s, end) for s in range(start + 1, end + 2)]:
+                if (s2, e2) == (start, end) or e2 < s2 - 1:
+                    continue
+                cand = "\n".join(lines[:s2 - 1] + new_lines + lines[e2:]) + "\n"
+                if _compile_error(cand, rel) is None:
+                    fits.append((s2, e2))
+            if fits:
+                s2, e2 = fits[0]
+                kept = [l.strip() for l in lines[start - 1:end] if l not in lines[s2 - 1:e2]]
+                if repeated and len(fits) <= 2:
+                    notes.append("note: you sent this refused edit again, so it was applied to lines %d-%d instead of "
+                                 "%d-%d, keeping the line(s) your text left out: %s"
+                                 % (s2, e2, start, end, " | ".join(k[:60] for k in kept[:3])))
+                    removed = lines[s2 - 1:e2]
+                    start, end, err = s2, e2, None
+                else:
+                    print("REFUSED, file unchanged: your text would replace lines %d-%d, but it leaves out line(s) "
+                          "the file still needs: %s" % (start, end, " | ".join(k[:80] for k in kept[:3])))
+                    print("The same text compiles as: python3 .swetools/edit.py %s %d %d  (END = START-1 means insert)"
+                          % (rel, s2, e2))
+                    print("Run that command with your heredoc, or include those lines in your text.")
+                    sys.exit(1)
         if err is not None:
             print("REFUSED, file unchanged: the edit would leave a syntax error at line %s: %s"
                   % (err.lineno, err.msg))
@@ -197,4 +225,5 @@ def main():
 
 
 if __name__ == "__main__":
+    track_context(len(" ".join(sys.argv)))
     main()

@@ -16,7 +16,7 @@ import sys
 from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _ws import is_test_path, tracked_py, workspace, warn_if_repeated  # noqa: E402
+from _ws import is_test_path, tracked_py, workspace, warn_if_repeated, track_context  # noqa: E402
 
 WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
@@ -188,4 +188,5 @@ def main():
 
 
 if __name__ == "__main__":
+    track_context(len(" ".join(sys.argv)))
     main()
