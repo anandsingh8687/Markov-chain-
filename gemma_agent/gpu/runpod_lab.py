@@ -110,7 +110,7 @@ def up() -> None:
     body = {
         "name": "gemma-agent-lab", "imageName": IMAGE, "gpuCount": 1,
         "gpuTypeIds": [g for g, _ in gpus], "gpuTypePriority": "custom",
-        "containerDiskInGb": 80, "volumeInGb": 0, "ports": ["8000/http", "8000/tcp"],
+        "containerDiskInGb": 80, "volumeInGb": 0, "ports": ["8000/http"],
         "env": {"KAGGLE_API_TOKEN": kaggle_token, "VLLM_API_KEY": api_key, "HF_HUB_OFFLINE": "1"},
         "dockerEntrypoint": ["bash", "-c"],
         "dockerStartCmd": [START.format(handle=MODEL_HANDLE, served=SERVED_NAME)],
@@ -159,14 +159,8 @@ def status() -> None:
 
 
 def base_url(st: dict) -> str:
-    """Direct TCP (public IP) when the pod has one: the HTTP proxy adds 404s and a 100 s timeout (524)."""
-    try:
-        pod = _req("GET", f"{REST}/pods/{st['id']}")
-        ip, port = pod.get("publicIp"), (pod.get("portMappings") or {}).get("8000")
-        if ip and port:
-            return f"http://{ip}:{port}/v1"
-    except SystemExit:
-        pass
+    # Direct TCP (public IP:port) is not reachable from the cloud sessions' egress proxy, and declaring
+    # 8000/tcp next to 8000/http broke the HTTP proxy route (404 for 30 min), so only the proxy is used.
     return f"https://{st['id']}-8000.proxy.runpod.net/v1"
 
 
