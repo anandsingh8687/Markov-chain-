@@ -18,11 +18,12 @@ the lines below it (view them again with show.py first).
 
 import os
 import re
+import shlex
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _ws  # noqa: E402
-from _ws import digest, is_test_path, load_state, save_state, sh, warn_if_repeated, workspace, track_context  # noqa: E402
+from _ws import is_test_path, load_state, save_state, sh, warn_if_repeated, workspace  # noqa: E402
 
 
 def _compile_error(text, rel):
@@ -204,7 +205,9 @@ def main():
     if rel.endswith(".py"):
         mod = _module(rel)
         if not mod.startswith(("docs_src", "scripts", "docs.", "tests")):
-            code, out, err = sh(["python3", "-c", "import " + mod], ws, timeout=60)
+            t = _ws.cap(_ws.SCRIPT_TIMEOUT)
+            code, out, err = sh(["timeout", "-k", "2", str(t), "python3", "-c", "import " + mod], ws, timeout=t + 5,
+                                env=_ws.py_env(ws))
             if code:
                 last = ((err or out).strip().splitlines() or ["?"])[-1]
                 print("syntax OK, but import %s now fails: %s" % (mod, last[:200]))
@@ -215,15 +218,25 @@ def main():
     repro = state.get("repro")
     if repro and os.path.isfile(repro) and rel.endswith(".py"):
         # Immediate feedback on the change; check.py still does the full before/after run and the tests.
-        code, out, _ = sh(["bash", "-c", "timeout 60 python3 -B %s 2>&1 | tail -3; exit ${PIPESTATUS[0]}" % repro],
-                          ws, timeout=90)
+        t = _ws.cap(_ws.SCRIPT_TIMEOUT)
+        code, out, _ = sh(["bash", "-c", "timeout -k 2 %d python3 -B %s 2>&1 | tail -3; exit ${PIPESTATUS[0]}"
+                           % (t, shlex.quote(repro))], ws, timeout=t + 10, env=_ws.py_env(ws))
         print("your repro %s now: %s" % (repro, "passes" if code == 0 else "FAILS (exit %d)" % code))
         for l in out.strip().splitlines()[-3:]:
             print("    " + l[:200])
+        if code in (124, 137):
+            print(_ws.timeout_hint(t))
+        try:
+            with open(repro, encoding="utf-8", errors="replace") as fh:
+                body = fh.read()
+            st = load_state()
+            _ws.record_repro(st, repro, _ws.digest(body), _ws.result_word(code), False)
+            save_state(st)
+        except OSError:
+            pass
     print("EDIT APPLIED to %s. Any shell error printed after this line comes from text after the EOF marker "
           "and did not undo the edit." % rel)
 
 
 if __name__ == "__main__":
-    track_context(len(" ".join(sys.argv)))
-    main()
+    _ws.run_tool(main)

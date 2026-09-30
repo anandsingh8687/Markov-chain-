@@ -11,6 +11,23 @@ Usage:
     python gemma_agent/lab/make_lab.py --bundles v3=gemma_agent/bundle_v3 \
         --tasks fastapi_14873 rich_3006 ... --out /tmp/lab_kernel --slug gemma-agent-lab
     kaggle kernels push -p /tmp/lab_kernel
+
+Concurrent mode (--concurrency N > 1, or --replicates R > 1, or a non-real clock): the
+kernel writes /kaggle/working/labworker.py (gemma_agent/lab/labworker.py) and runs each
+(task, replicate, bundle) as its own OS process against the single vLLM server,
+N at a time, task-major with the bundle order shuffled per (task, replicate) so every
+variant sees the same load. Results dirs are lab/<bundle>/r<rep>; results.jsonl rows
+keep the sequential format plus 'replicate', 'virtual_seconds' (and vc_* details).
+vLLM /metrics (running/waiting requests, KV usage) is logged every --metrics-interval s
+to progress.log and lab/metrics.jsonl; the vLLM server log is copied to lab/vllm_server.log.
+
+    python gemma_agent/lab/make_lab.py --bundles v22=gemma_agent/bundle_v22 ... \
+        --tasks @scratchpad/broad48_K1.txt --concurrency 6 --virtual-clock --out /tmp/k1
+
+--virtual-clock: agent time = 0.95 s/LLM call + 0.0287 s/completion token + measured sandbox
+exec seconds; the real asyncio cap is --real-factor (3) x nominal (see labworker.py for the
+patched attributes). --wall-scale F is the fallback without a token clock: real cap and the
+agent's elapsed time are both scaled by F (the measured slowdown).
 """
 
 from __future__ import annotations
@@ -134,20 +151,118 @@ log('done', len(summary), 'rows')
 '''
 
 
+CONCURRENT_TAIL = r'''
+import random
+LABWORKER_SRC = __LABWORKER__
+CONCURRENCY = __CONCURRENCY__
+REPLICATES = __REPLICATES__
+CLOCK = __CLOCK__
+CLOCK_ARGS = __CLOCK_ARGS__
+SEED = __SEED__
+METRICS_INTERVAL = __METRICS_INTERVAL__
+Path('/kaggle/working/labworker.py').write_text(LABWORKER_SRC)
+sys.path.insert(0, '/kaggle/working')
+import labworker
+
+log('cpu_count', os.cpu_count(), 'loadavg', os.getloadavg())
+try:
+    log('meminfo', ' '.join(l.replace(' ', '') for l in open('/proc/meminfo').read().splitlines()[:3]))
+except OSError:
+    pass
+def server_log_lines(pats=('KV cache', 'Maximum concurrency', 'num_gpu_blocks', 'max_num_seqs', 'max_num_batched_tokens')):
+    try:
+        return [l.rstrip() for l in open(server.log_path, errors='replace') if any(p in l for p in pats)]
+    except Exception as exc:
+        return ['server log unreadable: %s' % exc]
+for l in server_log_lines()[-12:]:
+    log('vllm', l[-300:])
+
+bundle_dirs = {name: write_bundle(name, files) for name, files in BUNDLES.items()}
+def nominal_minutes(d):
+    try:
+        ev = (yaml.safe_load((d / 'eval_config.yaml').read_text()) or {}).get('evaluation', {}) or {}
+        return float(ev.get('max_time_minutes') or 5)
+    except Exception:
+        return 5.0
+cap_factor = CLOCK_ARGS['real_factor'] if CLOCK == 'virtual' else (CLOCK_ARGS['wall_scale'] if CLOCK == 'scaled' else 1.0)
+KILL_AFTER = max(nominal_minutes(d) for d in bundle_dirs.values()) * 60 * cap_factor + 900
+served = getattr(server, 'effective_model_path', None) or str(MODEL_PATH)
+plan = labworker.plan_jobs(list(BUNDLES), TASK_IDS, REPLICATES, SEED)
+jobs = []
+for tid, rep, name in plan:
+    jobs.append(dict(bundle=name, replicate=rep, task_id=tid, bundle_dir=str(bundle_dirs[name]),
+                     results_dir=str(OUT / name / ('r%d' % rep)), data_dir=str(DATA_DIR), wheels_dir=str(DATA_DIR / 'wheels'),
+                     api_base='http://127.0.0.1:8000/v1', served_model=served, alias='gemma-4-31b-it-qat-w4a16-ct',
+                     clock=CLOCK, task_index=TASK_IDS.index(tid) + 1, total_tasks=len(TASK_IDS), **CLOCK_ARGS))
+log('concurrent plan', len(jobs), 'task-runs', 'N', CONCURRENCY, 'replicates', REPLICATES, 'clock', CLOCK, CLOCK_ARGS,
+    'kill_after_s', round(KILL_AFTER))
+t0 = time.time()
+summary = labworker.run_pool(jobs, CONCURRENCY, OUT, log, metrics_url='http://127.0.0.1:8000/metrics',
+                             metrics_interval=METRICS_INTERVAL, kill_after=KILL_AFTER)
+log('pool done in', round(time.time() - t0), 's')
+for l in server_log_lines(('KV cache', 'Maximum concurrency', 'preempt', 'Avg prompt throughput'))[-20:]:
+    log('vllm', l[-300:])
+try:
+    shutil.copy(server.log_path, OUT / 'vllm_server.log')
+except Exception as exc:
+    log('could not copy server log', exc)
+server.stop() if hasattr(server, 'stop') else None
+log('done', len(summary), 'rows')
+'''
+
+SEQUENTIAL_SPLIT = "import asyncio\nlimits, gen_constraints"
+
+
+def build_kernel(bundles: dict, tasks: list[str], concurrency: int = 1, replicates: int = 1, clock: str = "real",
+                 clock_args: dict | None = None, seed: int = 0, metrics_interval: float = 30.0) -> str:
+    """Kernel source. concurrency 1 / replicates 1 / real clock -> the unchanged sequential kernel."""
+    code = KERNEL_TEMPLATE.replace("__BUNDLES__", repr(bundles)).replace("__TASK_IDS__", repr(tasks))
+    if concurrency <= 1 and replicates <= 1 and clock == "real":
+        return code
+    head = code[:code.index(SEQUENTIAL_SPLIT)]
+    worker_src = (Path(__file__).resolve().parent / "labworker.py").read_text()
+    tail = (CONCURRENT_TAIL.replace("__LABWORKER__", repr(worker_src)).replace("__CONCURRENCY__", repr(concurrency))
+            .replace("__REPLICATES__", repr(replicates)).replace("__CLOCK__", repr(clock))
+            .replace("__CLOCK_ARGS__", repr(clock_args or {})).replace("__SEED__", repr(seed))
+            .replace("__METRICS_INTERVAL__", repr(metrics_interval)))
+    return head + tail
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--bundles", nargs="+", required=True, help="name=path pairs")
-    ap.add_argument("--tasks", nargs="+", required=True)
+    ap.add_argument("--tasks", nargs="+", required=True, help="task ids, or @file with ids")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--slug", default="gemma-agent-lab")
     ap.add_argument("--user", default="anandsingh8687")
+    ap.add_argument("--concurrency", type=int, default=1,
+                    help="task-runs evaluated at once as separate OS processes (1 = sequential kernel, unchanged)")
+    ap.add_argument("--replicates", type=int, default=1, help="run each bundle R times per task")
+    ap.add_argument("--virtual-clock", action="store_true",
+                    help="token clock: agent time = per-call + per-token + measured tool seconds (use with N>1)")
+    ap.add_argument("--vc-per-call", type=float, default=0.95)
+    ap.add_argument("--vc-per-token", type=float, default=0.0287)
+    ap.add_argument("--real-factor", type=float, default=3.0, help="real asyncio cap = factor x nominal (virtual clock)")
+    ap.add_argument("--wall-scale", type=float, default=1.0,
+                    help="fallback without --virtual-clock: real cap and agent elapsed scaled by this slowdown")
+    ap.add_argument("--seed", type=int, default=0, help="bundle-order shuffle seed")
+    ap.add_argument("--metrics-interval", type=float, default=30.0, help="seconds between vLLM /metrics scrapes")
     a = ap.parse_args()
+    tasks: list[str] = []
+    for x in a.tasks:
+        tasks += Path(x[1:]).read_text().split() if x.startswith("@") else [x]
+    tasks = list(dict.fromkeys(tasks))
     bundles = {}
     for spec in a.bundles:
         name, path = spec.split("=", 1)
         root = Path(path)
         bundles[name] = {str(p.relative_to(root)): p.read_text() for p in sorted(root.rglob("*")) if p.is_file()}
-    code = KERNEL_TEMPLATE.replace("__BUNDLES__", repr(bundles)).replace("__TASK_IDS__", repr(a.tasks))
+    clock = "virtual" if a.virtual_clock else ("scaled" if a.wall_scale != 1.0 else "real")
+    if clock != "real" and a.concurrency <= 1:
+        print("warning: a virtual/scaled clock is only meaningful with --concurrency > 1")
+    clock_args = {"per_call": a.vc_per_call, "per_token": a.vc_per_token, "real_factor": a.real_factor,
+                  "wall_scale": a.wall_scale}
+    code = build_kernel(bundles, tasks, a.concurrency, a.replicates, clock, clock_args, a.seed, a.metrics_interval)
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / "lab.py").write_text(code)
     meta = {
@@ -160,8 +275,9 @@ def main() -> None:
         "machine_shape": "NvidiaL4",
     }
     (a.out / "kernel-metadata.json").write_text(json.dumps(meta, indent=2))
-    print(f"wrote {a.out} with {len(bundles)} bundle(s) x {len(a.tasks)} task(s)")
-
+    runs = len(bundles) * len(tasks) * a.replicates
+    print(f"wrote {a.out} with {len(bundles)} bundle(s) x {len(tasks)} task(s) x {a.replicates} replicate(s) "
+          f"= {runs} task-runs, concurrency {a.concurrency}, clock {clock}")
 
 if __name__ == "__main__":
     main()

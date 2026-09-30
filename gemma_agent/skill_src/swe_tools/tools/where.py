@@ -11,7 +11,8 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _ws import is_test_path, sh, warn_if_repeated, workspace, track_context  # noqa: E402
+from _ws import is_test_path, sh, warn_if_repeated, workspace  # noqa: E402
+import _ws  # noqa: E402
 
 
 def main():
@@ -57,5 +58,4 @@ def main():
 
 
 if __name__ == "__main__":
-    track_context(len(" ".join(sys.argv)))
-    main()
+    _ws.run_tool(main)

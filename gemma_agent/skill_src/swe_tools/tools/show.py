@@ -10,13 +10,20 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _ws import digest, load_state, save_state, sh, workspace, track_context  # noqa: E402
+import _ws  # noqa: E402
+from _ws import digest, load_state, save_state, sh, workspace  # noqa: E402
 
 
 def main():
     if len(sys.argv) < 3:
         print(__doc__)
         return
+    if sys.argv[2].startswith("/") and len(sys.argv) > 3 and not (len(sys.argv[2]) > 1 and sys.argv[2].endswith("/")):
+        # The shell split a /regex with spaces/ into several arguments: join them again.
+        for j in range(3, len(sys.argv)):
+            if sys.argv[j].endswith("/"):
+                sys.argv[2:j + 1] = [" ".join(sys.argv[2:j + 1])]
+                break
     m = re.fullmatch(r"(\d+)\s*[-:,]\s*(\d+)", sys.argv[2]) if len(sys.argv) == 3 else None
     if m:  # accept FILE 10-50, 10:50 and 10,50 as well as FILE 10 50
         sys.argv[2:] = [m.group(1), m.group(2)]
@@ -60,8 +67,9 @@ def main():
             print("  your patch is EMPTY: you have not changed any file yet.")
         repro = state.get("repro")
         if repro and os.path.isfile(repro):
-            code, out, _ = sh(["bash", "-c", "timeout 60 python3 -B %s 2>&1 | tail -4; exit ${PIPESTATUS[0]}" % repro],
-                              ws, timeout=90)
+            t = _ws.cap(_ws.SCRIPT_TIMEOUT)
+            code, out, _ = sh(["bash", "-c", "timeout -k 2 %d python3 -B '%s' 2>&1 | tail -4; exit ${PIPESTATUS[0]}"
+                               % (t, repro)], ws, timeout=t + 10, env=_ws.py_env(ws))
             print("your repro %s now: %s" % (repro, "passes" if code == 0 else "FAILS (exit %d)" % code))
             print("  " + "\n  ".join(out.strip().splitlines()[-4:]))
         print("Next step: %s" % ("make the change with edit.py now, using the line numbers you already have."
@@ -73,7 +81,11 @@ def main():
               "edit.py, run your public-API repro, or look at a different range. A third view is refused.")
     arg = sys.argv[2]
     if arg.startswith("/") and arg.endswith("/") and len(arg) > 1:
-        pat = re.compile(arg[1:-1])
+        try:
+            pat = re.compile(arg[1:-1])
+        except re.error as exc:
+            pat = re.compile(re.escape(arg[1:-1]))
+            print("note: %s is not a valid regex (%s); searched for the literal text" % (arg, exc))
         hits = [i for i, l in enumerate(lines) if pat.search(l)][:25]
         for i in hits:
             print("%5d| %s" % (i + 1, lines[i]))
@@ -91,5 +103,4 @@ def main():
 
 
 if __name__ == "__main__":
-    track_context(len(" ".join(sys.argv)))
-    main()
+    _ws.run_tool(main)
