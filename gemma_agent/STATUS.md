@@ -286,3 +286,10 @@ gemma_agent/
 - The 8-minute cap does not help: 9/16 still time out and patches are empty more often. The hard tasks are capability-bound, not time-bound (consistent with the oracle tests). Keep 5 minutes.
 - No submission on 10-01: v22 is +2 over v17, below the +3 bar and far from the target.
 - Kaggle GPU used this week: about 12-15 of 30 h.
+
+## 10-01 slot: skipped
+
+- No bundle beat v17 by the required +3 on the 32 lab tasks: v22 16, v21 15, v17 14.
+- Kaggle GPU quota is exhausted until 10-03 00:00 UTC (a 4x L4 kernel bills about 2 quota-h per wall hour).
+- Built and committed: v23 solo-plus and the concurrent lab kernel (offline tests pass).
+- In progress: v24 duo (two parallel attempts plus pick_patch).
