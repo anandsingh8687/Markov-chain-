@@ -101,6 +101,7 @@ submission should change one thing and be recorded in the log below.
 | 2026-09-28 | v7: fixer + fresh-context `scout` AgentTool, swe-tools skill (locate.py / check.py), no read_file (bounded `sed -n`), 5 min | thinking-off replica 5/16 (v6 5/16, but v6 overflowed 32k on 5 tasks, v7 on none) | **0.08** (ref 56623288) |
 
 | 2026-09-29 | v13: single-argument tools (edit.py/show.py/run.py via run_command), guarded edits, loop breakers, repro memory, same-code sweep, evidence-based scout, 5 min | GPU replica (exact Kaggle stack): 17/48 = v7 17/48 (32 analysed 10 vs 12; 16 fresh 7 vs 5) | **0.10** (ref 56656319) |
+| 2026-09-30 | v17: v13 + loop breaker (3rd identical view refused, shows diff + repro), edit.py EDIT APPLIED + repro rerun, run.py heredoc, where.py, locate fallbacks, sibling-sweep fix, empty-patch verdict, repro/env-value protocol; no maps, no planner | GPU replica 42 tasks (28 v13-failed + 14 v13-solved): v17 19/42 vs v13 17/42; v18 (context budget + edit range repair) 18/42; v15/v16 tied v13 | pending |
 Note: before 2026-09-28 the replica sent a hidden 4096-token reasoning budget while
 the scorer sends `enable_thinking=false`; only runs after commit 83769f5 match the scorer.
 Lab 3 (real harness, v6): at the 5-minute cutoff the harness keeps working-tree edits even

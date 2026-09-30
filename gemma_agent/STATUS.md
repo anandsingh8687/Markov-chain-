@@ -194,3 +194,13 @@ gemma_agent/
     - when a refused edit compiles with a one-line range change, it names that exact command;
     - if the same refused edit is sent again, it applies that correction and says so.
   - The tools count how much text has entered the model's context (about 2.7 characters per token), warn at about 45k characters and demand check-and-submit at about 58k.
+
+## 09-30 00:50 UTC: v17 submitted
+
+- Final replica results on 42 tasks (resolved_env; v13 counted as best of its two runs):
+  - v17 19/42. Wins: rich_3676, fastapi_5077, rich_3777, rich_4075, rich_3718. Losses: rich_3130, fastapi_14616, fastapi_14349.
+  - v18 18/42, with only 3 task flips against v17.
+    - The context overflows fell from 6 to 2 and there were no time-budget endings; median time was 282 s against 396 s.
+    - The context warning fired in 23 of 42 tasks, which may be too early.
+- v17 was submitted under the pre-set rule: the higher total, and at least +2 over v13.
+- Spend: RunPod about $2.3 for this pod.
