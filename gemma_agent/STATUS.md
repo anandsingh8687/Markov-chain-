@@ -204,3 +204,19 @@ gemma_agent/
     - The context warning fired in 23 of 42 tasks, which may be too early.
 - v17 was submitted under the pre-set rule: the higher total, and at least +2 over v13.
 - Spend: RunPod about $2.3 for this pod.
+
+## 09-30 02:40: v19 replica result
+
+- v19 = v18 plus:
+  - context warnings recalibrated (66k/80k characters, never "revert to empty");
+  - show.py accepts A-B, A:B and A,B and prints the next range;
+  - check.py flags a repro that imports private modules;
+  - prompt: submit only after check.py; keep existing behaviour; honour "breaking / postponed";
+  - install.py resets the guard state.
+- Result: 18/42 (v13 17 on the same tasks).
+  - Wins: rich_3676, requests_6592, rich_3718. Losses: rich_3480, fastapi_14349.
+  - Confounded: this pod was an A40, much slower than the L40S used for v17/v18.
+    - Median 741 s (v18: 282 s); 13 tasks ended on the time budget; 3 were lost to LLMError (14978, 14099, 14448).
+- Status: v17 19, v18 18 and v19 18 on 42 tasks are within noise of each other, all 1-2 above v13.
+  - The replica cannot separate them further. The v17 public score decides the direction.
+  - Spend on this pod: $0.83.
