@@ -158,6 +158,16 @@ def run_repro(ws, repro):
     for line in out1.strip().splitlines()[-4:]:
         print("      " + line[:200])
     problems = []
+    try:
+        body = open(repro, encoding="utf-8", errors="replace").read()
+    except OSError:
+        body = ""
+    private = sorted(set(re.findall(r"^\s*(?:from|import)\s+([\w.]*\._[\w.]*|[\w.]*_compat[\w.]*)\b",
+                                    body, re.M)))
+    if private:
+        problems.append("your repro imports internals (%s). The hidden tests use the public API only: rewrite the repro "
+                        "through the public entry point (app + TestClient, render to a string, a public call) as the "
+                        "existing tests do" % ", ".join(private[:3]))
     if not code0:
         problems.append("the repro passes WITHOUT your change, so it does not reproduce the issue: make it use the "
                         "public API exactly as the issue describes and assert the expected result; if it truly "

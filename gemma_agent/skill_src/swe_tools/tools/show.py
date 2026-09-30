@@ -17,6 +17,13 @@ def main():
     if len(sys.argv) < 3:
         print(__doc__)
         return
+    m = re.fullmatch(r"(\d+)\s*[-:,]\s*(\d+)", sys.argv[2]) if len(sys.argv) == 3 else None
+    if m:  # accept FILE 10-50, 10:50 and 10,50 as well as FILE 10 50
+        sys.argv[2:] = [m.group(1), m.group(2)]
+    arg = sys.argv[2]
+    if not (arg.isdigit() or (arg.startswith("/") and arg.endswith("/") and len(arg) > 1)) or (
+            len(sys.argv) > 3 and not sys.argv[3].isdigit()):
+        sys.exit("error: use show.py FILE START END (numbers) or show.py FILE /regex/")
     path = os.path.join(workspace(), sys.argv[1])
     try:
         with open(path, encoding="utf-8", errors="replace") as fh:
@@ -76,7 +83,8 @@ def main():
     for i in range(start - 1, end):
         print("%5d| %s" % (i + 1, lines[i][:200]))
     if end < len(lines):
-        print("  ... (%d lines in file)" % len(lines))
+        print("  ... (%d lines in file; at most 40 per view; next: show.py %s %d %d)"
+              % (len(lines), rel, end + 1, min(end + 40, len(lines))))
 
 
 if __name__ == "__main__":

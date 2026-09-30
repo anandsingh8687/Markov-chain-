@@ -54,6 +54,14 @@ def find_ws():
 
 ws = find_ws()
 dest = os.path.join(ws, ".swetools")
+# Fresh guard state for this workspace (views, repro, context count), in case a TMPDIR is reused.
+import hashlib, tempfile
+_mark = hashlib.sha256(os.path.realpath(ws).encode("utf-8")).hexdigest()[:16]
+for _n in (".swetools_state.json", ".swetools_seen"):
+    try:
+        os.remove(os.path.join(tempfile.gettempdir(), "%s-%s" % (_n, _mark)))
+    except OSError:
+        pass
 os.makedirs(dest, exist_ok=True)
 for name, src in FILES.items():
     with open(os.path.join(dest, name), "w") as fh:

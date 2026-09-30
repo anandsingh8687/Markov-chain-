@@ -104,7 +104,7 @@ def digest(*parts):
 
 # The model has a 32k-token context and every command and its output stay in it. Count the text our
 # tools add and warn before the context overflows (which ends the task with whatever is in the tree).
-CONTEXT_WARN, CONTEXT_STOP = 45000, 58000  # characters; traces overflowed at ~62k characters (2.7 per token), scout included
+CONTEXT_WARN, CONTEXT_STOP = 66000, 80000  # characters; the fixer overflowed at ~62k of its own, and the scout adds ~35% more to this count
 
 
 def add_context(n):
@@ -141,11 +141,11 @@ def track_context(extra=0):
         state["context_chars"] = total
         save_state(state)
         if total >= CONTEXT_STOP:
-            real.write("\nCONTEXT ALMOST FULL: the session ends soon. Now: run check.py once, fix only a blocking "
-                       "problem, then call submit_patch. Do not read more code.\n")
+            real.write("\nCONTEXT ALMOST FULL: the session ends soon. If your patch is empty, make your best edit "
+                       "now (never revert to an empty patch). Then run check.py once and call submit_patch.\n")
         elif total >= CONTEXT_WARN:
             real.write("\nCONTEXT 75% USED: stop exploring. Make your change now if you have not, verify it with "
-                       "check.py, and submit_patch within about 8 calls.\n")
+                       "check.py, and fix what its VERDICT lists before you submit.\n")
         real.flush()
 
     atexit.register(_done)
