@@ -203,6 +203,8 @@ def _copy_ignored(ws, base):
 def ensure_base(ws):
     """Path of a clean clone of the baseline commit (created lazily, reset when dirty), or (None, reason)."""
     import shutil
+    if _ws.duo():
+        ws = _ws.real_workspace()  # both attempts share one baseline copy of the real /workspace
     sha = _baseline_sha(ws)
     if not sha:
         return None, "no baseline commit"
@@ -274,20 +276,22 @@ def base_imports(ws, base, changed_src):
     return None
 
 
-def script_for_base(ws, base, repro):
-    """A copy of the repro with every /workspace path pointed at the baseline copy."""
+def script_for_base(ws, base, repro, extra=()):
+    """A copy of the repro with every /workspace path (and the attempt's own copy) pointed at the baseline copy."""
     try:
         body = open(repro, encoding="utf-8", errors="replace").read()
     except OSError:
         return repro
     new = body
-    for p in sorted({ws, os.path.realpath(ws)}, key=len, reverse=True):
+    roots = {ws, os.path.realpath(ws), _ws.real_workspace(), os.path.realpath(_ws.real_workspace())}
+    roots |= set(extra) | set(os.path.realpath(x) for x in extra)
+    for p in sorted(roots, key=len, reverse=True):
         new = new.replace(p, "\0BASE\0")
     new = re.sub(r"(?<![\w.-])/workspace(?![\w.-])", "\0BASE\0", new)
     new = new.replace("\0BASE\0", base)
     if new == body:
         return repro
-    path = os.path.join(_ws.swe_dir(ws), "base_" + os.path.basename(repro))
+    path = os.path.join(_ws.swe_dir(ws), "base_%s_%s" % (_ws.att() or "s", os.path.basename(repro)))
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(new)
     return path
@@ -310,12 +314,12 @@ def run_repro(ws, repro, empty_patch, changed_src, info):
     """Run the repro on the original code (baseline copy) and on the current code."""
     if not os.path.isfile(repro):
         return ["repro script %s not found: write it first (in /tmp)" % repro]
-    code1, out1, t1 = _run_script(repro, ws, _ws.py_env(ws), _ws.SCRIPT_TIMEOUT)
+    code1, out1, t1 = _run_script(_ws.bound_script(repro), ws, _ws.py_env(ws), _ws.SCRIPT_TIMEOUT)
     code0, out0, why, tb = None, "", "", _ws.SCRIPT_TIMEOUT
     if empty_patch:
         code0, out0, tb = code1, out1, t1
     else:
-        r = _ws.remaining()
+        r = _ws.attempt_left() if _ws.duo() else _ws.remaining()
         if r is not None and r < 20:
             why = "LOW TIME, skipped"
         else:
@@ -337,6 +341,7 @@ def run_repro(ws, repro, empty_patch, changed_src, info):
         print("      " + line[:200])
     info["before"] = "?" if code0 is None else _ws.result_word(code0)
     info["now"] = _ws.result_word(code1)
+    info["before_definite"] = code0 is not None and not empty_patch
     problems = []
     try:
         body = open(repro, encoding="utf-8", errors="replace").read()
@@ -390,14 +395,16 @@ def pytest_summary(out, timed_out, t):
 
 def main():
     ws = workspace()
+    duo = _ws.duo()
     _, diff, _ = sh(["git", "diff", "HEAD"], ws)
     warn_if_repeated(sys.argv + [diff])
-    args = sys.argv[1:]
+    args = [_ws.rel_arg(a) for a in sys.argv[1:]]
     repro = None
     state = load_state()
     if "--repro" in args:
         i = args.index("--repro")
         repro = args[i + 1] if i + 1 < len(args) else ""
+        repro = _ws.scratch_path(repro) if repro else repro
         del args[i:i + 2]
         if repro:
             state["repro"] = repro
@@ -420,11 +427,13 @@ def main():
     for f in modified + new:
         base = os.path.basename(f)
         if is_test_path(f) or base in ("pytest.ini", "conftest.py", "setup.cfg", "tox.ini"):
-            problems.append("revert %s (test/config files are reset or break grading): git checkout -- %s" % (f, f)
-                            if f in modified else "delete %s: rm %s" % (f, f))
+            problems.append("revert %s (test/config files are reset or break grading): %s"
+                            % (f, _ws.shell_hint("git checkout -- %s" % f))
+                            if f in modified else "delete %s: %s" % (f, _ws.shell_hint("rm %s" % f)))
     for f in new:
         if not is_test_path(f) and (f.count("/") == 0 or re.search(r"(repro|debug|scratch|tmp|test_fix|reproduce)", f)):
-            problems.append("stray new file %s - delete it unless it is real library source: rm %s" % (f, f))
+            problems.append("stray new file %s - delete it unless it is real library source: %s"
+                            % (f, _ws.shell_hint("rm %s" % f)))
 
     changed_src = [f for f in modified + new if f.endswith(".py") and not is_test_path(f)]
     for f in changed_src:
@@ -460,13 +469,18 @@ def main():
     tests = (tests + tests_mentioning(ws, changed_names(ws), tests))[:5]
     print("\nTESTS: " + (" ".join(tests) if tests else "no related test files found"))
     caused, unknown = [], []
-    r = _ws.remaining()
-    if tests and r is not None and r < 60:
-        print("  LOW TIME (%d s left): tests skipped. If your repro passes with your change, call submit_patch now."
-              % max(0, r))
+    tests_found, tests_ran = bool(tests), False
+    r = _ws.attempt_left() if duo else _ws.remaining()
+    if tests and r is not None and r < (45 if duo else 60):
+        if duo:
+            print("  LOW TIME (%d s left in this attempt): tests skipped." % max(0, r))
+        else:
+            print("  LOW TIME (%d s left): tests skipped. If your repro passes with your change, call submit_patch "
+                  "now." % max(0, r))
         tests = []
     if tests:
-        out, timed_out, t = run_pytest(tests, ws, env, 60)
+        out, timed_out, t = run_pytest(tests, ws, env, 25 if duo else 60)
+        tests_ran = not timed_out
         print("  " + pytest_summary(out, timed_out, t))
         ran = re.search(r"\b\d+ (passed|failed|error)", out) or re.search(r"::\S+.* (PASSED|FAILED|ERROR)", out)
         if "no tests ran" in out or not ran:
@@ -478,14 +492,14 @@ def main():
         fails = failed_ids(out)
         if fails and not empty_patch:
             before, not_reached, why = None, set(), ""
-            r = _ws.remaining()
-            if r is not None and r < 25:
+            r = _ws.attempt_left() if duo else _ws.remaining()
+            if r is not None and r < (15 if duo else 25):
                 why = "LOW TIME"
             else:
                 base, why = ensure_base(ws)
                 if base:
                     targets = fails[:30] if len(fails) <= 30 else sorted(set(f.split("::")[0] for f in fails))
-                    out0, to0, _ = run_pytest(targets, base, base_env(base), 40)
+                    out0, to0, _ = run_pytest(targets, base, base_env(base), 10 if duo else 40)
                     seen = set(m.group(1) for m in re.finditer(
                         r"^(\S+::\S+) (?:PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS)", out0, re.M))
                     before = set(failed_ids(out0))
@@ -507,9 +521,9 @@ def main():
                     print("  %s  <- %s" % (fid[:150], tag))
             if len(fails) > 10:
                 print("  ... %d failing tests in total, %d caused by your change" % (len(fails), len(caused)))
-            r = _ws.remaining()
+            r = _ws.attempt_left() if duo else _ws.remaining()
             if caused and (r is None or r > 40):
-                t = _ws.cap(30)
+                t = _ws.cap(8 if duo else 30)
                 _, detail, _ = sh("timeout -k 2 %d " % t + PYTEST.replace("-q", "-q --tb=short") + " " +
                                   " ".join(shlex.quote(c) for c in caused[:3]) +
                                   " 2>&1 | grep -E '^(E |>|[^ ].*:[0-9]+: )' | head -24", ws, timeout=t + 10, env=env)
@@ -536,12 +550,27 @@ def main():
     print()
     if repro is None and not problems:
         print("note: no --repro given; for a behaviour change, verify with check.py --repro /tmp/repro.py")
+    gate = False
+    if duo:
+        gate = (not problems and bool(changed_src) and info.get("before_definite") and info.get("before") == "FAILS"
+                and info.get("now") == "passes" and (tests_ran or not tests_found))
     if problems:
-        print("VERDICT: FIX BEFORE SUBMITTING")
+        print("VERDICT: FIX BEFORE SUBMITTING" if not duo else "VERDICT: FIX")
         for p in problems:
             print("  - " + p)
-    else:
+    elif duo and not gate:
+        why = []
+        if repro is None or not info.get("before_definite") or info.get("before") != "FAILS":
+            why.append("a repro that FAILS without your change (check.py --repro /tmp/repro.py)")
+        if tests_found and not tests_ran:
+            why.append("the related tests to finish")
+        print("VERDICT: OK, but no GATE yet: the GATE also needs %s. Improve that, or if the patch is complete, reply "
+              "with the one line DONE (no tool call)." % " and ".join(why or ["a clean run"]))
+    elif not duo:
         print("VERDICT: OK - make sure every requirement of the issue is implemented, then call submit_patch")
+    if duo and _ws.att() == "b" and not gate:
+        print("submit_patch submits /workspace (attempt A's copy), never yours: do not call it before a tool prints "
+              "FINAL.")
     st = load_state()  # remembered for status.py and the state line
     st["last_verdict"] = ("FIX BEFORE SUBMITTING: " + " | ".join(p[:120] for p in problems[:4])) if problems else "OK"
     st["verdict_patch"] = _ws.patch_digest(ws)
@@ -549,6 +578,17 @@ def main():
         st["rs"] = {"path": repro, "body": info["body"], "before": info.get("before", "?"),
                     "now": info.get("now", "?")}
     save_state(st)
+    if duo:
+        import _duo
+        try:
+            _duo.save_snapshot({"gate": bool(gate), "verdict_ok": not problems, "before": info.get("before"),
+                                "now": info.get("now"), "caused": len(caused), "tests_ran": tests_ran}, repro)
+        except Exception as exc:  # a snapshot must never break the check
+            _duo._log("snapshot failed: %s" % exc)
+        if gate:
+            print("VERDICT: GATE PASSED (source change, compiles, imports, repro FAILS->passes, no test broken)")
+            if not _duo.race_win():
+                pass
 
 
 if __name__ == "__main__":

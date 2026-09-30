@@ -1,0 +1,6 @@
+name: root
+agent_class: SequentialAgent
+description: Two concurrent attempts (A in /workspace, B in a private copy), then a deterministic pick and submit.
+sub_agents:
+  - config_path: attempts.yaml
+  - config_path: finisher.yaml

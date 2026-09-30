@@ -31,6 +31,7 @@ def main():
     if not (arg.isdigit() or (arg.startswith("/") and arg.endswith("/") and len(arg) > 1)) or (
             len(sys.argv) > 3 and not sys.argv[3].isdigit()):
         sys.exit("error: use show.py FILE START END (numbers) or show.py FILE /regex/")
+    sys.argv[1] = _ws.rel_arg(sys.argv[1])
     path = os.path.join(workspace(), sys.argv[1])
     try:
         with open(path, encoding="utf-8", errors="replace") as fh:
@@ -69,7 +70,7 @@ def main():
         if repro and os.path.isfile(repro):
             t = _ws.cap(_ws.SCRIPT_TIMEOUT)
             code, out, _ = sh(["bash", "-c", "timeout -k 2 %d python3 -B '%s' 2>&1 | tail -4; exit ${PIPESTATUS[0]}"
-                               % (t, repro)], ws, timeout=t + 10, env=_ws.py_env(ws))
+                               % (t, _ws.bound_script(repro))], ws, timeout=t + 10, env=_ws.py_env(ws))
             print("your repro %s now: %s" % (repro, "passes" if code == 0 else "FAILS (exit %d)" % code))
             print("  " + "\n  ".join(out.strip().splitlines()[-4:]))
         print("Next step: %s" % ("make the change with edit.py now, using the line numbers you already have."

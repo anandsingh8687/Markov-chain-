@@ -5,12 +5,43 @@ import subprocess
 import sys
 import time
 
-BUDGET_S = int(os.environ.get("SWE_BUDGET_S", "300"))  # the harness's max_time_minutes (5) in seconds
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_CFG = []
+
+
+def cfg():
+    """Mode flag written by the duo installer next to the tools (_cfg.json). Absent = solo mode (v23)."""
+    if not _CFG:
+        import json
+        try:
+            with open(os.path.join(_HERE, "_cfg.json")) as fh:
+                _CFG.append(json.load(fh))
+        except (OSError, ValueError):
+            _CFG.append({})
+    return _CFG[0]
+
+
+def duo():
+    return cfg().get("mode") == "duo"
+
+
+def att():
+    return cfg().get("att", "")
+
+
+BUDGET_S = int(cfg().get("budget_s") or os.environ.get("SWE_BUDGET_S", "300"))  # max_time_minutes in seconds
+# Duo: the attempts stop at DEADLINE_S; the tools then pick the patch (solo: the deadline is the budget).
+DEADLINE_S = int(os.environ.get("SWE_DEADLINE_S") or cfg().get("deadline_s") or BUDGET_S)
 OUTPUT_CAP = 4500  # run_command keeps only the first 5000 characters of a command's output
 SCRIPT_TIMEOUT = 15  # default timeout for scripts and repro runs
+CAP_LEFT = []  # pick_patch: a function giving its own seconds left (it runs after the attempt deadline)
+CONTROL = []  # lines a tool wants printed FIRST (before the state line), e.g. the FINAL line in duo mode
 
 
 def workspace():
+    c = cfg()
+    if c.get("ws") and os.path.exists(os.path.join(c["ws"], ".git")):
+        return c["ws"]  # duo: the tools are bound to one attempt's repository
     for cand in (os.environ.get("SWE_WS"), os.environ.get("PWD"), os.getcwd(), "/workspace"):
         if cand and os.path.exists(os.path.join(cand, ".git")):
             return cand
@@ -19,6 +50,91 @@ def workspace():
     if os.path.exists(os.path.join(parent, ".git")):
         return parent
     sys.exit("error: repository not found")
+
+
+def real_workspace():
+    """The harness's /workspace (what submit_patch diffs). Equals workspace() except for attempt B."""
+    c = cfg()
+    if c.get("real_ws") and os.path.exists(os.path.join(c["real_ws"], ".git")):
+        return c["real_ws"]
+    return workspace()
+
+
+def rel_arg(arg):
+    """Map a file argument to a path relative to this attempt's repository when it names a file in it,
+    in the real /workspace (attempt B: mapped to its copy) or under a literal /workspace prefix.
+    Anything else is returned unchanged."""
+    if not arg or not arg.startswith("/"):
+        return arg
+    ws, real = workspace(), real_workspace()
+    prefixes = []
+    for p in (ws, os.path.realpath(ws), real, os.path.realpath(real), "/workspace"):
+        if p not in prefixes:
+            prefixes.append(p)
+    for p in sorted(prefixes, key=len, reverse=True):
+        if arg == p:
+            return "."
+        if arg.startswith(p.rstrip("/") + "/"):
+            return arg[len(p.rstrip("/")) + 1:]
+    return arg
+
+
+def scratch_path(path):
+    """Duo, attempt B: any /tmp path outside B's scratch dir maps to it (never shares A's scripts)."""
+    import tempfile
+    c = cfg()
+    if not duo() or c.get("att") != "b" or not path or not c.get("scratch"):
+        return path
+    sc = os.path.realpath(c["scratch"])
+    real = os.path.realpath(path)
+    if real == sc or real.startswith(sc + os.sep):
+        return path
+    tmp = os.path.realpath(tempfile.gettempdir())
+    if path.startswith("/tmp/") or real.startswith(tmp + os.sep):
+        return os.path.join(c["scratch"], os.path.basename(path))
+    return path
+
+
+def bound_script(script):
+    """Attempt B: a copy of the script with every /workspace path pointed at B's copy (the real
+    /workspace is attempt A's). Returns the path to run."""
+    if not duo() or att() != "b":
+        return script
+    try:
+        with open(script, encoding="utf-8", errors="replace") as fh:
+            body = fh.read()
+    except OSError:
+        return script
+    new = rewrite_ws_paths(body, workspace())
+    if new == body:
+        return script
+    path = os.path.join(os.path.dirname(script), "." + os.path.basename(script) + ".bound.py")
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(new)
+    except OSError:
+        return script
+    return path
+
+
+def rewrite_ws_paths(text, target):
+    """Replace the real workspace path(s) and a literal /workspace in text with target."""
+    import re
+    real = real_workspace()
+    new = text
+    for p in sorted({real, os.path.realpath(real)}, key=len, reverse=True):
+        if p and p != target:
+            new = new.replace(p, "\0WS\0")
+    new = re.sub(r"(?<![\w.-])/workspace(?![\w.-])", "\0WS\0", new)
+    return new.replace("\0WS\0", target)
+
+
+def shell_hint(cmd):
+    """How the model should run a plain shell command (attempt B: through sh.py, in its copy)."""
+    if duo() and att() == "b":
+        import shlex
+        return "python3 %s/sh.py %s" % (cfg().get("tools_display", "/tmp/b/t"), shlex.quote(cmd))
+    return cmd
 
 
 def _git_env(env=None):
@@ -74,6 +190,11 @@ def py_env(root, extra=None):
     env = dict(os.environ)
     first = [p for p in (src_root(root), root) if p]
     inherited = [p for p in env.get("PYTHONPATH", "").split(os.pathsep) if p and p not in first]
+    if duo():
+        real = os.path.realpath(real_workspace())
+        if os.path.realpath(root) != real:  # attempt B / the baseline copy: never import attempt A's code
+            inherited = [p for p in inherited
+                         if not (os.path.realpath(p) == real or os.path.realpath(p).startswith(real + os.sep))]
     env["PYTHONPATH"] = os.pathsep.join(first + inherited)
     if extra:
         env.update(extra)
@@ -88,8 +209,11 @@ def _mark(ws=None):
 
 
 def swe_dir(ws=None):
-    """Private scratch directory of the tools for this workspace (outside the repository)."""
+    """Private scratch directory of the tools for this workspace (outside the repository). In duo mode
+    both attempts share the directory of the real /workspace (baseline copy, lock, snapshots, FINAL)."""
     import tempfile
+    if duo():
+        ws = real_workspace()
     d = os.path.join(tempfile.gettempdir(), ".swe", _mark(ws))
     try:
         os.makedirs(d, exist_ok=True)
@@ -113,7 +237,7 @@ def t0(ws=None):
             cands.append(float(os.environ["SWE_T0"]))
         except ValueError:
             pass
-    ws = ws or workspace()
+    ws = ws or real_workspace()
     code, out, _ = sh(["git", "log", "-1", "--format=%ct", "_swegemma_baseline"], ws, timeout=10)
     if code or not out.strip():
         code, out, _ = sh(["git", "log", "-1", "--format=%ct", "HEAD"], ws, timeout=10)
@@ -143,9 +267,15 @@ def remaining():
     return None if e is None else BUDGET_S - e
 
 
+def attempt_left():
+    """Seconds until this attempt ends: the duo deadline, or the session budget in solo mode."""
+    e = elapsed()
+    return None if e is None else DEADLINE_S - e
+
+
 def cap(want):
-    """A subprocess timeout no longer than the session time left (at least 3 s)."""
-    r = remaining()
+    """A subprocess timeout no longer than the time left (duo: until the attempt deadline; at least 3 s)."""
+    r = CAP_LEFT[0]() if CAP_LEFT else (attempt_left() if duo() else remaining())
     if r is None:
         return want
     return max(3, int(min(want, r)))
@@ -230,20 +360,20 @@ def warn_if_repeated(argv):
     return False
 
 
-def _workspace_state_path(name):
+def _workspace_state_path(name, ws=None):
     """Keep guard state separate when several sandbox workspaces share TMPDIR."""
     import tempfile
-    return os.path.join(tempfile.gettempdir(), "%s-%s" % (name, _mark()))
+    return os.path.join(tempfile.gettempdir(), "%s-%s" % (name, _mark(ws)))
 
 
-def _state_path():
-    return _workspace_state_path(".swetools_state.json")
+def _state_path(ws=None):
+    return _workspace_state_path(".swetools_state.json", ws)
 
 
-def load_state():
+def load_state(ws=None):
     import json
     try:
-        with open(_state_path()) as fh:
+        with open(_state_path(ws)) as fh:
             return json.load(fh)
     except (OSError, ValueError):
         return {}
@@ -322,7 +452,8 @@ def state_line(ws=None):
         ws = ws or workspace()
         state = load_state()
         e = elapsed()
-        clock = "T+%ds/%d" % (e, BUDGET_S) if e is not None else "T+?/%d" % BUDGET_S
+        limit = DEADLINE_S if duo() else BUDGET_S
+        clock = "T+%ds/%d" % (e, limit) if e is not None else "T+?/%d" % limit
         patch, empty = _patch_summary(ws)
         rs = state.get("rs") or {}
         if rs.get("path"):
@@ -340,6 +471,17 @@ def state_line(ws=None):
             if not empty and state.get("verdict_patch") and state.get("verdict_patch") != patch_digest(ws):
                 chk += " (patch changed since)"
         parts = [clock, "patch: " + patch, rep, "check: " + chk, "rewrites %d" % state.get("rewrites", 0)]
+        if duo():
+            al = attempt_left()
+            if os.path.exists(os.path.join(swe_dir(), "final.json")):
+                return "[" + " | ".join(parts[:2] + ["attempts over"]) + "]"
+            if empty and e is not None and e >= 0.6 * DEADLINE_S:
+                parts.append("EDIT NOW: make the most likely edit")
+            elif al is not None and al < 45 and not empty:
+                parts.append("LOW TIME: finish with check.py; at T+%d the tools pick the patch" % DEADLINE_S)
+            if att() == "b":
+                parts.append("never call submit_patch before FINAL")
+            return "[" + " | ".join(parts) + "]"
         r = remaining()
         if empty and e is not None and e >= 180:
             parts.append("EDIT NOW: make the most likely edit")
@@ -373,16 +515,23 @@ def run_tool(main):
     buf = io.StringIO()
     sys.stdout = buf
     code = 0
+    skip = False
     try:
         ws = None
         try:
             ws = workspace()
             clean_stale_lock(ws)
+            if duo():
+                clean_stale_lock(real_workspace())
         except SystemExit:
             raise
         except Exception:
             pass
-        main()
+        if duo():
+            import _duo
+            skip = _duo.before_tool(os.path.basename(sys.argv[0]))
+        if not skip:
+            main()
     except SystemExit as exc:
         if isinstance(exc.code, str):
             buf.write(exc.code + "\n")
@@ -399,6 +548,14 @@ def run_tool(main):
         sys.stdout = real
     line = state_line()
     out = line + "\n" + buf.getvalue().rstrip("\n") + "\n"
+    if duo():
+        try:
+            import _duo
+            _duo.after_tool()
+        except Exception:
+            pass
+        out = "".join(l + "\n" for l in CONTROL) + out
+        out = _duo.display(out)
     real.write(_cap_text(out, OUTPUT_CAP))
     real.flush()
     sys.exit(code)

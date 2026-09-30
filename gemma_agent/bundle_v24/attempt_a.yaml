@@ -1,0 +1,12 @@
+name: attempt_a
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Attempt A - reproduce first, then fix; works in /workspace.
+instruction: !include prompts/attempt_a.md
+output_key: attempt_a_report
+tools:
+  - run_command
+  - get_status
+  - submit_patch
+skills:
+  - skills/swe-tools-a
+generate_content_config: !include configs/sampling.yaml

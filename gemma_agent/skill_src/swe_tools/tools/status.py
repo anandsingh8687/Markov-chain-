@@ -20,7 +20,12 @@ def main():
     ws = workspace()
     state = load_state()
     e, r = _ws.elapsed(), _ws.remaining()
-    if e is not None:
+    duo = _ws.duo()
+    if duo and e is not None:
+        r = _ws.attempt_left()
+        print("TIME: %d s used; this attempt ends at T+%d (%d s left); then the tools pick the best patch of both "
+              "attempts and print FINAL" % (e, _ws.DEADLINE_S, max(0, r)))
+    elif e is not None:
         print("TIME: %d s used of %d, %d s left" % (e, _ws.BUDGET_S, max(0, r)))
     viewed = state.get("viewed_files") or []
     print("FILES YOU VIEWED: " + (", ".join(viewed[-8:]) if viewed else "none recorded"))
@@ -44,7 +49,7 @@ def main():
     if repro and os.path.isfile(repro):
         t = _ws.cap(_ws.SCRIPT_TIMEOUT)
         code, out, _ = sh(["bash", "-c", "timeout -k 2 %d python3 -B %s 2>&1 | tail -4; exit ${PIPESTATUS[0]}"
-                           % (t, shlex.quote(repro))], ws, timeout=t + 10, env=_ws.py_env(ws))
+                           % (t, shlex.quote(_ws.bound_script(repro)))], ws, timeout=t + 10, env=_ws.py_env(ws))
         print("YOUR REPRO %s now: %s" % (repro, "passes" if code == 0 else "FAILS (exit %d)" % code))
         print("  " + "\n  ".join(out.strip().splitlines()[-4:]))
         if code in (124, 137):
@@ -63,21 +68,29 @@ def main():
     stale = verdict and state.get("verdict_patch") and state.get("verdict_patch") != _ws.patch_digest(ws)
     print("LAST CHECK: " + (verdict or "check.py not run yet") + (" (the patch changed since)" if stale else ""))
     if empty:
-        if e is not None and e >= 180:
+        if e is not None and e >= (0.6 * _ws.DEADLINE_S if duo else 180):
             nxt = "EDIT NOW: make the most likely edit with edit.py (the end-of-run diff keeps it)"
         elif not repro:
             nxt = "write a failing repro with run.py, or make the change with edit.py"
         else:
             nxt = "make the change with edit.py"
-    elif r is not None and r < 60:
+    elif duo and r is not None and r < 45:
+        nxt = "LOW TIME: run check.py --repro %s once more if you changed the code since" % (repro or "/tmp/repro.py")
+    elif r is not None and r < 60 and not duo:
         nxt = "LOW TIME: call submit_patch now"
     elif code not in (None, 0):
         nxt = "your repro still fails: fix the code (or the repro, if it asserts something the issue does not ask)"
+    elif verdict.startswith("OK") and not stale and duo:
+        nxt = ("compare the patch with the issue once more; if it is complete and check.py showed no GATE, reply "
+               "with the one line DONE")
     elif verdict.startswith("OK") and not stale:
         nxt = "compare the patch with the issue once more, then call submit_patch"
     else:
         nxt = "run check.py --repro %s and fix what its VERDICT lists" % (repro or "/tmp/repro.py")
     print("NEXT: " + nxt)
+    if duo and _ws.att() == "b":
+        print("submit_patch submits /workspace (attempt A's copy), never yours: do not call it before a tool prints "
+              "FINAL.")
 
 
 if __name__ == "__main__":

@@ -69,7 +69,7 @@ def main():
         print(__doc__)
         return
     ws = workspace()
-    rel = sys.argv[1]
+    rel = _ws.rel_arg(sys.argv[1])
     path = os.path.join(ws, rel)
     if is_test_path(rel) or os.path.basename(rel) in ("conftest.py", "pytest.ini"):
         sys.exit("error: do not edit test or pytest config files")
@@ -220,7 +220,7 @@ def main():
         # Immediate feedback on the change; check.py still does the full before/after run and the tests.
         t = _ws.cap(_ws.SCRIPT_TIMEOUT)
         code, out, _ = sh(["bash", "-c", "timeout -k 2 %d python3 -B %s 2>&1 | tail -3; exit ${PIPESTATUS[0]}"
-                           % (t, shlex.quote(repro))], ws, timeout=t + 10, env=_ws.py_env(ws))
+                           % (t, shlex.quote(_ws.bound_script(repro)))], ws, timeout=t + 10, env=_ws.py_env(ws))
         print("your repro %s now: %s" % (repro, "passes" if code == 0 else "FAILS (exit %d)" % code))
         for l in out.strip().splitlines()[-3:]:
             print("    " + l[:200])

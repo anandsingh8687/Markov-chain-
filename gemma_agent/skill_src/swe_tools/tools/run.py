@@ -82,7 +82,9 @@ def main():
         print(__doc__)
         return
     ws = workspace()
-    script = args[0]
+    script = _ws.scratch_path(args[0])
+    if script != args[0]:
+        print("note: your scripts live in %s; using %s" % (_ws.cfg().get("display_scratch", "/tmp/b"), script))
     given = _stdin_text()
     if given.strip():
         bad = [l for l in given.split("\n") if re.match(r"\s*EOF\S", l) or l.strip() == "EOF"]
@@ -91,6 +93,7 @@ def main():
                      "exactly EOF." % bad[0].strip())
         if not _is_tmp(script):
             sys.exit("error: write scripts only under /tmp (for example /tmp/repro.py)")
+        os.makedirs(os.path.dirname(script) or ".", exist_ok=True)
         with open(script, "w", encoding="utf-8") as fh:
             fh.write(given if given.endswith("\n") else given + "\n")
         print("wrote %s (%d lines)" % (script, len(given.rstrip("\n").split("\n"))))
@@ -120,7 +123,7 @@ def main():
     t = _ws.cap(limit)
     env = _ws.py_env(ws)
     code, out, err = sh(["bash", "-c", "timeout -k 2 %d python3 -B %s 2>&1 | tail -30; exit ${PIPESTATUS[0]}"
-                         % (t, _quote(script))], ws, timeout=t + 10, env=env)
+                         % (t, _quote(_ws.bound_script(script)))], ws, timeout=t + 10, env=env)
     text = (out or err or "").rstrip() or "(no output)"
     if len(text) > 2500:
         text = "...\n" + text[-2500:]
