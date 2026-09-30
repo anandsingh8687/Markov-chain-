@@ -27,7 +27,8 @@ from pathlib import Path
 
 REST = "https://rest.runpod.io/v1"
 GRAPHQL = "https://api.runpod.io/graphql"
-STATE = Path.home() / ".config" / "runpod_pod.json"
+# RUNPOD_STATE lets several pods run side by side (one state file each).
+STATE = Path(os.environ.get("RUNPOD_STATE") or Path.home() / ".config" / "runpod_pod.json")
 IMAGE = "vllm/vllm-openai:v0.19.1"
 MODEL_HANDLE = "google/gemma-4/other/gemma-4-31b-it-qat-w4a16-ct/2"
 SERVED_NAME = "gemma-4-31b-it-qat-w4a16-ct"
@@ -109,7 +110,7 @@ def up() -> None:
     body = {
         "name": "gemma-agent-lab", "imageName": IMAGE, "gpuCount": 1,
         "gpuTypeIds": [g for g, _ in gpus], "gpuTypePriority": "custom",
-        "containerDiskInGb": 80, "volumeInGb": 0, "ports": ["8000/http"],
+        "containerDiskInGb": 80, "volumeInGb": 0, "ports": ["8000/http", "8000/tcp"],
         "env": {"KAGGLE_API_TOKEN": kaggle_token, "VLLM_API_KEY": api_key, "HF_HUB_OFFLINE": "1"},
         "dockerEntrypoint": ["bash", "-c"],
         "dockerStartCmd": [START.format(handle=MODEL_HANDLE, served=SERVED_NAME)],
@@ -148,7 +149,7 @@ def status() -> None:
     cost = hours * float(pod.get("costPerHr") or st.get("cost_per_hr") or 0)
     print(f"pod {st['id']} {pod.get('desiredStatus')} gpu={st.get('gpu')} ${pod.get('costPerHr')}/h "
           f"up {hours * 60:.0f} min, about ${cost:.2f} so far")
-    url = f"https://{st['id']}-8000.proxy.runpod.net/v1/models"
+    url = base_url(st) + "/models"
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {st['api_key']}", "User-Agent": "gemma-agent-lab/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=20) as resp:
@@ -157,9 +158,21 @@ def status() -> None:
         print("vLLM not ready yet:", str(exc)[:120])
 
 
+def base_url(st: dict) -> str:
+    """Direct TCP (public IP) when the pod has one: the HTTP proxy adds 404s and a 100 s timeout (524)."""
+    try:
+        pod = _req("GET", f"{REST}/pods/{st['id']}")
+        ip, port = pod.get("publicIp"), (pod.get("portMappings") or {}).get("8000")
+        if ip and port:
+            return f"http://{ip}:{port}/v1"
+    except SystemExit:
+        pass
+    return f"https://{st['id']}-8000.proxy.runpod.net/v1"
+
+
 def env() -> None:
     st = _state()
-    print(f"export LLM_BACKEND=vllm LLM_API_BASE=https://{st['id']}-8000.proxy.runpod.net/v1 "
+    print(f"export LLM_BACKEND=vllm LLM_API_BASE={base_url(st)} "
           f"LLM_MODEL={SERVED_NAME} VLLM_API_KEY={st['api_key']}")
 
 
