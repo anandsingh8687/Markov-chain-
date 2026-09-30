@@ -273,3 +273,16 @@ gemma_agent/
 - v21 = v17 + status.py, edit range repair, show.py range syntax, a private-import repro check, and the submit-after-check and keep-behaviour rules.
   - Context warnings are disabled: under compaction the cumulative count is wrong.
   - Kaggle lab 6 (v17 vs v21, 16 improvable tasks) is running.
+
+## 09-30 night: labs 6-8 (Kaggle 4x L4, official harness, regraded locally)
+
+| Bundle | Hard 16 (lab6 set) | Reliable 16 (lab5 set) | Total 32 |
+| --- | --- | --- | --- |
+| v17 | 3 | 11 | 14 |
+| v21 | 4 (lab6) / 4 (lab7a) | 11 | 15 |
+| v22 (no scout) | 3 | 13 (keeps all 11 of v17's) | 16 |
+| v22, 8-min cap | 2 | not run | not run |
+
+- The 8-minute cap does not help: 9/16 still time out and patches are empty more often. The hard tasks are capability-bound, not time-bound (consistent with the oracle tests). Keep 5 minutes.
+- No submission on 10-01: v22 is +2 over v17, below the +3 bar and far from the target.
+- Kaggle GPU used this week: about 12-15 of 30 h.
