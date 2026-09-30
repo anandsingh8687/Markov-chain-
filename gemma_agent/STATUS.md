@@ -239,3 +239,24 @@ gemma_agent/
 - Running now:
   - official-harness v17 vs v20 (v20 = v19 + all advertised tools declared);
   - replica oracle diagnostics O1 (gold file and function given) and O2 (plus the hidden tests), to measure how much is lost at localization vs spec vs implementation.
+
+## 09-30 afternoon: oracle diagnostics and official-harness runs
+
+- Oracle diagnostics (replica, v17, 29 tasks: 17 never solved + 12 coin flips):
+  - O1 (gold file and function given): 1/17 never-solved, 6/12 coin flips.
+  - O2 (plus the hidden tests): 3/17, 9/12.
+  - Knowing where and what does not unlock the hard tasks. In O2, 8 of the 17 never ran a test and 6 overflowed.
+- Gold size vs solvability (42 tasks):
+  - 0-10 lines: 18 tasks, 15 ever solved.
+  - 11-30 lines: 14 tasks, 9 ever solved.
+  - 31-80 lines: 3 tasks, 1 ever solved.
+  - 81+ lines: 7 tasks, 0 ever solved.
+  - The realistic ceiling is about 32 tasks, so 30/42 means solving the small-fix tasks almost every time.
+- Official harness (gemma_agent/official/run_official.py, 15 min, pods A6000/A40, 6 jobs):
+  - v17 12/40 and v20 13/42. Replica v17 was 19/42.
+  - 17-20 timeouts: the pods are about 5x slower per call than Kaggle.
+  - Requests tasks fail on local environment differences.
+  - One v20 context overflow lost its patch.
+- Compaction is real in the official harness: at 14336 tokens it fired in 24/42 tasks, and the prompt dropped from about 14.5k to about 5.5k tokens. Whether the Kaggle scorer uses 14336 (host notebook) or 32768 (README) is unanswered.
+- Kaggle GPU lab 5 is running v17 vs v20 on 16 tasks with real 4x L4 timing, the official harness and compaction at 14336.
+- New tool: status.py (patch, repro result, last verdict, files viewed) to re-orient after compaction.

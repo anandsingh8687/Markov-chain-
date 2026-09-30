@@ -293,6 +293,9 @@ def main():
             print("  - " + p)
     else:
         print("VERDICT: OK - make sure every requirement of the issue is implemented, then call submit_patch")
+    st = load_state()  # remembered for status.py
+    st["last_verdict"] = ("FIX BEFORE SUBMITTING: " + " | ".join(p[:120] for p in problems[:4])) if problems else "OK"
+    save_state(st)
 
 
 if __name__ == "__main__":

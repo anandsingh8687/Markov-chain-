@@ -39,6 +39,9 @@ def main():
     moved = state.get("moved", {})
     if rel in moved:
         del moved[rel]
+    viewed = state.setdefault("viewed_files", [])
+    if rel not in viewed:
+        viewed.append(rel)
     count = seen.get(key, 0)
     seen[key] = count + 1
     save_state(state)
