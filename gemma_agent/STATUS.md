@@ -220,3 +220,22 @@ gemma_agent/
 - Status: v17 19, v18 18 and v19 18 on 42 tasks are within noise of each other, all 1-2 above v13.
   - The replica cannot separate them further. The v17 public score decides the direction.
   - Spend on this pod: $0.83.
+
+## 09-30 midday: v17 public 0.08; where the gap comes from
+
+- Public scores: v7 0.08, v13 0.10, v17 0.08. With about 58 public tasks, 1 task = 0.017, so all three are within 1 task. The leaderboard cannot separate them.
+- Replica about 40% vs public about 10%:
+  - Not the task mix. The harness's own difficulty tiers put our 42 tasks at 18 Easy, 19 Medium and 5 Hard, similar to the public 129. Our solve rates are Easy about 75%, Medium about 25%, Hard 0%.
+  - Not agent speed. Kaggle's 4x L4 lab ran about 3.6 s per call, faster than our shared replica at about 12 s.
+- Official harness vs replica (the official harness now runs locally: gemma_agent/official/run_official.py):
+  1. Any model or ADK exception drops the patch: a context overflow 400, or an unknown tool name. The replica kept the diff.
+  2. On Kaggle the prompt advertises search_similar_code, get_code_neighbors and get_code_subgraph (graph data exists for every task). Our bundles did not declare them, so a call to one kills the session. The v5 lab run died on 'grep_search'.
+  3. Compaction: history is summarized by an extra LLM call above 14336 tokens (32768 in the README). The replica has none.
+  4. The replica grader is lenient (failures that are a subset of the gold's failures still pass). The official grader needs pytest exit 0.
+- Across 10 runs: 25 of 42 tasks were solved at least once and 17 never.
+  - Runs that never ran check.py resolve 6% (5/85). Half never edited, and most ended with an empty patch. The real bottleneck is deciding the change on Medium tasks.
+  - With the check it is 61-68%; an OK or FIX verdict barely predicts the result.
+- A best-of-N ceiling estimated from per-task solve rates gives about 22/42 at N=3 with a perfect pick. Reaching 30/42 needs the never-solved Medium tasks, not only reliability.
+- Running now:
+  - official-harness v17 vs v20 (v20 = v19 + all advertised tools declared);
+  - replica oracle diagnostics O1 (gold file and function given) and O2 (plus the hidden tests), to measure how much is lost at localization vs spec vs implementation.
