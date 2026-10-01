@@ -315,3 +315,10 @@ gemma_agent/
 
 - Kaggle lab: 16/32, against v17 14/32.
 - Score check is scheduled for about 12 h later.
+
+## 10-01: v22 public result: ERROR
+
+- Kaggle reported: "Your notebook hit an unhandled error while rerunning your code". No score.
+- v17 to v22 diff analysed: every change is to sandbox-side helpers, the prompt, or removing the scout. The harness catches every per-task exception (evaluate.py / agent_runner.py); only ContainerSetupError (infrastructure) is re-raised.
+- v22 ran 48 official-harness lab tasks with 0 crashes, and its time per task equals v17.
+- Most likely a scorer or infrastructure failure. Resubmitting v22 is proposed to the user, pending their decision.
