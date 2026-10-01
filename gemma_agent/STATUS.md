@@ -310,3 +310,8 @@ gemma_agent/
 - Lab kernel: --concurrency N (one OS process per task-run), --replicates, and a branch-aware virtual clock that the helper tools also see.
   - Refit constants: 0.164 s per call + 0.0221 s per token + tool seconds (R² 0.82).
 - Next: lab round K1/K2 (v22 vs v23 vs v24 on the broad48 set, concurrency 6, virtual clock) scheduled for 10-03 00:15 UTC, when the Kaggle quota resets.
+
+## 10-01 05:33 UTC: v22 submitted (user request)
+
+- Kaggle lab: 16/32, against v17 14/32.
+- Score check is scheduled for about 12 h later.
