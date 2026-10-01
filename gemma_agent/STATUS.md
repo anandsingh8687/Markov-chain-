@@ -293,3 +293,20 @@ gemma_agent/
 - Kaggle GPU quota is exhausted until 10-03 00:00 UTC (a 4x L4 kernel bills about 2 quota-h per wall hour).
 - Built and committed: v23 solo-plus and the concurrent lab kernel (offline tests pass).
 - In progress: v24 duo (two parallel attempts plus pick_patch).
+
+## 10-01: v23 / v24 / concurrent lab kernel built and validated offline
+
+- v23 solo-plus (single agent, 5 min):
+  - check.py never stashes; it uses a base clone. This fixes 4 lost patches, 3 of which regrade as resolved.
+  - Session clock anchored on _swegemma_baseline; time caps; src PYTHONPATH.
+  - 15 s script timeouts with a hang hint; a state line first in every helper output, with output capped at 4500 chars.
+  - Anti-churn (STOP rewriting / EDIT NOW); 1536 output tokens.
+  - Offline suite 119/119 on fastapi, requests, rich and t17 replicas.
+- v24 duo: SequentialAgent[ParallelAgent[attempt A in /workspace, attempt B in a git clone --shared], finisher].
+  - pick_patch.py: hard filters, then pooled-repro pass count. Replay of 469 stored attempts: best-of-2 0.536 vs single 0.458 (87% of the oracle gain).
+  - Race on the check.py GATE; deadline pick at T+225; crash-safe writes into /workspace; tripwire for B's plain commands.
+  - Offline suite 164/164. Fake-LLM smoke through the real harness: 10 scenarios x 2 tasks pass.
+  - Residual risk: a stray early submit_patch plus a text reply submits A's tree.
+- Lab kernel: --concurrency N (one OS process per task-run), --replicates, and a branch-aware virtual clock that the helper tools also see.
+  - Refit constants: 0.164 s per call + 0.0221 s per token + tool seconds (R² 0.82).
+- Next: lab round K1/K2 (v22 vs v23 vs v24 on the broad48 set, concurrency 6, virtual clock) scheduled for 10-03 00:15 UTC, when the Kaggle quota resets.
