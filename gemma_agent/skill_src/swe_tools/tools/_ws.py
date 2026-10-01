@@ -32,10 +32,14 @@ def att():
 BUDGET_S = int(cfg().get("budget_s") or os.environ.get("SWE_BUDGET_S", "300"))  # max_time_minutes in seconds
 # Duo: the attempts stop at DEADLINE_S; the tools then pick the patch (solo: the deadline is the budget).
 DEADLINE_S = int(os.environ.get("SWE_DEADLINE_S") or cfg().get("deadline_s") or BUDGET_S)
-OUTPUT_CAP = 4500  # run_command keeps only the first 5000 characters of a command's output
+# run_command keeps only the first 5000 characters of a command's output. Duo: both attempts share one session
+# whose history is compacted at ~14k prompt tokens, so each output is kept shorter to delay that.
+OUTPUT_CAP = 2500 if duo() else 4500
+VIEW_LINES = 30 if duo() else 40  # show.py lines per view
 SCRIPT_TIMEOUT = 15  # default timeout for scripts and repro runs
 CAP_LEFT = []  # pick_patch: a function giving its own seconds left (it runs after the attempt deadline)
 CONTROL = []  # lines a tool wants printed FIRST (before the state line), e.g. the FINAL line in duo mode
+WARN = []  # duo: warnings printed right after CONTROL (e.g. a plain command changed /workspace)
 
 
 def workspace():
@@ -130,10 +134,12 @@ def rewrite_ws_paths(text, target):
 
 
 def shell_hint(cmd):
-    """How the model should run a plain shell command (attempt B: through sh.py, in its copy)."""
-    if duo() and att() == "b":
+    """How the model should run a shell command that changes files. Duo: through sh.py (attempt B: in its copy;
+    attempt A: a change of /workspace by a plain command is undone at the next tool call)."""
+    if duo():
         import shlex
-        return "python3 %s/sh.py %s" % (cfg().get("tools_display", "/tmp/b/t"), shlex.quote(cmd))
+        return "python3 %s/sh.py %s" % (cfg().get("tools_display", "/tmp/b/t" if att() == "b" else ".swetools"),
+                                        shlex.quote(cmd))
     return cmd
 
 
@@ -257,7 +263,39 @@ def t0(ws=None):
     return val
 
 
+_VCLOCK = []
+
+
+def vclock():
+    """The lab's virtual clock (lab/labworker.py writes <TMPDIR>/.swe_vclock before every sandbox command):
+    {"v": agent seconds on the harness clock, "wall": time.time() when written, "rate": clock seconds per wall
+    second while a command runs}. None outside the lab (the real harness never writes it)."""
+    if not _VCLOCK:
+        import json
+        import tempfile
+        val = None
+        try:
+            with open(os.path.join(tempfile.gettempdir(), ".swe_vclock")) as fh:
+                d = json.load(fh)
+            v, wall, rate = float(d["v"]), float(d["wall"]), float(d.get("rate", 1.0))
+            if 0 <= time.time() - wall <= 3600 and rate > 0:
+                val = (v, wall, rate)
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+        _VCLOCK.append(val)
+    return _VCLOCK[0]
+
+
+def clock_rate():
+    """Session-clock seconds per real second (1 except under the lab's scaled clock)."""
+    vc = vclock()
+    return vc[2] if vc else 1.0
+
+
 def elapsed():
+    vc = vclock()
+    if vc is not None:  # lab: the harness's (virtual or scaled) clock, advanced by real time since the command began
+        return max(0.0, vc[0] + (time.time() - vc[1]) * vc[2])
     s = t0()
     return None if s is None else max(0.0, time.time() - s)
 
@@ -274,8 +312,14 @@ def attempt_left():
 
 
 def cap(want):
-    """A subprocess timeout no longer than the time left (duo: until the attempt deadline; at least 3 s)."""
-    r = CAP_LEFT[0]() if CAP_LEFT else (attempt_left() if duo() else remaining())
+    """A subprocess timeout (real seconds) no longer than the time left (duo: until the attempt deadline; at
+    least 3 s). The time left is on the session clock; under the lab's scaled clock it is converted to real s."""
+    if CAP_LEFT:
+        r = CAP_LEFT[0]()  # pick_patch: already real seconds
+    else:
+        r = attempt_left() if duo() else remaining()
+        if r is not None:
+            r = r / clock_rate()
     if r is None:
         return want
     return max(3, int(min(want, r)))
@@ -472,21 +516,25 @@ def state_line(ws=None):
                 chk += " (patch changed since)"
         parts = [clock, "patch: " + patch, rep, "check: " + chk, "rewrites %d" % state.get("rewrites", 0)]
         if duo():
+            # the attempt letter and its own repository first: after a history summary that mixes both attempts,
+            # every surviving tool output still says whose work it describes
+            who = "%s %s" % ((att() or "a").upper(), "/workspace" if att() != "b" else cfg().get("repo_display",
+                                                                                                    "/tmp/b/repo"))
             al = attempt_left()
             if os.path.exists(os.path.join(swe_dir(), "final.json")):
-                return "[" + " | ".join(parts[:2] + ["attempts over"]) + "]"
+                return "[" + " | ".join([who] + parts[:2] + ["attempts over"]) + "]"
             if empty and e is not None and e >= 0.6 * DEADLINE_S:
                 parts.append("EDIT NOW: make the most likely edit")
             elif al is not None and al < 45 and not empty:
                 parts.append("LOW TIME: finish with check.py; at T+%d the tools pick the patch" % DEADLINE_S)
-            if att() == "b":
-                parts.append("never call submit_patch before FINAL")
-            return "[" + " | ".join(parts) + "]"
+            parts.append("only tool calls until FINAL; never submit_patch before FINAL")
+            return "[" + " | ".join([who] + parts) + "]"
         r = remaining()
         if empty and e is not None and e >= 180:
             parts.append("EDIT NOW: make the most likely edit")
         elif r is not None and r < 60 and not empty:
-            parts.append("LOW TIME: submit_patch now")
+            # never 'submit now': the end-of-run diff keeps the tree, and late fixes still count
+            parts.append("LOW TIME: finish this fix, no new exploration; submit only after check.py OK")
         return "[" + " | ".join(parts) + "]"
     except Exception as exc:  # the state line must never break a tool
         return "[state unavailable: %s]" % str(exc)[:80]
@@ -554,7 +602,7 @@ def run_tool(main):
             _duo.after_tool()
         except Exception:
             pass
-        out = "".join(l + "\n" for l in CONTROL) + out
+        out = "".join(l + "\n" for l in CONTROL + WARN) + out
         out = _duo.display(out)
     real.write(_cap_text(out, OUTPUT_CAP))
     real.flush()

@@ -24,6 +24,7 @@ import _ws  # noqa: E402
 from _ws import changed_files, is_test_path, load_state, save_state, sh, tracked_py, warn_if_repeated, workspace  # noqa: E402
 
 PYTEST = "python3 -m pytest -q -p no:cacheprovider -o addopts='' -p no:anyio --import-mode=importlib"
+PYTEST_V = PYTEST.replace(" -q", "")  # run_pytest adds -v (with -q the two cancel out)
 
 
 def module_name(path):
@@ -36,7 +37,7 @@ def module_name(path):
 
 
 def related_tests(ws, changed_src):
-    tests = [t for t in tracked_py(ws) if is_test_path(t) and os.path.basename(t) != "conftest.py"]
+    tests = [t for t in tracked_py(ws) if is_test_path(t) and os.path.basename(t) not in ("conftest.py", "__init__.py")]
     scores = {}
     mods = [module_name(f) for f in changed_src]
     stems = [os.path.splitext(os.path.basename(f))[0] for f in changed_src]
@@ -120,7 +121,7 @@ def changed_names(ws):
 def tests_mentioning(ws, names, exclude):
     if not names:
         return []
-    tests = [t for t in tracked_py(ws) if is_test_path(t) and os.path.basename(t) != "conftest.py"]
+    tests = [t for t in tracked_py(ws) if is_test_path(t) and os.path.basename(t) not in ("conftest.py", "__init__.py")]
     hits = {}
     for t in tests:
         if t in exclude:
@@ -368,8 +369,10 @@ def run_pytest(targets, cwd, env, limit, extra=""):
     """pytest -v into a file (so a timeout still yields the per-test results so far)."""
     t = _ws.cap(limit)
     log = os.path.join(_ws.swe_dir(), "pytest_%d.log" % os.getpid())
+    # PYTEST has -q; with -v added they cancel out (verbosity 0: progress dots only), so -q is dropped here:
+    # one 'path::test PASSED/FAILED' line per test, which a timed-out run can still be read from
     cmd = "timeout -k 2 %d %s -v %s %s > %s 2>&1; echo $?" % (
-        t, PYTEST, extra, " ".join(shlex.quote(x) for x in targets), shlex.quote(log))
+        t, PYTEST_V, extra, " ".join(shlex.quote(x) for x in targets), shlex.quote(log))
     _, rc, _ = sh(["bash", "-c", cmd], cwd, timeout=t + 15, env=env)
     try:
         out = open(log, encoding="utf-8", errors="replace").read()
@@ -381,12 +384,24 @@ def run_pytest(targets, cwd, env, limit, extra=""):
     return out, timed_out, t
 
 
+def count_passed(out):
+    return len(re.findall(r"^\S+::\S+.* PASSED\b", out, re.M))
+
+
+def partial_ok(out, timed_out):
+    """A timed-out run that already passed tests and showed no failure (a partial, clean result)."""
+    return timed_out and count_passed(out) > 0 and not failed_ids(out)
+
+
 def pytest_summary(out, timed_out, t):
     summary = [l for l in out.splitlines() if re.search(r"\b\d+ (passed|failed|error)", l)]
     if summary and not timed_out:
         return summary[-1].strip("= ")
-    passed = len(re.findall(r"^\S+::\S+.* PASSED\b", out, re.M))
+    passed = count_passed(out)
     failed = len(failed_ids(out))
+    if partial_ok(out, timed_out):
+        return ("TIMED OUT after %d s (partial run): %d passed, none failed so far - the tests not reached are "
+                "unchecked" % (t, passed))
     if timed_out:
         return "TIMED OUT after %d s: %d passed, %d failed so far" % (t, passed, failed)
     last = out.strip().splitlines()[-1:]
@@ -475,12 +490,13 @@ def main():
         if duo:
             print("  LOW TIME (%d s left in this attempt): tests skipped." % max(0, r))
         else:
-            print("  LOW TIME (%d s left): tests skipped. If your repro passes with your change, call submit_patch "
-                  "now." % max(0, r))
+            print("  LOW TIME (%d s left): tests skipped. Finish the fix you are on; the end-of-run diff keeps your "
+                  "edits, so submit_patch only when the repro passes with your change." % max(0, r))
         tests = []
     if tests:
-        out, timed_out, t = run_pytest(tests, ws, env, 25 if duo else 60)
-        tests_ran = not timed_out
+        out, timed_out, t = run_pytest(tests, ws, env, 30 if duo else 60)
+        # a timed-out run that passed tests and showed no failure counts as run (partial; the rest is unchecked)
+        tests_ran = not timed_out or partial_ok(out, timed_out)
         print("  " + pytest_summary(out, timed_out, t))
         ran = re.search(r"\b\d+ (passed|failed|error)", out) or re.search(r"::\S+.* (PASSED|FAILED|ERROR)", out)
         if "no tests ran" in out or not ran:
@@ -537,6 +553,11 @@ def main():
         elif fails:
             for fid in fails[:10]:
                 print("  %s  <- fails on the original code (your patch is empty)" % fid[:150])
+        if timed_out and not tests_ran and count_passed(out) > 0 and fails and not caused and not unknown \
+                and not empty_patch:
+            # partial run whose only failures also fail on the original code: as good as a clean partial run
+            tests_ran = True
+            print("  (partial run: %d passed; every failure so far also fails without your change)" % count_passed(out))
     problems += ["fix failing test %s (or confirm it encodes the old buggy behaviour)" % c for c in caused[:4]]
     if len(caused) > 4:
         problems.append("... and %d more tests your change broke" % (len(caused) - 4))
@@ -564,8 +585,9 @@ def main():
             why.append("a repro that FAILS without your change (check.py --repro /tmp/repro.py)")
         if tests_found and not tests_ran:
             why.append("the related tests to finish")
-        print("VERDICT: OK, but no GATE yet: the GATE also needs %s. Improve that, or if the patch is complete, reply "
-              "with the one line DONE (no tool call)." % " and ".join(why or ["a clean run"]))
+        print("VERDICT: OK, but no GATE yet: the GATE also needs %s. Improve that, or if the patch is complete, run "
+              "python3 %s/done.py (never reply with text before FINAL)."
+              % (" and ".join(why or ["a clean run"]), _ws.cfg().get("tools_display", ".swetools")))
     elif not duo:
         print("VERDICT: OK - make sure every requirement of the issue is implemented, then call submit_patch")
     if duo and _ws.att() == "b" and not gate:

@@ -429,33 +429,102 @@ def before_tool(tool):
     return False
 
 
+# ---------------------------------------------------------------- tripwire: /workspace changed outside the tools
+# Both attempts' plain shell commands run in /workspace (the harness runs every command there). Attempt B must
+# never change it, and attempt A changes it only through the tools (edit.py, sh.py, the race and the pick).
+# After every tool call the tools record /workspace's diff; a different diff at the start of the next tool call
+# means a plain command changed it: it is put back to the recorded (tool-made) state and both attempts are told.
+
+WARN_A = ("WARNING: a plain shell command changed /workspace since the last tool call; the change was undone. "
+          "Change files only with edit.py, or with python3 .swetools/sh.py for git checkout / rm.")
+WARN_B = ("WARNING: a plain shell command changed /workspace (attempt A's copy, not yours) since the last tool call; "
+          "the change was undone. Run EVERY shell command through python3 %s/sh.py; your copy is %s.")
+
+
 def _wstate():
-    ws = _ws.real_workspace()
-    _, num, _ = _ws.sh(["git", "diff", "--numstat", "HEAD"], ws, timeout=20)
-    _, new, _ = _ws.sh(["git", "ls-files", "--others", "--exclude-standard"], ws, timeout=20)
-    return hashlib.sha1((num + "\0" + new).encode()).hexdigest()[:12], num, new
+    raw = export_diff(_ws.real_workspace())
+    return (None if raw is None else digest(raw)), raw
+
+
+def _warn_text(att):
+    c = _ws.cfg()
+    if att == "b":
+        return WARN_B % (c.get("tools_display", "/tmp/b/t") if c.get("att") == "b" else "/tmp/b/t", "/tmp/b/repo")
+    return WARN_A
 
 
 def _tripwire_check():
-    """Log (for the lab) when /workspace changed between tool calls outside the tools (plain commands)."""
+    """Undo a change of /workspace made outside the tools since the last tool call, and warn both attempts."""
     try:
+        me = _ws.att() or "a"
+        pend = _p("warn_%s" % me)
+        if os.path.exists(pend):
+            _ws.WARN.append(_warn_text(me))
+            os.remove(pend)
         prev = read_json(_p("wstate.json"))
-        if not prev:
+        if not prev or final_info():
             return
-        h, num, new = _wstate()
-        if h != prev.get("h"):
-            _log("tripwire: /workspace changed outside the tools since %s's last tool call: %s"
-                 % (prev.get("by"), (num + new).replace("\n", " ")[:200]))
-    except Exception:
-        pass
+        with Lock(wait=20):
+            prev = read_json(_p("wstate.json"))
+            h, raw = _wstate()
+            if not prev or h is None or h == prev.get("h"):
+                return
+            try:
+                with open(_p("wstate.diff"), encoding="utf-8", errors="surrogateescape") as fh:
+                    target = fh.read()
+            except OSError:
+                return
+            ok, why = promote(target, "tripwire")
+            _log("tripwire: /workspace changed outside the tools after %s's last tool call (%s); restored: %s"
+                 % (prev.get("by"), ", ".join(s["path"] for s in sections(raw or ""))[:200], why))
+            n = (read_json(_p("tripwire.json")) or {}).get("n", 0) + 1
+            write_json(_p("tripwire.json"), {"n": n, "restored": bool(ok)})
+            if ok:
+                now_s = dict((x["path"], norm(x["text"])) for x in sections(raw or ""))
+                rec_s = dict((x["path"], norm(x["text"])) for x in sections(target))
+                files = ", ".join(sorted(p for p in set(now_s) | set(rec_s) if now_s.get(p) != rec_s.get(p)))
+                _ws.WARN.append(_warn_text(me) + (" Undone: %s." % files[:200] if files else ""))
+                other = "b" if me == "a" else "a"
+                with open(_p("warn_%s" % other), "w") as fh:
+                    fh.write("1")
+    except Exception as exc:  # the tripwire must never break a tool
+        _log("tripwire error: %s" % exc)
 
 
 def after_tool():
     try:
-        h, _, _ = _wstate()
+        h, raw = _wstate()
+        if h is None:
+            return
+        with open(_p("wstate.diff.tmp%d" % os.getpid()), "w", encoding="utf-8", errors="surrogateescape") as fh:
+            fh.write(raw)
+        os.replace(_p("wstate.diff.tmp%d" % os.getpid()), _p("wstate.diff"))
         write_json(_p("wstate.json"), {"h": h, "by": _ws.att()})
+        write_json(_p("last_%s.json" % (_ws.att() or "a")), {"t": _ws.elapsed(), "wall": time.time()})
     except Exception:
         pass
+
+
+# ---------------------------------------------------------------- done.py: an attempt says it is finished
+
+def done_info():
+    return read_json(_p("done.json")) or {}
+
+
+def mark_done(att):
+    with Lock(wait=30):
+        d = done_info()
+        d[att] = _ws.elapsed()
+        write_json(_p("done.json"), d)
+        return d
+
+
+def other_idle(other, idle_s=60.0):
+    """True when the other attempt has not finished a tool call for idle_s real seconds (or never started)."""
+    j = read_json(_p("last_%s.json" % other))
+    if not j:
+        return (_ws.elapsed() or 0) > idle_s
+    return time.time() - float(j.get("wall") or 0) > idle_s
 
 
 def display(out):

@@ -22,8 +22,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _ws  # noqa: E402
 import _duo  # noqa: E402
 
-MAX_S = 40.0      # wall budget of one pick
-MARGIN_S = 30.0   # keep this much of the session for submit_patch and the final reply
+MAX_S = 25.0      # wall budget of one pick (the other attempt is frozen while it runs: tools block the loop)
+MARGIN_S = 15.0   # keep this much of the session for the write, submit_patch and the final reply (a timeout
+                  # after the write still submits the picked patch: the harness diffs /workspace at the end)
 
 
 def rank_key(c):
@@ -51,7 +52,7 @@ def _budget_seconds():
     r = _ws.remaining()
     if r is None:
         return MAX_S
-    return max(0.0, min(MAX_S, r - MARGIN_S))
+    return max(0.0, min(MAX_S, (r - MARGIN_S) / _ws.clock_rate()))  # session seconds -> real seconds
 
 
 def _collect():
@@ -313,14 +314,16 @@ def pick(reason, finisher=False):
             if fin is None:
                 e = _ws.elapsed()
                 if finisher and e is not None and e < _ws.DEADLINE_S - 60:
-                    cands, _ = _collect()
+                    # Both attempts returned early. Unless both ran done.py, at least one ended with a text
+                    # reply (a stray or mangled turn, or its loop ran out): let the harness nudge restart them.
+                    done = _duo.done_info()
                     nudges = int((_duo.read_json(os.path.join(_duo.ddir(), "nudges.json")) or {}).get("n", 0))
-                    if not any(c["src"] for c in cands) and nudges < 2:
+                    if not ("a" in done and "b" in done) and nudges < 2:
                         _duo.write_json(os.path.join(_duo.ddir(), "nudges.json"), {"n": nudges + 1})
-                        _ws.CONTROL.insert(0, "NOT FINAL: both attempts stopped early (T+%ds) without any source "
-                                              "change. Reply with one line and do NOT call submit_patch: the "
-                                              "attempts will continue." % e)
-                        _duo._log("NOT FINAL (finisher at T+%d, nudge %d)" % (e, nudges + 1))
+                        _ws.CONTROL.insert(0, "NOT FINAL: the attempts stopped early (T+%ds) without finishing "
+                                              "(done: %s). Reply with one line and do NOT call submit_patch: the "
+                                              "attempts will continue." % (e, ", ".join(sorted(done)) or "none"))
+                        _duo._log("NOT FINAL (finisher at T+%d, nudge %d, done %s)" % (e, nudges + 1, sorted(done)))
                         return None
                 try:
                     fin = _choose(reason)

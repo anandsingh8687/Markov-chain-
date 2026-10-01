@@ -7,7 +7,7 @@ run_command calls, which Gemma handles far more reliably than
 run_skill_script's nested argument schema.
 
 usage: python gemma_agent/skill_src/make_skill.py BUNDLE_DIR [--no-maps]
-       python gemma_agent/skill_src/make_skill.py BUNDLE_DIR --duo [--budget 300] [--deadline 225]
+       python gemma_agent/skill_src/make_skill.py BUNDLE_DIR --duo [--budget 300] [--deadline 250]
 """
 
 import sys
@@ -165,7 +165,7 @@ exec(BODY)
 '''
 
 
-DUO_ONLY = ("_duo.py", "pick_patch.py", "sh.py")  # not installed in solo mode (v23 behaviour unchanged)
+DUO_ONLY = ("_duo.py", "pick_patch.py", "sh.py", "done.py")  # not installed in solo mode (v23 behaviour unchanged)
 
 # ---------------------------------------------------------------- duo mode (bundle_v24)
 # Three skills, one per agent, so attempt B can never run attempt A's installer. Every installer installs
@@ -301,7 +301,8 @@ try:
                     os.remove(os.path.join(tmpd, "%s-%s" % (n, m)))
                 except OSError:
                     pass
-        for n in ("final.json", "promote.json", "nudges.json", "wstate.json"):
+        for n in ("final.json", "promote.json", "nudges.json", "wstate.json", "wstate.diff", "done.json",
+                  "last_a.json", "last_b.json", "warn_a", "warn_b", "tripwire.json"):
             try:
                 os.remove(os.path.join(D, n))
             except OSError:
@@ -364,7 +365,10 @@ if ROLE == "a":
     print("  python3 .swetools/run.py /tmp/a/repro.py <<'EOF'     # write the script from the heredoc and run it (15 s limit)")
     print("  python3 .swetools/check.py --repro /tmp/a/repro.py   # before/after repro + tests; VERDICT / GATE")
     print("  python3 .swetools/status.py                          # where your work stands and the next step")
-    print("Every tool output starts with a state line: [T+time/%d | patch | repro before->now | check | rewrites]." % DEADLINE)
+    print("  python3 .swetools/sh.py <<'EOF'                      # a shell command that changes files (git checkout, rm)")
+    print("  python3 .swetools/done.py                            # your attempt is finished (never reply with text)")
+    print("Every tool output starts with a state line: [A /workspace | T+time/%d | patch | repro before->now | check | ...]." % DEADLINE)
+    print("A plain command that changes /workspace is undone at the next tool call: change files only with these tools.")
     if src_layout:
         print("NOTE: src/ layout. The tools import the code from src/; run scripts with run.py.")
 elif ROLE == "b":
@@ -376,6 +380,7 @@ elif ROLE == "b":
     print("  python3 /tmp/b/t/check.py --repro /tmp/b/repro.py    # before/after repro + tests; VERDICT / GATE")
     print("  python3 /tmp/b/t/status.py                           # where your work stands and the next step")
     print("  python3 /tmp/b/t/sh.py <<'EOF'                       # any other shell command (grep, git diff, pytest) in YOUR copy")
+    print("  python3 /tmp/b/t/done.py                             # your attempt is finished (never reply with text)")
     print("FILE is relative to your copy, e.g. src/pkg/mod.py. submit_patch submits /workspace, which is NOT your copy:")
     print("never call submit_patch before a tool prints FINAL.")
     if src_layout:
@@ -409,7 +414,7 @@ def main_duo(bundle):
     stems = [n[:-3] for n in files] + ["install", "install_a", "install_b", "pick_patch"]
     clash = [s for s in stems if s in sys.stdlib_module_names]
     assert not clash, "tool names shadow stdlib modules: %s" % clash
-    budget, deadline = _arg("--budget", 300), _arg("--deadline", 225)
+    budget, deadline = _arg("--budget", 300), _arg("--deadline", 250)
     for role, (name, script, desc) in DUO_SKILLS.items():
         skill = bundle / "skills" / name
         (skill / "scripts").mkdir(parents=True, exist_ok=True)

@@ -77,12 +77,14 @@ def main():
     elif duo and r is not None and r < 45:
         nxt = "LOW TIME: run check.py --repro %s once more if you changed the code since" % (repro or "/tmp/repro.py")
     elif r is not None and r < 60 and not duo:
-        nxt = "LOW TIME: call submit_patch now"
+        nxt = ("LOW TIME: finish the fix you are on (no new exploration) and run check.py --repro %s; call "
+               "submit_patch only after it says OK (the end-of-run diff keeps your edits anyway)"
+               % (repro or "/tmp/repro.py"))
     elif code not in (None, 0):
         nxt = "your repro still fails: fix the code (or the repro, if it asserts something the issue does not ask)"
     elif verdict.startswith("OK") and not stale and duo:
-        nxt = ("compare the patch with the issue once more; if it is complete and check.py showed no GATE, reply "
-               "with the one line DONE")
+        nxt = ("compare the patch with the issue once more; if it is complete and check.py showed no GATE, run "
+               "python3 %s/done.py" % _ws.cfg().get("tools_display", ".swetools"))
     elif verdict.startswith("OK") and not stale:
         nxt = "compare the patch with the issue once more, then call submit_patch"
     else:

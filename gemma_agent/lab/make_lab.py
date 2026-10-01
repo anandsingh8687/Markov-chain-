@@ -24,10 +24,12 @@ to progress.log and lab/metrics.jsonl; the vLLM server log is copied to lab/vllm
     python gemma_agent/lab/make_lab.py --bundles v22=gemma_agent/bundle_v22 ... \
         --tasks @scratchpad/broad48_K1.txt --concurrency 6 --virtual-clock --out /tmp/k1
 
---virtual-clock: agent time = 0.95 s/LLM call + 0.0287 s/completion token + measured sandbox
-exec seconds; the real asyncio cap is --real-factor (3) x nominal (see labworker.py for the
-patched attributes). --wall-scale F is the fallback without a token clock: real cap and the
-agent's elapsed time are both scaled by F (the measured slowdown).
+--virtual-clock: agent time = 0.164 s/LLM call + 0.0221 s/completion token (LLM time, refit without
+tool time) + measured sandbox exec seconds, charged per ADK branch (parallel branches: max, x1.15);
+--vc-no-tool-seconds uses 0.95/0.0287 (fitted on total time) and no measured tool time. The real
+asyncio cap is --real-factor (3) x nominal (see labworker.py for the patched attributes). The helper
+tools of v23/v24 read the same clock from <sandbox tmp>/.swe_vclock. --wall-scale F is the fallback
+without a token clock: real cap and the agent's elapsed time are both scaled by F (the measured slowdown).
 """
 
 from __future__ import annotations
@@ -240,8 +242,12 @@ def main() -> None:
     ap.add_argument("--replicates", type=int, default=1, help="run each bundle R times per task")
     ap.add_argument("--virtual-clock", action="store_true",
                     help="token clock: agent time = per-call + per-token + measured tool seconds (use with N>1)")
-    ap.add_argument("--vc-per-call", type=float, default=0.95)
-    ap.add_argument("--vc-per-token", type=float, default=0.0287)
+    ap.add_argument("--vc-per-call", type=float, default=None,
+                    help="s per LLM call (default 0.164 with measured tool seconds, 0.95 with --vc-no-tool-seconds)")
+    ap.add_argument("--vc-per-token", type=float, default=None,
+                    help="s per completion token (default 0.0221, or 0.0287 with --vc-no-tool-seconds)")
+    ap.add_argument("--vc-no-tool-seconds", action="store_true",
+                    help="token clock fitted on total task time (0.95/0.0287) without measured tool seconds")
     ap.add_argument("--real-factor", type=float, default=3.0, help="real asyncio cap = factor x nominal (virtual clock)")
     ap.add_argument("--wall-scale", type=float, default=1.0,
                     help="fallback without --virtual-clock: real cap and agent elapsed scaled by this slowdown")
@@ -261,7 +267,7 @@ def main() -> None:
     if clock != "real" and a.concurrency <= 1:
         print("warning: a virtual/scaled clock is only meaningful with --concurrency > 1")
     clock_args = {"per_call": a.vc_per_call, "per_token": a.vc_per_token, "real_factor": a.real_factor,
-                  "wall_scale": a.wall_scale}
+                  "wall_scale": a.wall_scale, "tool_seconds": not a.vc_no_tool_seconds}
     code = build_kernel(bundles, tasks, a.concurrency, a.replicates, clock, clock_args, a.seed, a.metrics_interval)
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / "lab.py").write_text(code)

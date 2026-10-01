@@ -41,10 +41,13 @@ def text(t):
 
 
 def append_mark(pkg_init, value, where="a"):
+    """Attempt A changes /workspace through its sh.py (a plain command that changes /workspace is undone by the
+    duo tripwire); B through its own sh.py in its copy; 'plain' is a plain command in /workspace."""
     line = "SWE_MARK = %d" % value
-    if where == "a":
+    if where == "plain":
         return cmd("printf '\\n%s\\n' >> %s" % (line, pkg_init))
-    return cmd("python3 /tmp/b/t/sh.py <<'EOF'\nprintf '\\n%s\\n' >> %s\nEOF" % (line, pkg_init))
+    tools = ".swetools" if where == "a" else "/tmp/b/t"
+    return cmd("python3 %s/sh.py <<'EOF'\nprintf '\\n%s\\n' >> %s\nEOF" % (tools, line, pkg_init))
 
 
 def script(scenario, agent, pkg, pkg_init):
@@ -57,8 +60,10 @@ def script(scenario, agent, pkg, pkg_init):
     sa = cmd("python3 .swetools/status.py")
     sb = cmd("python3 /tmp/b/t/status.py")
     fin = [cmd("python3 .swetools/pick_patch.py --finisher")]
+    da = cmd("python3 .swetools/done.py")
+    db = cmd("python3 /tmp/b/t/done.py")
     S = {
-        # B passes the GATE first; A only looks around
+        # B passes the GATE first; A only looks around (A's sh.py edit: see append_mark)
         "b_wins": {"a": [ia, ra, sa], "b": [ib, append_mark(pkg_init, 1, "b"), rb, cb, sb]},
         # A passes the GATE first; B only looks around
         "a_wins": {"a": [ia, append_mark(pkg_init, 1), ra, ca, sa], "b": [ib, rb, sb]},
@@ -69,11 +74,21 @@ def script(scenario, agent, pkg, pkg_init):
                                                                                cmd("echo waiting")]},
         # B calls submit_patch early (before FINAL), then replies with text
         "stray_submit": {"a": [ia, append_mark(pkg_init, 3), ra, sa], "b": [ib, sb, sb, tool("submit_patch")]},
-        # both attempts stop early with text; the finisher agent picks and submits
-        "finisher": {"a": [ia, append_mark(pkg_init, 1), ra, text("DONE")], "b": [ib, text("DONE")]},
-        # both stop early with NO change: the finisher says NOT FINAL, the harness nudge re-runs the root and
-        # the attempts continue; A then passes the GATE
+        # both attempts finish with done.py (no GATE): the second done.py picks and prints FINAL
+        "done": {"a": [ia, append_mark(pkg_init, 1), ra, da], "b": [ib, db]},
+        # both attempts end with text three times (each loop runs out); the finisher says NOT FINAL (nobody
+        # ran done.py), the harness nudge re-runs the root, both then run done.py -> pick -> FINAL
+        "finisher": {"a": [ia, append_mark(pkg_init, 1), ra, text("DONE"), text("DONE"), text("DONE"), da],
+                     "b": [ib, text("DONE"), text("DONE"), text("DONE"), db]},
+        # a text-only turn early (as a stray reply): the attempt's loop re-enters it and it continues
         "nudge": {"a": [ia, text("DONE"), append_mark(pkg_init, 1), ra, ca, sa], "b": [ib, text("DONE"), sb]},
+        # a tool call the parser turned into text, mid-attempt: A must continue and win the GATE
+        "textturn": {"a": [ia, text("<|tool_call>call:run_command{command:<|\"|>python3 .swetools/status.py<|\"|>}"),
+                           append_mark(pkg_init, 1), ra, ca, sa],
+                     "b": [ib, sb, sb, sb, sb, sb, sb, sb, sb, sb, sb, sb, sb]},
+        # B runs a plain command that changes /workspace (A's tree): the next tool call undoes it and warns
+        "plain_b": {"a": [ia, append_mark(pkg_init, 1), ra, sa, sa, ca, sa],
+                    "b": [ib, append_mark(pkg_init, 9, "plain"), sb, sb, sb, sb, sb, sb, sb, sb]},
     }
     if agent == "finisher":
         return fin
