@@ -349,6 +349,21 @@ try:
         add_exclude(brepo, [".swetools/", "*.swepromote"])
     write_tools(btools, cfg_b, "b")
     write_atomic(os.path.join(btools, "run_command"), SHIM, 0o755)
+    # Tripwire baseline: the first install records /workspace's state, so a plain command that changes it before
+    # any helper tool has run (e.g. attempt B's first command) is still undone at the next tool call. Without
+    # this the first after_tool would record that change as tool-made (fake-LLM smoke scenario plain_b).
+    if not os.path.exists(os.path.join(D, "wstate.json")):
+        try:
+            sys.path.insert(0, dest_a)
+            import _duo as _d
+            h, raw = _d._wstate()
+            if h is not None:
+                with open(os.path.join(D, "wstate.diff.tmp"), "w", encoding="utf-8", errors="surrogateescape") as fh:
+                    fh.write(raw)
+                os.replace(os.path.join(D, "wstate.diff.tmp"), os.path.join(D, "wstate.diff"))
+                write_atomic(os.path.join(D, "wstate.json"), json.dumps({"h": h, "by": "install"}))
+        except Exception as exc:
+            notes.append("tripwire baseline not recorded: %s" % exc)
 finally:
     fcntl.flock(lockf, fcntl.LOCK_UN)
     lockf.close()
