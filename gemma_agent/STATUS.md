@@ -322,3 +322,5 @@ gemma_agent/
 - v17 to v22 diff analysed: every change is to sandbox-side helpers, the prompt, or removing the scout. The harness catches every per-task exception (evaluate.py / agent_runner.py); only ContainerSetupError (infrastructure) is re-raised.
 - v22 ran 48 official-harness lab tasks with 0 crashes, and its time per task equals v17.
 - Most likely a scorer or infrastructure failure. Resubmitting v22 is proposed to the user, pending their decision.
+
+## 10-02 00:04 UTC: v22 resubmitted unchanged (user request)
