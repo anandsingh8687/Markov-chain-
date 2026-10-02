@@ -324,3 +324,8 @@ gemma_agent/
 - Most likely a scorer or infrastructure failure. Resubmitting v22 is proposed to the user, pending their decision.
 
 ## 10-02 00:04 UTC: v22 resubmitted unchanged (user request)
+
+## 10-02: v22 resubmission scored 0.10
+
+- The identical bundle scored 0.10, so the 10-01 "unhandled error" was transient (scorer side).
+- v22 ties v13 (0.10) and is above v17 (0.08). With about 58 public tasks, that is about 6 solved.
