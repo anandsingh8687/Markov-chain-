@@ -365,3 +365,5 @@ gemma_agent/
 - 48/48 runs ended normally: 0 crashes, 0 timeouts, 2 empty patches. Median virtual time 139 s.
 - Meets the candidate bar (+4 over v22, no new crash class). Caveat: a single run; noise is about ±3 tasks.
 - Quota used: 9.2 of 30 h.
+
+## 10-03 23:36 UTC: v25 submitted (user approved)
