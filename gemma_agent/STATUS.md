@@ -355,4 +355,4 @@ gemma_agent/
   - Publisher from T+240: while attempt 2 has no compiling source change and attempt 1 had one, attempt 1 goes back into /workspace (the floor for a harness timeout).
   - Crash safety: seq.json "pending" (switch/pick) plus the promote journal; the next helper call finishes the reset or redoes the pick from the tagged snapshots.
 - Build: seq hooks in _ws.py/check.py sit between "# <seq>" and "# </seq>" lines, which the solo and duo builds strip; bundle_v23 and bundle_v24 rebuild byte-identical. Prompt: v23 plus a 4-line "Two attempts" section and 4 adjusted lines (submit only after FINAL; edit by T+90).
-- Offline: unit suite scratchpad/v25t/test_seq.py (fa, rq, ri, t17); fake-LLM smoke through the real harness (gate_first_try, switch_then_pick, timeout_in_attempt2) passes.
+- Offline: unit suite scratchpad/v25t/test_seq.py (fa, rq, ri, t17); fake-LLM smoke through the real harness (gate_first_try, switch_then_pick, timeout_in_attempt2) passes. Unit suite 160/160.
