@@ -279,6 +279,9 @@ def main() -> None:
         "competition_sources": ["gemma-4-developer-agent"],
         "model_sources": ["google/gemma-4/Other/gemma-4-31b-it-qat-w4a16-ct/2"],
         "machine_shape": "NvidiaL4",
+        # Pin the same image as the hosts' Getting Started notebook: the wheelhouse ships cp312 wheels and
+        # Kaggle's default image moved to Python 3.13 on 10-03 (unpinned kernels failed at pip install).
+        "docker_image": "gcr.io/kaggle-private-byod/python@sha256:37c64f7dd9c54116ecd1bcc88817c5469b88387388fade02bfa8bf3fc647d461",
     }
     (a.out / "kernel-metadata.json").write_text(json.dumps(meta, indent=2))
     runs = len(bundles) * len(tasks) * a.replicates
