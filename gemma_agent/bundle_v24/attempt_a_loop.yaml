@@ -1,0 +1,9 @@
+# A text-only model turn (a stray reply, a tool call the parser turned into text, a cut-off reply) ends an
+# LlmAgent's run. Inside the ParallelAgent nothing would restart it (the harness nudge only follows the whole
+# root), so the attempt is wrapped in a loop: the same agent re-enters with its history, at most 3 runs.
+name: attempt_a_loop
+agent_class: LoopAgent
+description: Re-enters attempt A after a text-only reply (at most 3 runs).
+max_iterations: 3
+sub_agents:
+  - config_path: attempt_a.yaml

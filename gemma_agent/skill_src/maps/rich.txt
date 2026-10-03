@@ -1,0 +1,48 @@
+RICH ARCHITECTURE MAP (verified at commit 19c67b9a; notes on older checkouts at the end)
+
+1. PACKAGE LAYOUT (rich/)
+- console.py: Console (print, log, out, render, render_lines, render_str, get_style, measure, capture, export_text/html/svg, print_exception, _check_buffer, _render_buffer), ConsoleOptions (max_width, min_width, height, justify, overflow, no_wrap, highlight, markup; update, update_width, copy, reset_height), ConsoleDimensions, Capture, Group, RenderHook, detect_legacy_windows.
+- segment.py: Segment(text, style, control) NamedTuple plus classmethods apply_style, split_lines, split_and_crop_lines, adjust_line_length, get_line_length, get_shape, set_shape, simplify, divide, split_cells, strip_styles; Segments, SegmentLines.
+- text.py: Text (mutable plain string plus list of Span(start, end, style)); from_markup, from_ansi, assemble, styled, stylize, append, highlight_regex, render, wrap, divide, split, truncate, pad, align, expand_tabs, fit, cell_len, __rich_console__, __rich_measure__.
+- style.py: Style (color, bgcolor, bold, dim, italic, underline, link, meta ...), Style.parse, combine, chain, __add__, render, null; StyleStack. color.py: Color, ColorSystem, ColorType, ColorParseError, downgrade logic. color_triplet.py, palette.py, _palettes.py.
+- theme.py: Theme, ThemeStack; default_styles.py: DEFAULT_STYLES dict; themes.py: DEFAULT = Theme(DEFAULT_STYLES).
+- markup.py: Tag, escape, render (parses [style]text[/style] into Text; MarkupError on bad closing tags). emoji.py/_emoji_replace.py for :name: codes.
+- cells.py: cell_len, cached_cell_len, get_character_cell_size, set_cell_size, chop_cells, split_graphemes (tables in _unicode_data/). _wrap.py: words, divide_line (cell-based word wrap used by Text.wrap).
+- measure.py: Measurement(minimum, maximum), Measurement.get(console, options, renderable), normalize, clamp, with_maximum; measure_renderables.
+- Layout renderables: table.py (Table, Column, Row, add_column, add_row, add_section, _calculate_column_widths, _collapse_widths, _measure_column, _render), box.py (Box and constants like ROUNDED, SQUARE, ASCII), panel.py (Panel, Panel.fit), padding.py (Padding, Padding.unpack), columns.py, align.py, constrain.py, rule.py, tree.py, layout.py, styled.py, containers.py (Renderables, Lines), _ratio.py (ratio_resolve, ratio_reduce, ratio_distribute).
+- Content renderables: syntax.py (Syntax via pygments), markdown.py (Markdown via markdown-it), pretty.py (Pretty, traverse, pretty_repr, pprint, install), json.py, highlighter.py (RegexHighlighter, ReprHighlighter, JSONHighlighter), ansi.py (AnsiDecoder).
+- traceback.py: install, Traceback (from_exception, extract -> Trace/Stack/Frame dataclasses, __rich_console__, _render_stack, _render_syntax_error).
+- Dynamic: live.py (Live with _RefreshThread, uses live_render.LiveRender and console.set_live), progress.py (Progress, Task, ProgressColumn subclasses like BarColumn, TextColumn, TimeRemainingColumn, track, wrap_file, open), progress_bar.py, spinner.py, status.py.
+- logging.py: RichHandler(logging.Handler) with emit -> render_message -> render (uses _log_render.LogRender).
+- prompt.py: Prompt, IntPrompt, FloatPrompt, Confirm. errors.py: ConsoleError, StyleError, StyleSyntaxError, MissingStyle, NotRenderableError, MarkupError, LiveError. protocol.py: is_renderable, rich_cast. __init__.py: get_console, print, print_json, inspect, reconfigure.
+
+2. DATA FLOWS
+Printing: Console.print(*objects, style, justify, overflow, no_wrap, markup, highlight, width, ...) -> _collect_renderables (strings go through render_str -> markup.render or Text, plus highlighter) -> ConsoleOptions.update(...) -> Console.render(renderable, options) which calls renderable.__rich_console__(console, options) recursively until only Segment objects remain -> Segment.apply_style -> appended to the thread-local buffer -> _check_buffer -> _render_buffer turns segments into text with Style.render (ANSI codes for the active color_system) -> file.write. record=True keeps segments for export_*.
+Renderables that wrap others (Panel, Padding, Table cells) call console.render_lines(child, options.update(width=...)) to get a list of lines of Segments already cropped/padded to width, then decorate them. Width negotiation uses __rich_measure__ returning Measurement; Measurement.get handles str and plain renderables.
+Text rendering: Text.__rich_console__ -> wrap(console, width, justify, overflow, tab_size, no_wrap) -> divide_line per line -> Lines -> Text.render(console) builds Segments by combining span styles over offsets; console.get_style resolves style names through the ThemeStack then Style.parse.
+Environment detection (Console.__init__ and properties): is_terminal honors force_terminal, then TTY_COMPATIBLE (0/1), FORCE_COLOR (non empty means terminal), then file.isatty(); is_dumb_terminal checks TERM dumb/unknown; _detect_color_system uses COLORTERM truecolor/24bit, then the suffix of TERM (e.g. 256color) via _TERM_COLORS, Windows console features on win32; no_color from NO_COLOR non-empty; is_interactive from TTY_INTERACTIVE; width/height from COLUMNS/LINES, JUPYTER_COLUMNS/JUPYTER_LINES in Jupyter. Tests may pass _environ to Console.
+
+3. WHERE CHANGES GO
+- New option on a renderable: its __init__, __rich_console__ and __rich_measure__, and copy()/fit() style constructors if present (e.g. Panel.fit, Table.grid).
+- Width/wrapping issues: cells.py, _wrap.py, Text.wrap/divide, Segment.split_and_crop_lines, Table._calculate_column_widths.
+- Style/markup parsing: style.py (Style.parse), markup.py (render, escape), color.py (Color.parse).
+- Console behavior/env: console.py properties and __init__; export formats in _export_format.py and export_html/export_svg.
+- Tracebacks: traceback.py Traceback.extract and _render_stack; logging: logging.py RichHandler.
+- Add an entry to CHANGELOG.md under Unreleased (Added/Changed/Fixed) for user-visible changes.
+
+4. CONVENTIONS
+- Rich protocol: __rich_console__(self, console, options) -> RenderResult yielding Segments or other renderables; __rich_measure__(self, console, options) -> Measurement; __rich__ for casting.
+- Errors are specific subclasses from rich/errors.py; parsing errors raise StyleSyntaxError/MarkupError/ColorParseError.
+- Optional args default to None and are resolved at render time (e.g. justify None means inherit from options). Styles accept Union[str, Style] (StyleType) and are resolved via console.get_style.
+- Tests in tests/test_<module>.py. Typical pattern: console = Console(file=io.StringIO(), width=N, color_system=None or "truecolor", legacy_windows=False, force_terminal=...), console.print(x), assert console.file.getvalue() == expected. Alternatives: with console.capture() as capture then capture.get(); Console(record=True) then export_text(); console.render_lines; tests/render.py render(renderable) helper. tests/conftest.py removes FORCE_COLOR and NO_COLOR env vars. Expected outputs often contain raw ANSI escapes.
+
+5. PITFALLS
+- Always measure with cell_len / Segment.cell_length, never len(): wide CJK and emoji take two cells, zero-width and combining characters take zero. Crop with set_cell_size/chop_cells.
+- Text indices are character offsets (spans), while layout widths are cells.
+- Segment control segments (control is not None) have no width; keep them when splitting.
+- ConsoleOptions is immutable-ish; use options.update(...) or update_width to derive new options, never mutate.
+- Style addition is not commutative (right side wins); Style.null() and None both mean no style.
+- Rendering width < 1 yields nothing; height may be None.
+- Thread locals: buffer and theme stack are per thread; Live/Progress refresh on a background thread and redirect stdout/stderr through FileProxy.
+- Windows legacy console (legacy_windows) and Jupyter have separate code paths; tests set legacy_windows=False.
+- Older checkouts (2023) support Python 3.7+, use typing List/Optional/Tuple, and store width tables in rich/_cell_widths.py instead of rich/_unicode_data/; cells.py functions there take no unicode_version argument.

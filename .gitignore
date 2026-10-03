@@ -6,3 +6,4 @@ submission.tar.gz
 verify_report.json
 benchmark/**/__pycache__/
 incumbent_report.json
+gemma_agent/dist/

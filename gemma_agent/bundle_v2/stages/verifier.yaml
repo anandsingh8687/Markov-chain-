@@ -1,0 +1,13 @@
+name: verifier
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Runs the relevant tests, repairs regressions and gaps, cleans the workspace and submits the patch.
+instruction: !include ../prompts/verifier.md
+include_contents: none
+output_key: verdict
+tools:
+  - run_command
+  - read_file
+  - edit_file
+  - get_status
+  - submit_patch
+generate_content_config: !include ../configs/sampling.yaml

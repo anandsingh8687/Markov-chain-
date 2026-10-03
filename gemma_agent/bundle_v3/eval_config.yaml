@@ -1,0 +1,10 @@
+# Hidden tasks run SEQUENTIALLY (host-confirmed, discussion 743063) and the
+# whole run (~120 tasks, incl. sandbox setup) must finish in 12 hours, i.e.
+# ~6 min per task. v1, v2d and v2e errored on the 12h limit. 4 minutes of agent
+# time keeps even the worst case (~120 x 5 min) near 10 hours.
+# timeout_seconds is the per-command timeout AND the Phase 2 pytest timeout
+# (swegemma/harness/verification.py), so it must stay generous.
+evaluation:
+  timeout_seconds: 300
+  max_time_minutes: 4
+  max_turns: 120

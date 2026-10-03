@@ -1,0 +1,245 @@
+"""A fake OpenAI-compatible chat endpoint that returns scripted tool calls, for smoke-testing bundles
+through the real harness (run_official.py) without a GPU.
+
+    python gemma_agent/official/fake_llm.py --port 8931 --scenario b_wins [--delay 2.5] [--log FILE]
+
+It serves POST /v1/chat/completions (and GET /v1/models). The agent is recognised from its system
+instruction (bundle_v24: "You are attempt A", "You are attempt B", "Two attempts have worked"); the step is
+the number of assistant messages already in the request, so the stub is stateless and several tasks can
+run at once. Generic rules come first:
+  * the previous assistant call was submit_patch          -> reply with one line of text (ends the task)
+  * the last tool output contains the FINAL line          -> call submit_patch
+  * the last tool output starts with NOT FINAL (finisher) -> reply with one line of text
+Otherwise the scenario's script for that agent gives the next action; when it runs out, its last action
+repeats. bundle_v25 (one agent, two sequential attempts; scenarios in SEQ) is scripted by time: the stub
+keeps a script position per task (repository), and ("until", T, action) answers with a plain `echo waiting`
+call (after a sleep of at most 20 s) until T seconds after the task's first request, then gives the action. Each response waits --delay seconds (a stand-in for model latency). Token usage is reported
+small, so the harness never compacts. Prints no secrets; accepts any API key.
+"""
+
+import argparse
+import http.server
+import json
+import re
+import sys
+import threading
+import time
+import uuid
+
+FINAL = "FINAL PATCH IS IN /workspace"
+REPRO = "import {pkg}\nassert getattr({pkg}, 'SWE_MARK', 0) == 1, 'mark missing'\nprint('mark ok')\n"
+
+
+def tool(name, **args):
+    return ("tool", name, args)
+
+
+def cmd(c):
+    return tool("run_command", command=c)
+
+
+def text(t):
+    return ("text", t)
+
+
+def until(t, action):
+    return ("until", t, action)
+
+
+SEQ = ("gate_first_try", "switch_then_pick", "timeout_in_attempt2")
+
+
+def seq_script(scenario, pkg, pkg_init):
+    """bundle_v25: one agent. ATTEMPT 2 comes at the first helper call after T+150, the pick after T+265."""
+    inst = tool("run_skill_script", skill_name="swe-tools", file_path="scripts/install.py")
+    r1 = cmd("python3 .swetools/run.py /tmp/repro.py <<'EOF'\n%sEOF" % REPRO.format(pkg=pkg))
+    r2 = cmd("python3 .swetools/run.py /tmp/repro2.py <<'EOF'\n%sEOF" % REPRO.format(pkg=pkg))
+    c1 = cmd("python3 .swetools/check.py --repro /tmp/repro.py")
+    st = cmd("python3 .swetools/status.py")
+    S = {
+        # attempt 1 passes the GATE at once -> FINAL -> submit_patch
+        "gate_first_try": [inst, r1, append_mark(pkg_init, 1, "plain"), c1, st],
+        # attempt 1: the right value, never checked; T+158 -> ATTEMPT 2 (reset); attempt 2: a wrong value and its
+        # own repro; T+272 -> the pick restores attempt 1 (passes both repros) -> FINAL -> submit_patch
+        "switch_then_pick": [inst, r1, append_mark(pkg_init, 1, "plain"), st, until(158, st), r2,
+                             append_mark(pkg_init, 5, "plain"), st, until(272, st), st],
+        # attempt 1 edits, ATTEMPT 2 at T+158 resets, attempt 2 changes nothing; T+246 the publisher restores
+        # attempt 1; then only plain commands until the harness timeout (the fallback diff = attempt 1)
+        "timeout_in_attempt2": [inst, r1, append_mark(pkg_init, 1, "plain"), st, until(158, st), r2,
+                                until(246, st), cmd("echo waiting")],
+    }
+    return S[scenario]
+
+
+def append_mark(pkg_init, value, where="a"):
+    """Attempt A changes /workspace through its sh.py (a plain command that changes /workspace is undone by the
+    duo tripwire); B through its own sh.py in its copy; 'plain' is a plain command in /workspace."""
+    line = "SWE_MARK = %d" % value
+    if where == "plain":
+        return cmd("printf '\\n%s\\n' >> %s" % (line, pkg_init))
+    tools = ".swetools" if where == "a" else "/tmp/b/t"
+    return cmd("python3 %s/sh.py <<'EOF'\nprintf '\\n%s\\n' >> %s\nEOF" % (tools, line, pkg_init))
+
+
+def script(scenario, agent, pkg, pkg_init):
+    ia = tool("run_skill_script", skill_name="swe-tools-a", file_path="scripts/install_a.py")
+    ib = tool("run_skill_script", skill_name="swe-tools-b", file_path="scripts/install_b.py")
+    ra = cmd("python3 .swetools/run.py /tmp/a/repro.py <<'EOF'\n%sEOF" % REPRO.format(pkg=pkg))
+    rb = cmd("python3 /tmp/b/t/run.py /tmp/b/repro.py <<'EOF'\n%sEOF" % REPRO.format(pkg=pkg))
+    ca = cmd("python3 .swetools/check.py --repro /tmp/a/repro.py")
+    cb = cmd("python3 /tmp/b/t/check.py --repro /tmp/b/repro.py")
+    sa = cmd("python3 .swetools/status.py")
+    sb = cmd("python3 /tmp/b/t/status.py")
+    fin = [cmd("python3 .swetools/pick_patch.py --finisher")]
+    da = cmd("python3 .swetools/done.py")
+    db = cmd("python3 /tmp/b/t/done.py")
+    S = {
+        # B passes the GATE first; A only looks around (A's sh.py edit: see append_mark)
+        "b_wins": {"a": [ia, ra, sa], "b": [ib, append_mark(pkg_init, 1, "b"), rb, cb, sb]},
+        # A passes the GATE first; B only looks around
+        "a_wins": {"a": [ia, append_mark(pkg_init, 1), ra, ca, sa], "b": [ib, rb, sb]},
+        # nobody passes: A's value is wrong, B never checks; the deadline pick must choose B's patch
+        "deadline": {"a": [ia, append_mark(pkg_init, 5), ra, ca, sa], "b": [ib, append_mark(pkg_init, 1, "b"), rb, sb]},
+        # no helper call after the edits: the harness timeout fires mid-attempt; fallback = A's tree
+        "timeout": {"a": [ia, append_mark(pkg_init, 7), cmd("echo waiting")], "b": [ib, append_mark(pkg_init, 1, "b"),
+                                                                               cmd("echo waiting")]},
+        # B calls submit_patch early (before FINAL), then replies with text
+        "stray_submit": {"a": [ia, append_mark(pkg_init, 3), ra, sa], "b": [ib, sb, sb, tool("submit_patch")]},
+        # both attempts finish with done.py (no GATE): the second done.py picks and prints FINAL
+        "done": {"a": [ia, append_mark(pkg_init, 1), ra, da], "b": [ib, db]},
+        # both attempts end with text three times (each loop runs out); the finisher says NOT FINAL (nobody
+        # ran done.py), the harness nudge re-runs the root, both then run done.py -> pick -> FINAL
+        "finisher": {"a": [ia, append_mark(pkg_init, 1), ra, text("DONE"), text("DONE"), text("DONE"), da],
+                     "b": [ib, text("DONE"), text("DONE"), text("DONE"), db]},
+        # a text-only turn early (as a stray reply): the attempt's loop re-enters it and it continues
+        "nudge": {"a": [ia, text("DONE"), append_mark(pkg_init, 1), ra, ca, sa], "b": [ib, text("DONE"), sb]},
+        # a tool call the parser turned into text, mid-attempt: A must continue and win the GATE
+        "textturn": {"a": [ia, text("<|tool_call>call:run_command{command:<|\"|>python3 .swetools/status.py<|\"|>}"),
+                           append_mark(pkg_init, 1), ra, ca, sa],
+                     "b": [ib, sb, sb, sb, sb, sb, sb, sb, sb, sb, sb, sb, sb]},
+        # B runs a plain command that changes /workspace (A's tree): the next tool call undoes it and warns
+        "plain_b": {"a": [ia, append_mark(pkg_init, 1), ra, sa, sa, ca, sa],
+                    "b": [ib, append_mark(pkg_init, 9, "plain"), sb, sb, sb, sb, sb, sb, sb, sb]},
+    }
+    if agent == "finisher":
+        return fin
+    return S[scenario][agent]
+
+
+def agent_of(system):
+    if "You are attempt A" in system or "attempt A of two" in system:
+        return "a"
+    if "You are attempt B" in system or "attempt B of two" in system:
+        return "b"
+    if "Two attempts have worked" in system:
+        return "finisher"
+    return "other"
+
+
+def _text(content):
+    if isinstance(content, list):
+        return "".join(p.get("text", "") for p in content if isinstance(p, dict))
+    return content or ""
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    scenario = "b_wins"
+    delay = 2.5
+    log = None
+    lock = threading.Lock()
+    tasks = {}  # seq scenarios: repo -> {"t0": first request time, "pos": script position}
+
+    def log_message(self, *a):
+        pass
+
+    def _send(self, obj, code=200):
+        body = json.dumps(obj).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        self._send({"object": "list", "data": [{"id": "gemma-4-31b-it-qat-w4a16-ct", "object": "model"}]})
+
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length", "0"))
+        req = json.loads(self.rfile.read(n) or b"{}")
+        msgs = req.get("messages", [])
+        system = "\n".join(_text(m.get("content")) for m in msgs if m.get("role") == "system")
+        user = "\n".join(_text(m.get("content")) for m in msgs if m.get("role") == "user")
+        agent = agent_of(system)
+        m = re.search(r"for repository (\S+?)\.\s", user)
+        repo = m.group(1) if m else ""
+        pkg = {"Textualize/rich": "rich", "fastapi/fastapi": "fastapi", "psf/requests": "requests"}.get(repo, "rich")
+        pkg_init = {"requests": "src/requests/__init__.py"}.get(pkg, pkg + "/__init__.py")
+        assistants = [mm for mm in msgs if mm.get("role") == "assistant"]
+        last_tool = next((_text(mm.get("content")) for mm in reversed(msgs) if mm.get("role") == "tool"), "")
+        prev_calls = [tc["function"]["name"] for tc in (assistants[-1].get("tool_calls") or [])] if assistants else []
+        if "submit_patch" in prev_calls:
+            action = text("Submitted the chosen patch.")
+        elif FINAL in last_tool:
+            action = tool("submit_patch")
+        elif agent == "finisher" and "NOT FINAL" in last_tool:
+            action = text("Not final; the attempts continue.")
+        elif self.scenario in SEQ and agent == "other":
+            with self.lock:
+                tk = self.tasks.get(repo)
+                if tk is None or not assistants:
+                    tk = self.tasks[repo] = {"t0": time.time(), "pos": 0}
+            steps = seq_script(self.scenario, pkg, pkg_init)
+            action = steps[min(tk["pos"], len(steps) - 1)]
+            if action[0] == "until":
+                left = tk["t0"] + action[1] - time.time()
+                if left > 0:
+                    time.sleep(min(20.0, left))
+                if tk["t0"] + action[1] - time.time() > 0:
+                    action = cmd("echo waiting")
+                else:
+                    action = action[2]
+                    tk["pos"] += 1
+            else:
+                tk["pos"] += 1
+        elif agent == "other":
+            action = text("ok")
+        else:
+            steps = script(self.scenario, agent, pkg, pkg_init)
+            i = len(assistants)
+            action = steps[i] if i < len(steps) else steps[-1]
+        time.sleep(self.delay)
+        if action[0] == "text":
+            message = {"role": "assistant", "content": action[1]}
+            finish = "stop"
+        else:
+            message = {"role": "assistant", "content": None, "tool_calls": [{
+                "id": "call_" + uuid.uuid4().hex[:12], "type": "function",
+                "function": {"name": action[1], "arguments": json.dumps(action[2])}}]}
+            finish = "tool_calls"
+        if self.log:
+            with self.lock, open(self.log, "a") as fh:
+                fh.write(json.dumps({"t": time.time(), "agent": agent, "repo": repo, "step": len(assistants),
+                                     "action": action[1] if action[0] == "tool" else "TEXT",
+                                     "args": action[2] if action[0] == "tool" else action[1],
+                                     "last_tool": last_tool[:2000]}) + "\n")
+        self._send({"id": "chatcmpl-" + uuid.uuid4().hex[:12], "object": "chat.completion", "created": int(time.time()),
+                    "model": req.get("model", "fake"),
+                    "choices": [{"index": 0, "message": message, "finish_reason": finish}],
+                    "usage": {"prompt_tokens": 900, "completion_tokens": 40, "total_tokens": 940}})
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--port", type=int, default=8931)
+    ap.add_argument("--scenario", default="b_wins")
+    ap.add_argument("--delay", type=float, default=2.5)
+    ap.add_argument("--log", default=None)
+    a = ap.parse_args()
+    Handler.scenario, Handler.delay, Handler.log = a.scenario, a.delay, a.log
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", a.port), Handler)
+    print("fake LLM on 127.0.0.1:%d scenario=%s" % (a.port, a.scenario), flush=True)
+    srv.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

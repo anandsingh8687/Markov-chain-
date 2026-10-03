@@ -1,0 +1,7 @@
+agent_class: SequentialAgent
+name: pipeline
+description: Fixed analyse -> implement -> verify pipeline. Each stage starts from a fresh context.
+sub_agents:
+  - config_path: stages/analyst.yaml
+  - config_path: stages/coder.yaml
+  - config_path: stages/verifier.yaml
