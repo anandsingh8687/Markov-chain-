@@ -356,3 +356,12 @@ gemma_agent/
   - Crash safety: seq.json "pending" (switch/pick) plus the promote journal; the next helper call finishes the reset or redoes the pick from the tagged snapshots.
 - Build: seq hooks in _ws.py/check.py sit between "# <seq>" and "# </seq>" lines, which the solo and duo builds strip; bundle_v23 and bundle_v24 rebuild byte-identical. Prompt: v23 plus a 4-line "Two attempts" section and 4 adjusted lines (submit only after FINAL; edit by T+90).
 - Offline: unit suite scratchpad/v25t/test_seq.py (fa, rq, ri, t17); fake-LLM smoke through the real harness (gate_first_try, switch_then_pick, timeout_in_attempt2) passes. Unit suite 160/160.
+
+## 10-03 night: lab 10, v25 seq (one agent, two sequential attempts + pick_patch)
+
+- v25: 24/48 resolved (Kaggle-env grading 18). Lab 9 on the same tasks and setup: v22 20 (15), v23 20 (15), v24 21 (14).
+- vs v22: +8 / -4 (gains include 4 Medium tasks: fastapi_14349, rich_3676, rich_3772, rich_4075). vs v23: +6 / -2.
+- Medium 11 vs 7 for v22.
+- 48/48 runs ended normally: 0 crashes, 0 timeouts, 2 empty patches. Median virtual time 139 s.
+- Meets the candidate bar (+4 over v22, no new crash class). Caveat: a single run; noise is about ±3 tasks.
+- Quota used: 9.2 of 30 h.
