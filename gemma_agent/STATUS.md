@@ -344,3 +344,15 @@ gemma_agent/
   - 3 of v24's 4 losses are crash tasks. Without the crashes v24 could be around 23-24/48, but the crash rate (15%) makes it unsafe.
 - Lab infrastructure: on 10-03 Kaggle's default image moved to Python 3.13 and the cp312 wheelhouse failed to install. Fixed by pinning the hosts' image; the hosts' wheelhouse is now adk_submission 0.2.12.
 - Quota used: 6.7 of 30 h. No submission candidate (none beats v22 by +4).
+
+## 10-03: v25 seq built (one agent, two sequential attempts; no ParallelAgent)
+
+- Why: v24's ParallelAgent hits an ADK bug (7/48 crashes). v25 keeps v23's single-LlmAgent shape and runs the two attempts one after the other, orchestrated only by the helper tools (tools/_seq.py; make_skill.py --seq).
+- Flow (clock = _swegemma_baseline commit time, as in v23):
+  - Attempt 1 in /workspace. check.py GATE (source change, compiles/imports, repro FAILS before and passes after, no new test failure) -> FINAL at once. OK without a GATE -> "do not submit yet".
+  - T+150, first helper call: attempt 1 saved (cleaned diff via a private GIT_INDEX_FILE, repro, meta) to <TMP>/.swe/<hash>/att/1; /workspace reset to the baseline through the journaled _duo.promote (never touches .swetools); first line "ATTEMPT 2: ...". The tool itself is not run, except check.py up to T+180, which checks attempt 1 first and switches afterwards unless it passes the GATE.
+  - Attempt 2: its GATE -> FINAL at once; check.py OK -> pick now; T+265, first helper call -> pick. The pick reuses pick_patch's rank_key/_measure/_tests (pooled repros, one per attempt; hard filters) and writes the winner crash-safely; first line "FINAL PATCH IS IN /workspace: call submit_patch now". Empty attempt 2 -> attempt 1 restored.
+  - Publisher from T+240: while attempt 2 has no compiling source change and attempt 1 had one, attempt 1 goes back into /workspace (the floor for a harness timeout).
+  - Crash safety: seq.json "pending" (switch/pick) plus the promote journal; the next helper call finishes the reset or redoes the pick from the tagged snapshots.
+- Build: seq hooks in _ws.py/check.py sit between "# <seq>" and "# </seq>" lines, which the solo and duo builds strip; bundle_v23 and bundle_v24 rebuild byte-identical. Prompt: v23 plus a 4-line "Two attempts" section and 4 adjusted lines (submit only after FINAL; edit by T+90).
+- Offline: unit suite scratchpad/v25t/test_seq.py (fa, rq, ri, t17); fake-LLM smoke through the real harness (gate_first_try, switch_then_pick, timeout_in_attempt2) passes.
