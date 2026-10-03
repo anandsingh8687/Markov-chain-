@@ -329,3 +329,18 @@ gemma_agent/
 
 - The identical bundle scored 0.10, so the 10-01 "unhandled error" was transient (scorer side).
 - v22 ties v13 (0.10) and is above v17 (0.08). With about 58 public tasks, that is about 6 solved.
+
+## 10-03: lab 9 (Kaggle 4x L4, official harness, 6 concurrent, virtual clock; broad48), regraded locally
+
+| Bundle | Resolved /48 | Kaggle-env | Empty | Timeouts | Median virtual s |
+|---|---|---|---|---|---|
+| v22 | 20 | 15 | 4 | 10 | 136 |
+| v23 | 20 | 15 | 6 | 4 | 128 |
+| v24 duo | 21 | 14 | 8 | 0 | 115 |
+
+- v23 vs v22: +5 / -5 (a tie). The tool fixes cut timeouts (10 to 4) but did not add net solves.
+- v24: 7/48 tasks crashed with an empty patch: ExceptionGroup -> ValueError 'No function call event found for function responses ids' (google/adk/flows/llm_flows/contents.py _rearrange_events_for_latest_function_response) inside ParallelAgent.
+  - This is an ADK bug when the history of parallel branches is rebuilt (likely together with session-wide compaction). It cannot be caught from the bundle.
+  - 3 of v24's 4 losses are crash tasks. Without the crashes v24 could be around 23-24/48, but the crash rate (15%) makes it unsafe.
+- Lab infrastructure: on 10-03 Kaggle's default image moved to Python 3.13 and the cp312 wheelhouse failed to install. Fixed by pinning the hosts' image; the hosts' wheelhouse is now adk_submission 0.2.12.
+- Quota used: 6.7 of 30 h. No submission candidate (none beats v22 by +4).
