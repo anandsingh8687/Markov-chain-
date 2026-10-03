@@ -11,7 +11,9 @@ run at once. Generic rules come first:
   * the last tool output contains the FINAL line          -> call submit_patch
   * the last tool output starts with NOT FINAL (finisher) -> reply with one line of text
 Otherwise the scenario's script for that agent gives the next action; when it runs out, its last action
-repeats. Each response waits --delay seconds (a stand-in for model latency). Token usage is reported
+repeats. bundle_v25 (one agent, two sequential attempts; scenarios in SEQ) is scripted by time: the stub
+keeps a script position per task (repository), and ("until", T, action) answers with a plain `echo waiting`
+call (after a sleep of at most 20 s) until T seconds after the task's first request, then gives the action. Each response waits --delay seconds (a stand-in for model latency). Token usage is reported
 small, so the harness never compacts. Prints no secrets; accepts any API key.
 """
 
@@ -38,6 +40,35 @@ def cmd(c):
 
 def text(t):
     return ("text", t)
+
+
+def until(t, action):
+    return ("until", t, action)
+
+
+SEQ = ("gate_first_try", "switch_then_pick", "timeout_in_attempt2")
+
+
+def seq_script(scenario, pkg, pkg_init):
+    """bundle_v25: one agent. ATTEMPT 2 comes at the first helper call after T+150, the pick after T+265."""
+    inst = tool("run_skill_script", skill_name="swe-tools", file_path="scripts/install.py")
+    r1 = cmd("python3 .swetools/run.py /tmp/repro.py <<'EOF'\n%sEOF" % REPRO.format(pkg=pkg))
+    r2 = cmd("python3 .swetools/run.py /tmp/repro2.py <<'EOF'\n%sEOF" % REPRO.format(pkg=pkg))
+    c1 = cmd("python3 .swetools/check.py --repro /tmp/repro.py")
+    st = cmd("python3 .swetools/status.py")
+    S = {
+        # attempt 1 passes the GATE at once -> FINAL -> submit_patch
+        "gate_first_try": [inst, r1, append_mark(pkg_init, 1, "plain"), c1, st],
+        # attempt 1: the right value, never checked; T+158 -> ATTEMPT 2 (reset); attempt 2: a wrong value and its
+        # own repro; T+272 -> the pick restores attempt 1 (passes both repros) -> FINAL -> submit_patch
+        "switch_then_pick": [inst, r1, append_mark(pkg_init, 1, "plain"), st, until(158, st), r2,
+                             append_mark(pkg_init, 5, "plain"), st, until(272, st), st],
+        # attempt 1 edits, ATTEMPT 2 at T+158 resets, attempt 2 changes nothing; T+246 the publisher restores
+        # attempt 1; then only plain commands until the harness timeout (the fallback diff = attempt 1)
+        "timeout_in_attempt2": [inst, r1, append_mark(pkg_init, 1, "plain"), st, until(158, st), r2,
+                                until(246, st), cmd("echo waiting")],
+    }
+    return S[scenario]
 
 
 def append_mark(pkg_init, value, where="a"):
@@ -116,6 +147,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     delay = 2.5
     log = None
     lock = threading.Lock()
+    tasks = {}  # seq scenarios: repo -> {"t0": first request time, "pos": script position}
 
     def log_message(self, *a):
         pass
@@ -151,6 +183,24 @@ class Handler(http.server.BaseHTTPRequestHandler):
             action = tool("submit_patch")
         elif agent == "finisher" and "NOT FINAL" in last_tool:
             action = text("Not final; the attempts continue.")
+        elif self.scenario in SEQ and agent == "other":
+            with self.lock:
+                tk = self.tasks.get(repo)
+                if tk is None or not assistants:
+                    tk = self.tasks[repo] = {"t0": time.time(), "pos": 0}
+            steps = seq_script(self.scenario, pkg, pkg_init)
+            action = steps[min(tk["pos"], len(steps) - 1)]
+            if action[0] == "until":
+                left = tk["t0"] + action[1] - time.time()
+                if left > 0:
+                    time.sleep(min(20.0, left))
+                if tk["t0"] + action[1] - time.time() > 0:
+                    action = cmd("echo waiting")
+                else:
+                    action = action[2]
+                    tk["pos"] += 1
+            else:
+                tk["pos"] += 1
         elif agent == "other":
             action = text("ok")
         else:

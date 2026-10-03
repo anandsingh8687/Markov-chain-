@@ -8,8 +8,13 @@ run_skill_script's nested argument schema.
 
 usage: python gemma_agent/skill_src/make_skill.py BUNDLE_DIR [--no-maps]
        python gemma_agent/skill_src/make_skill.py BUNDLE_DIR --duo [--budget 300] [--deadline 250]
+       python gemma_agent/skill_src/make_skill.py BUNDLE_DIR --seq [--switch 150] [--publish 240] [--pick 265]
+
+Lines from '# <seq>' through '# </seq>' in the tool sources are seq-mode hooks; solo and duo builds strip them
+(and leave out _seq.py), so their bundles (v23, v24) stay byte-identical.
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -166,6 +171,23 @@ exec(BODY)
 
 
 DUO_ONLY = ("_duo.py", "pick_patch.py", "sh.py", "done.py")  # not installed in solo mode (v23 behaviour unchanged)
+SEQ_ONLY = ("_seq.py",)  # only in seq mode (bundle_v25)
+SEQ_BLOCK = re.compile(r"^[ \t]*# <seq>[ \t]*\n.*?^[ \t]*# </seq>[ \t]*\n", re.M | re.S)
+
+
+def strip_seq(text):
+    """Remove the seq-mode hook blocks (solo and duo builds)."""
+    return SEQ_BLOCK.sub("", text)
+
+
+def tool_files(exclude, keep_seq=False):
+    out = {}
+    for p in sorted((HERE / "tools").glob("*.py")):
+        if p.name in exclude:
+            continue
+        text = p.read_text()
+        out[p.name] = text if keep_seq else strip_seq(text)
+    return out
 
 # ---------------------------------------------------------------- duo mode (bundle_v24)
 # Three skills, one per agent, so attempt B can never run attempt A's installer. Every installer installs
@@ -425,7 +447,7 @@ def _arg(name, default):
 
 
 def main_duo(bundle):
-    files = {p.name: p.read_text() for p in sorted((HERE / "tools").glob("*.py"))}
+    files = tool_files(SEQ_ONLY)
     stems = [n[:-3] for n in files] + ["install", "install_a", "install_b", "pick_patch"]
     clash = [s for s in stems if s in sys.stdlib_module_names]
     assert not clash, "tool names shadow stdlib modules: %s" % clash
@@ -442,11 +464,50 @@ def main_duo(bundle):
         print("wrote", skill)
 
 
+# ---------------------------------------------------------------- seq mode (bundle_v25)
+# One agent, two sequential attempts in /workspace (tools/_seq.py). The solo installer (same skill name,
+# same command table) plus: _cfg.json {"mode": "seq", ...} next to the tools, and a reset of the seq state for a
+# new session. The extra code is appended to INSTALL_BODY, so the .swetools/install.py re-run shim carries it.
+
+SEQ_INSTALL_EXTRA = r"""
+write_atomic(os.path.join(dest, "_cfg.json"), json.dumps(SEQ_CFG))
+if old_id != run_id:
+    import shutil
+    for _n in ("seq.json", "seq.log", "promote.json"):
+        try:
+            os.remove(os.path.join(swe, _n))
+        except OSError:
+            pass
+    shutil.rmtree(os.path.join(swe, "att"), ignore_errors=True)
+print("Two attempts: GATE PASSED in check.py ends the task (FINAL). Without a GATE by T+%d, a tool call saves "
+      "attempt 1, resets /workspace and prints ATTEMPT 2; at T+%d the tools put the better attempt into /workspace "
+      "and print FINAL. Call submit_patch only after FINAL." % (SEQ_CFG["switch_s"], SEQ_CFG["pick_s"]))
+"""
+
+
+def main_seq(bundle):
+    files = tool_files(("sh.py", "done.py"), keep_seq=True)
+    clash = [n[:-3] for n in files if n[:-3] in sys.stdlib_module_names]
+    assert not clash, "tool names shadow stdlib modules: %s" % clash
+    cfg = {"mode": "seq", "budget_s": _arg("--budget", 300), "switch_s": _arg("--switch", 150),
+           "publish_s": _arg("--publish", 240), "pick_s": _arg("--pick", 265)}
+    body = INSTALL_BODY + "\nSEQ_CFG = %r\n" % cfg + SEQ_INSTALL_EXTRA
+    skill = bundle / "skills" / "swe-tools"
+    (skill / "scripts").mkdir(parents=True, exist_ok=True)
+    (skill / "SKILL.md").write_text(SKILL_MD)
+    (skill / "scripts" / "install.py").write_text(
+        INSTALL_TEMPLATE.replace("__FILES__", repr(files)).replace("__MAPS__", repr({}))
+        .replace("__SHIM__", repr(SHIM)).replace("__BODY__", repr(body)))
+    print("wrote", skill)
+
+
 def main():
     bundle = Path(sys.argv[1])
     if "--duo" in sys.argv:
         return main_duo(bundle)
-    files = {p.name: p.read_text() for p in sorted((HERE / "tools").glob("*.py")) if p.name not in DUO_ONLY}
+    if "--seq" in sys.argv:
+        return main_seq(bundle)
+    files = tool_files(DUO_ONLY + SEQ_ONLY)
     skill = bundle / "skills" / "swe-tools"
     (skill / "scripts").mkdir(parents=True, exist_ok=True)
     (skill / "SKILL.md").write_text(SKILL_MD)

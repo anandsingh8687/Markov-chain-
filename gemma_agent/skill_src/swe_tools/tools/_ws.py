@@ -27,6 +27,15 @@ def duo():
 
 def att():
     return cfg().get("att", "")
+# <seq>
+
+
+def seq():
+    """Sequential two-attempt mode (bundle_v25, _seq.py). Everything from a '# <seq>' line through the next
+    '# </seq>' line is stripped from the solo and duo builds (make_skill.py), so bundle_v23 / bundle_v24 stay
+    byte-identical."""
+    return cfg().get("mode") == "seq"
+# </seq>
 
 
 BUDGET_S = int(cfg().get("budget_s") or os.environ.get("SWE_BUDGET_S", "300"))  # max_time_minutes in seconds
@@ -558,6 +567,11 @@ def run_tool(main):
     """Run a tool's main(): buffer its output, then print the state line FIRST and at most OUTPUT_CAP chars.
     (run_command keeps only the head of the output, and after a history summary the latest tool output is
     what the model still sees.)"""
+    # <seq>
+    if seq():
+        import _seq
+        return _seq.run_tool(main)
+    # </seq>
     import io
     real = sys.stdout
     buf = io.StringIO()

@@ -575,6 +575,11 @@ def main():
     if duo:
         gate = (not problems and bool(changed_src) and info.get("before_definite") and info.get("before") == "FAILS"
                 and info.get("now") == "passes" and (tests_ran or not tests_found))
+    # <seq>
+    if _ws.seq():
+        import _seq
+        return _seq.finish_check(ws, problems, info, repro, changed_src, caused, tests_found, tests_ran)
+    # </seq>
     if problems:
         print("VERDICT: FIX BEFORE SUBMITTING" if not duo else "VERDICT: FIX")
         for p in problems:
