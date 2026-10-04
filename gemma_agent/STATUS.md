@@ -367,3 +367,8 @@ gemma_agent/
 - Quota used: 9.2 of 30 h.
 
 ## 10-03 23:36 UTC: v25 submitted (user approved)
+
+## 10-04: v25 public 0.08
+
+- v25 lab 24/48 vs v22 20/48, but public 0.08 vs v22 0.10. A one-task difference on about 58 public tasks.
+- The lab gain did not transfer, or noise (about +/-2 tasks on the public set) hides it.
