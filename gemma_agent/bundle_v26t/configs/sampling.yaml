@@ -1,0 +1,10 @@
+# adk_submission 0.2.12: include_thoughts true -> chat_template_kwargs.enable_thinking true, and
+# thinking_budget -> extra_body.thinking_token_budget (a hard cap on reasoning tokens in vLLM).
+# vLLM counts reasoning tokens inside max_tokens, so 2048 leaves >= 1536 for the visible reply.
+temperature: 0.2
+top_p: 0.95
+top_k: 40
+max_output_tokens: 2048
+thinking_config:
+  include_thoughts: true
+  thinking_budget: 512

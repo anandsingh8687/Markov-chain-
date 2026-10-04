@@ -11,7 +11,7 @@ run at once. Generic rules come first:
   * the last tool output contains the FINAL line          -> call submit_patch
   * the last tool output starts with NOT FINAL (finisher) -> reply with one line of text
 Otherwise the scenario's script for that agent gives the next action; when it runs out, its last action
-repeats. bundle_v25 (one agent, two sequential attempts; scenarios in SEQ) is scripted by time: the stub
+repeats. Solo scenarios (SOLO: bundle_v23/v26) are step-indexed scripts for the single agent. bundle_v25 (one agent, two sequential attempts; scenarios in SEQ) is scripted by time: the stub
 keeps a script position per task (repository), and ("until", T, action) answers with a plain `echo waiting`
 call (after a sleep of at most 20 s) until T seconds after the task's first request, then gives the action. Each response waits --delay seconds (a stand-in for model latency). Token usage is reported
 small, so the harness never compacts. Prints no secrets; accepts any API key.
@@ -69,6 +69,22 @@ def seq_script(scenario, pkg, pkg_init):
                                 until(246, st), cmd("echo waiting")],
     }
     return S[scenario]
+
+
+SOLO = ("solo_simple", "solo_graph")
+
+
+def solo_script(scenario, pkg, pkg_init):
+    """bundle_v23/v26 (one agent, step-indexed). solo_graph also calls the three graph tools that v26 declares
+    only as crash guards: the session must go on and submit the patch."""
+    inst = tool("run_skill_script", skill_name="swe-tools", file_path="scripts/install.py")
+    r1 = cmd("python3 .swetools/run.py /tmp/repro.py <<'EOF'\n%sEOF" % REPRO.format(pkg=pkg))
+    c1 = cmd("python3 .swetools/check.py --repro /tmp/repro.py")
+    graph = [tool("search_similar_code", query="%s.console.Console" % pkg),
+             tool("get_code_neighbors", node="%s.console.Console" % pkg),
+             tool("get_code_subgraph", nodes=["%s.console.Console" % pkg])]
+    body = [r1, append_mark(pkg_init, 1, "plain"), c1, tool("submit_patch")]
+    return [inst] + (graph if scenario == "solo_graph" else []) + body
 
 
 def append_mark(pkg_init, value, where="a"):
@@ -201,6 +217,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     tk["pos"] += 1
             else:
                 tk["pos"] += 1
+        elif self.scenario in SOLO and agent == "other":
+            steps = solo_script(self.scenario, pkg, pkg_init)
+            i = len(assistants)
+            action = steps[i] if i < len(steps) else text("Done.")
         elif agent == "other":
             action = text("ok")
         else:

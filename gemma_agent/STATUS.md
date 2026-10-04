@@ -372,3 +372,31 @@ gemma_agent/
 
 - v25 lab 24/48 vs v22 20/48, but public 0.08 vs v22 0.10. A one-task difference on about 58 public tasks.
 - The lab gain did not transfer, or noise (about +/-2 tasks on the public set) hides it.
+
+## 10-04: v26 / v26t built (generic, low temperature, short prose prompt)
+
+- Why: hidden tasks come from private repos (research_oct4.md). Public bundles at 0.12-0.15 use T 0.05-0.2, 1.5-3 KB prompts, prose commands, thinking off. v22 (T 1.0, 9 KB fastapi-shaped prompt) 0.10; v25 0.08.
+- bundle_v26 = v23 (solo fixer; same skill, install.py byte-identical; eval_config unchanged 5 min / 150 turns / 300 s) with:
+  - Sampling: temperature 0.2, top_p 0.95, top_k 40, max_output_tokens 1536, include_thoughts false (thinking off).
+  - prompts/system.md rewritten: 3.0 KB (v23 8.3 KB). Generic (no app/test-client, router/app or env-var matrix rules). One compact command table plus prose; exact syntax only for the edit heredoc. Keeps: public-API repro, smallest fix mirroring neighbours, check.py before submit, never touch tests, keep behaviour, state line, edit by T+120, "python3 .swetools/... is never a tool name".
+  - First skill call: exact plain-string values (skill_name swe-tools, file_path scripts/install.py); on failure, run python3 .swetools/install.py via run_command if present, else retry once.
+    - No robust run_command-only install exists: ADK materialises skill files in a TemporaryDirectory inside the sandbox code executor (google/adk/tools/skill_toolset.py _build_wrapper_code) and deletes it after the run, and the bundle directory is not mounted in the docker sandbox. So the installer is never on disk before the first successful call.
+  - Tools: run_command, get_status, submit_patch, the skill, plus search_similar_code, get_code_neighbors and get_code_subgraph as crash guards (the prompt says not to use them). swegemma create_tools registers all three on every task; their errors come back as tool responses, not exceptions.
+    - Control: bundle_v23 with a scripted search_similar_code call ends at once with "Tool 'search_similar_code' not found" and patch 0. bundle_v26 continues and submits.
+    - Residual risk: a large search_similar_code result could still overflow the context (the harness does not cap it).
+- bundle_v26t = v26 with thinking: include_thoughts true, thinking_budget 512, max_output_tokens 2048.
+  - adk_submission 0.2.12 (resolvers/generation.py apply_thinking_config_to_model):
+    - include_thoughts true (or a positive budget) sets extra_body.chat_template_kwargs.enable_thinking true.
+    - thinking_budget > 0 is sent as extra_body.thinking_token_budget, which vLLM enforces as a hard cap on reasoning tokens.
+    - include_thoughts false sets enable_thinking false and drops the budget, whatever the budget value is.
+    - When thinking_config has no budget, limits.py fills in the swegemma default (4096; allowed range 0-32768).
+    - 0.2.12 also mirrors reasoning_content into reasoning, so earlier thoughts stay in the history across tool calls.
+  - 0.2.11 sets only enable_thinking (no thinking_token_budget, so the budget is unenforced). Verified by compiling v26t under both versions.
+  - vLLM counts reasoning tokens inside max_tokens, so 2048 leaves at least 1536 for the visible reply.
+- Validation:
+  - official_check OK under 0.2.11 (scratchpad/wh/venv) and 0.2.12 (scratchpad/wh012/venv, a copy with only adk_submission swapped). build.py OK.
+  - v23 offline tool suite (scratchpad/v23t/runtests.py, fa/rq/ri/t17 replicas) against v26's install.py: 119/119 PASS.
+  - Fake-LLM smoke through the real harness (new solo_simple / solo_graph scenarios in official/fake_llm.py; rich_3063 + fastapi_14873): v26 on 0.2.11 and v26t on 0.2.12. Install -> repro -> edit -> check.py VERDICT OK -> submit_patch, status SUCCESS, patch kept; solo_graph calls all three graph tools, then submits normally.
+- New task sets (scratchpad): goldpass_ids.txt (73 tasks whose gold passes in the Kaggle env: rich 41, fastapi 31, requests 1).
+  - gp48_K1 / gp48_K2: 24 + 24, stratified by repo (fastapi 10/10, rich 13/14, requests 1/0).
+  - 29 of the 48 are fresh (never in v17_ids, lab5, lab6 or broad48), 15 in K1 and 14 in K2. All 29 fresh gold-pass tasks are used; the other 19 were each used in one earlier set.

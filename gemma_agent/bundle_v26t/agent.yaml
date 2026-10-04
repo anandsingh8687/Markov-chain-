@@ -1,0 +1,16 @@
+name: fixer
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Single fixer that locates, reproduces, implements, checks and submits.
+instruction: !include prompts/system.md
+tools:
+  - run_command
+  - get_status
+  - submit_patch
+  # Crash guards only: the harness prompt advertises these graph tools on every task, and calling an
+  # undeclared tool ends the session and drops the patch. The instruction tells the model not to use them.
+  - search_similar_code
+  - get_code_neighbors
+  - get_code_subgraph
+skills:
+  - skills/swe-tools
+generate_content_config: !include configs/sampling.yaml
