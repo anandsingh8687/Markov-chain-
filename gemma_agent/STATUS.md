@@ -400,3 +400,15 @@ gemma_agent/
 - New task sets (scratchpad): goldpass_ids.txt (73 tasks whose gold passes in the Kaggle env: rich 41, fastapi 31, requests 1).
   - gp48_K1 / gp48_K2: 24 + 24, stratified by repo (fastapi 10/10, rich 13/14, requests 1/0).
   - 29 of the 48 are fresh (never in v17_ids, lab5, lab6 or broad48), 15 in K1 and 14 in K2. All 29 fresh gold-pass tasks are used; the other 19 were each used in one earlier set.
+
+## 10-04 night: lab 11 (48 gold-passable tasks, 29 fresh; Kaggle 4x L4, 6 concurrent, virtual clock)
+
+| Bundle | Resolved /48 | Kaggle-env | Empty | Timeouts | Turn limit | Median virtual s |
+|---|---|---|---|---|---|---|
+| v22 | 18 | 18 | 10 | 11 | 1 | 101 |
+| v26 (T 0.2, 3 KB prompt) | 14 | 13 | 8 | 3 | 6 | 155 |
+| v26t (v26 + thinking budget 512) | 20 | 19 | 7 | 13 | 2 | 206 |
+
+- Temperature 0.2 with the short prompt is worse (-4): loops hit the 150-turn limit, the same finding as v14.
+- Thinking with the 0.2.12 hard budget recovers +6 over v26 and is +2 over v22 (noise level).
+- No candidate meets +4. Quota used: 21.6 of 30 h.
