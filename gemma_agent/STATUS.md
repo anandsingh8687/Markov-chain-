@@ -412,3 +412,5 @@ gemma_agent/
 - Temperature 0.2 with the short prompt is worse (-4): loops hit the 150-turn limit, the same finding as v14.
 - Thinking with the 0.2.12 hard budget recovers +6 over v26 and is +2 over v22 (noise level).
 - No candidate meets +4. Quota used: 21.6 of 30 h.
+
+## 10-05 18:50 UTC: v26t submitted (user request)
