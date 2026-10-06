@@ -1,0 +1,8 @@
+# Hidden tasks run SEQUENTIALLY and the whole run must finish in 12 hours, so the cap stays at 5 minutes.
+# max_turns is shared by both parallel attempts; hitting it inside the ParallelAgent raises an ExceptionGroup
+# that drops the patch, so it is set far above what 5 minutes can use.
+# timeout_seconds is the per-command timeout AND the Phase 2 pytest timeout.
+evaluation:
+  timeout_seconds: 300
+  max_time_minutes: 5
+  max_turns: 500

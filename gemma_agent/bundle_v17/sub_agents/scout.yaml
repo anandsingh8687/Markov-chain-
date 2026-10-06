@@ -1,0 +1,7 @@
+name: scout
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Read-only code scout. It already sees the issue; call it once with a one-line request. Returns the requirements checklist, the exact code locations to change with a plan for each, similar existing code to copy, and the test file.
+instruction: !include ../prompts/scout.md
+tools:
+  - run_command
+generate_content_config: !include ../configs/sampling.yaml

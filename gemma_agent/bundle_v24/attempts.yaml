@@ -1,0 +1,6 @@
+name: attempts
+agent_class: ParallelAgent
+description: Attempt A works in /workspace, attempt B in its own clone at /tmp/b/repo, at the same time.
+sub_agents:
+  - config_path: attempt_a_loop.yaml
+  - config_path: attempt_b_loop.yaml
