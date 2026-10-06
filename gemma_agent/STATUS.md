@@ -414,3 +414,8 @@ gemma_agent/
 - No candidate meets +4. Quota used: 21.6 of 30 h.
 
 ## 10-05 18:50 UTC: v26t submitted (user request)
+
+## 10-06: v26t public 0.08
+
+- Thinking budget 512, T 0.2 and a 3 KB prompt: 0.08, with a slow run of about 15 h wall including validation.
+- Public scores: v22 0.10, v13 0.10, v26t 0.08, v25 0.08, v17 0.08, v7 0.08. All within about 1 task of each other on the 58-task public set.
