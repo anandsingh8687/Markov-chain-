@@ -419,3 +419,19 @@ gemma_agent/
 
 - Thinking budget 512, T 0.2 and a 3 KB prompt: 0.08, with a slow run of about 15 h wall including validation.
 - Public scores: v22 0.10, v13 0.10, v26t 0.08, v25 0.08, v17 0.08, v7 0.08. All within about 1 task of each other on the 58-task public set.
+
+## 2026-10-15: research sweep, v27/v28, lab 12
+
+- Leaderboard: leaders 0.24 (14/58), ~20 teams at 0.22 (13/58). The 0.22 cluster is the public
+  "budget-aware coding agent v2" bundle: config identical to Budget-Fit (0.18) and to our v27, only the
+  prompt differs (structured call plan). No public 0.24 recipe; leader's method unknown.
+- Scorer now runs wheelhouse v31 (adk_submission 0.2.13, swegemma 0.2.11). include_thoughts no longer
+  disables thinking (budget 0 does); it only controls carrying earlier thoughts. Grader pytest uses a
+  fixed 300 s. Test-file edits are dropped from the patch since 10-08.
+- Measured tier steps (public): thinking on, native tools instead of skill scripts, max_output 8192,
+  8 min / 28 calls with "edit by call 12". Our skill-script agents (v13-v26t) sit at 0.08-0.10.
+- v27: minimal native-tool bundle, our 2.3 KB prompt. v28: same YAML, our own 7.2 KB structured prompt
+  (call plan, batched fixed-string search, sibling registration, parallel implementations, edit-recovery
+  ladder, capped checks, diff review). Both compile on 0.2.13 (enable_thinking true, budget 4096).
+- Lab 12 (running): v22 vs v27 on gold-passable 48 (K1/K2), virtual clock.
+- Full plan: gemma_agent/research_oct15.md.
