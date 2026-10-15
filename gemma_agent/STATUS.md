@@ -437,3 +437,9 @@ gemma_agent/
 - Full plan: gemma_agent/research_oct15.md.
 - 10-15 17:04 UTC: v28 submitted (ref 57238405, user-approved). bundle_v28t = v28 with include_thoughts
   false (thinking stays on at 4096; earlier thoughts are not resent) for the next lab.
+- Lab 12 (gold-passable 48, virtual clock): v22 16/48, v27 19/48 local regrade (in-kernel 16 vs 20);
+  v27 solves a superset of v22. v27 empty patches 10 vs 19, mean 182 s/task vs 220 s.
+  v27 failure modes: first edit after call 12 in 21/46 tasks (resolved 5/21 vs 13/23 when edit <= call 8);
+  31/160 edit_file calls had parser-corrupted keys, ~all from triple quotes in old/new strings;
+  17/387 read_file calls lost start_line/end_line (silently returns file head); grep exit 1 shown as
+  CommandError 89 times. Thinking is on (short visible thoughts every step).
