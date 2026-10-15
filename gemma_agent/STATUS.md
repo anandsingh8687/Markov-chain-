@@ -447,3 +447,9 @@ gemma_agent/
   subset of v27 (v27-only: fastapi_9753, fastapi_9425, fastapi_5624, rich_3043, rich_3278). v28 cut
   corrupted calls (7 vs 48) but edits later (first edit mean call 15.3 vs 13.1) and runs slower (233 s vs
   182 s). 28/48 tasks unsolved by all four bundles. Lab 14 = v27 replicate (noise check).
+- Lab 14 (v27 replicate, same 48): 17/48 in-kernel vs 20 in lab 12; 5 flips (9753, 3278, 5624, 2725 lost;
+  14419 gained). Lab noise ~ +-3 tasks; v27 mean ~18.5. 3 of v28's 5 "losses" are coin-flip tasks.
+  Note fastapi_14851 passes in-kernel with an empty patch (true v27 count 19 in lab 12).
+- v29 (bundle_v29): v27 YAML + 3.5 KB prompt fixing measured mechanics (run_command stdout cut at 5000
+  chars silently, write_file refuses /tmp, bare grep exit 1 = CommandError, backslash-n in edit strings
+  corrupts calls 55/67). Lab 15a: v29 on the 48; lab 15b: v27 vs v29 on 25 holdout gold-passable tasks.
