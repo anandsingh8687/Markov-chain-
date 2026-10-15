@@ -15,8 +15,19 @@ from pathlib import Path
 from adk_submission import compile_submission
 from adk_submission.discovery import validate_directory
 from swegemma.config import build_submission_limits
-from swegemma.models import setup_gemma_model_registry
-from swegemma.models.discovery import validate_single_declared_model
+try:  # swegemma <= 0.2.7
+    from swegemma.models import setup_gemma_model_registry
+    from swegemma.models.discovery import validate_single_declared_model
+except ImportError:  # swegemma 0.2.11 (wheelhouse v31) builds the registry from the bundle's declared models
+    from adk_submission.discovery import discover_declared_models
+    from swegemma.cli import _build_cli_model_registry
+
+    setup_gemma_model_registry = None
+
+    def validate_single_declared_model(bundle):
+        models = sorted(set(discover_declared_models(bundle)))
+        assert len(models) == 1, models
+        return models[0]
 
 
 def _tool(name):
@@ -36,6 +47,9 @@ def walk(agent, depth=0):
     model = getattr(agent, "model", "")
     tools = [getattr(t, "name", type(t).__name__) for t in getattr(agent, "tools", []) or []]
     print("  " * depth + f"{kind} {agent.name} model={getattr(model, 'model', model)!s} tools={tools}")
+    extra = getattr(model, "_additional_args", None)
+    if extra:
+        print("  " * depth + f"  request extras: {extra}")
     cfg = getattr(agent, "generate_content_config", None)
     if cfg is not None and depth == 0:
         print("  " * depth + f"  generate_content_config: {cfg}")
@@ -49,7 +63,8 @@ def main() -> None:
     validate_directory(bundle, limits) if validate_directory.__code__.co_argcount > 1 else validate_directory(bundle)
     print("model:", validate_single_declared_model(bundle))
     agent = compile_submission(
-        submission_dir=bundle, tool_registry=TOOLS, model_registry=setup_gemma_model_registry(),
+        submission_dir=bundle, tool_registry=TOOLS,
+        model_registry=setup_gemma_model_registry() if setup_gemma_model_registry else _build_cli_model_registry(bundle),
         limits=limits, generation_constraints=gen_constraints,
     )
     walk(agent)
