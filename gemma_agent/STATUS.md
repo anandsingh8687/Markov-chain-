@@ -435,3 +435,5 @@ gemma_agent/
   ladder, capped checks, diff review). Both compile on 0.2.13 (enable_thinking true, budget 4096).
 - Lab 12 (running): v22 vs v27 on gold-passable 48 (K1/K2), virtual clock.
 - Full plan: gemma_agent/research_oct15.md.
+- 10-15 17:04 UTC: v28 submitted (ref 57238405, user-approved). bundle_v28t = v28 with include_thoughts
+  false (thinking stays on at 4096; earlier thoughts are not resent) for the next lab.
