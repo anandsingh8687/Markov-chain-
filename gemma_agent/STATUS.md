@@ -453,3 +453,7 @@ gemma_agent/
 - v29 (bundle_v29): v27 YAML + 3.5 KB prompt fixing measured mechanics (run_command stdout cut at 5000
   chars silently, write_file refuses /tmp, bare grep exit 1 = CommandError, backslash-n in edit strings
   corrupts calls 55/67). Lab 15a: v29 on the 48; lab 15b: v27 vs v29 on 25 holdout gold-passable tasks.
+- Lab 15: v29 21/48 in-kernel on the 48 (v27 runs: 20, 17); holdout 25 (never used for tuning):
+  v29 11/25, v27 11/25. v29 mean 185 s/task (v27 217 s on the holdout), corrupted calls 8 vs 48.
+  4 v29 tasks loop on submit_patch after the call budget is spent (harmless, refused calls).
+  dist/v29/submission.zip built (4 files) and compile-checked from the zip.
