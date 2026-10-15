@@ -443,3 +443,7 @@ gemma_agent/
   31/160 edit_file calls had parser-corrupted keys, ~all from triple quotes in old/new strings;
   17/387 read_file calls lost start_line/end_line (silently returns file head); grep exit 1 shown as
   CommandError 89 times. Thinking is on (short visible thoughts every step).
+- Lab 13 (same 48 tasks): v28 15/48, v28t 17/48 local regrade (in-kernel 15/16). v28 solves a strict
+  subset of v27 (v27-only: fastapi_9753, fastapi_9425, fastapi_5624, rich_3043, rich_3278). v28 cut
+  corrupted calls (7 vs 48) but edits later (first edit mean call 15.3 vs 13.1) and runs slower (233 s vs
+  182 s). 28/48 tasks unsolved by all four bundles. Lab 14 = v27 replicate (noise check).
