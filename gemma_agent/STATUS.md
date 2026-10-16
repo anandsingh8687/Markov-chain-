@@ -457,3 +457,7 @@ gemma_agent/
   v29 11/25, v27 11/25. v29 mean 185 s/task (v27 217 s on the holdout), corrupted calls 8 vs 48.
   4 v29 tasks loop on submit_patch after the call budget is spent (harmless, refused calls).
   dist/v29/submission.zip built (4 files) and compile-checked from the zip.
+- 10-16 05:21 UTC: v29 submission (user-approved) refused with 400 while v28 is still pending (one
+  pending submission at a time); background retry every 15 min.
+- Lab 16 (running): v29 vs v29c36 (max_tool_calls 36, prompt limit text updated) paired on the 48;
+  v29c36 on the 25 holdout.
