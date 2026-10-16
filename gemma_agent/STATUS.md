@@ -461,3 +461,6 @@ gemma_agent/
   pending submission at a time); background retry every 15 min.
 - Lab 16 (running): v29 vs v29c36 (max_tool_calls 36, prompt limit text updated) paired on the 48;
   v29c36 on the 25 holdout.
+- Lab 16: paired on the 48, v29c36 21/48 vs v29 19/48 (v29 lab 15: 21); holdout v29c36 13/25 vs
+  v29 11/25 and v27 11/25. Totals over 73 tasks: v29c36 34, v29 ~31, v27 ~29.5. Mean s/task: v29c36
+  221 (p90 444), v29 198 -> ~8.7 h projected for 120 tasks. v28 still pending at 10-16 08:05 UTC.
