@@ -464,3 +464,8 @@ gemma_agent/
 - Lab 16: paired on the 48, v29c36 21/48 vs v29 19/48 (v29 lab 15: 21); holdout v29c36 13/25 vs
   v29 11/25 and v27 11/25. Totals over 73 tasks: v29c36 34, v29 ~31, v27 ~29.5. Mean s/task: v29c36
   221 (p90 444), v29 198 -> ~8.7 h projected for 120 tasks. v28 still pending at 10-16 08:05 UTC.
+- v28 RESULT: no score. "Your submission notebook exceeded the allowed runtime" (12 h). Lab mean was
+  233 s/task -> the scorer runs much slower than our virtual clock (scale >~1.4x). v27-like bundles
+  (~200 s lab, same caps as the public Budget-Fit that completes) bound the safe zone from above.
+  Implication: v29 (185-198 s lab) is near the edge; v29c36 (221 s) is too risky; do not submit it.
+- 10-16 20:11 UTC: v29 submitted (ref 57282040), per the user's earlier approval for this slot.
