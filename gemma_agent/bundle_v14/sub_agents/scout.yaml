@@ -1,0 +1,8 @@
+name: scout
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Read-only code scout. It already sees the issue; call it once with a one-line request. Returns where the behaviour is decided, the evidence, similar code to mirror, and the tests.
+instruction: !include ../prompts/scout.md
+tools:
+  - run_command
+  - read_file
+generate_content_config: !include ../configs/scout_sampling.yaml

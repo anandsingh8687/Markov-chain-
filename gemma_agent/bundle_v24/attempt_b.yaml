@@ -1,0 +1,12 @@
+name: attempt_b
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Attempt B - smallest likely fix first, then verify; works in its own copy at /tmp/b/repo.
+instruction: !include prompts/attempt_b.md
+output_key: attempt_b_report
+tools:
+  - run_command
+  - get_status
+  - submit_patch
+skills:
+  - skills/swe-tools-b
+generate_content_config: !include configs/sampling_b.yaml

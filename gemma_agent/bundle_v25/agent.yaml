@@ -1,0 +1,11 @@
+name: fixer
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Single fixer, two sequential attempts in /workspace (the tools save, reset and pick the better one).
+instruction: !include prompts/system.md
+tools:
+  - run_command
+  - get_status
+  - submit_patch
+skills:
+  - skills/swe-tools
+generate_content_config: !include configs/sampling.yaml

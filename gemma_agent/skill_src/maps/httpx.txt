@@ -1,0 +1,35 @@
+HTTPX ARCHITECTURE MAP (verified at commit 4acf5c2c, the 1.0 development rewrite)
+
+IMPORTANT: at this commit httpx is NOT the classic 0.x layout (no httpx/_client.py with AsyncClient, no _models.py, no _transports/, no httpcore). It is a small self-contained rewrite with its own HTTP/1.1 parser, network layer and server.
+
+1. LAYOUT
+- src/ahttpx/: the async source of truth. src/httpx/: the sync package, generated from ahttpx by scripts/unasync (unasync rules rewrite ahttpx -> httpx and async/await to sync). Both trees are committed.
+- _client.py: Client(url, headers, transport) with build_request, request, stream, get, post, put, patch, delete, close; RedirectMiddleware(Transport) with is_redirect, build_redirect_request, send.
+- _pool.py: Transport base (send, close, request, stream), ConnectionPool (send, _get_connection, _cleanup, connections, description), Connection (send, _send_head, _send_body, _recv_head, _recv_body, _complete), open_connection.
+- _parsers.py: HTTPParser state machine (send_method_line, send_status_line, send_headers, send_body, recv_method_line, recv_status_line, recv_headers, recv_body, complete), ReadAheadParser, ProtocolError, State, Mode, bounded_int, bounded_hex.
+- _network.py: NetworkBackend (connect, connect_tls, listen, serve), NetworkStream, NetworkListener, NetworkServer, timeout, get_current_timeout.
+- _server.py: HTTPServer, HTTPConnection, serve_http, run (used by tests as a local echo server).
+- _request.py: Request(method, url, headers, content) with body, read, close. _response.py: Response(status_code, headers, content) with reason_phrase, body, text, read, close.
+- _headers.py: Headers (immutable-style API: copy_set, copy_remove, copy_update, get, items), headername, headervalue, parse_opts_header.
+- _urls.py: URL (scheme, userinfo, host, port, path, query, params, target, fragment, copy_with, copy_set_param, copy_append_param, copy_remove_param, copy_merge_params, join) and QueryParams (copy_set, copy_append, copy_remove, copy_update, get_list, multi_items). _urlparse.py: urlparse, ParseResult, InvalidURL, encode_host, normalize_port, validate_path, normalize_path, quote, percent_encoded. _urlencode.py: urlencode, urldecode, quote, unquote, percent.
+- _content.py: Content base (encode, content_type) and Form, File, Files, JSON, Text, HTML, MultiPart. _streams.py: Stream, ByteStream, DuplexStream, FileStream, HTTPStream, MultiPartStream.
+- _quickstart.py: module-level get, post, put, patch, delete. __init__.py re-exports the public names.
+
+2. FLOW
+httpx.get(url) or Client.request -> build_request (self.url.join(url), self.headers.copy_update(headers), Content/Stream/bytes) -> RedirectMiddleware.send -> ConnectionPool.send -> Connection.send writes head/body through HTTPParser over a NetworkStream, reads status line, headers and body into a Response with an HTTPStream -> Client.request calls response.read() inside a with block; Client.stream returns the open response.
+
+3. WHERE CHANGES GO
+- URL parsing/encoding: _urlparse.py (validation raises InvalidURL) and _urls.py (URL/QueryParams API); percent helpers in _urlencode.py.
+- Header behavior: _headers.py. Body encoding and content types: _content.py and _streams.py.
+- Wire protocol: _parsers.py. Connection reuse: _pool.py. Redirects: RedirectMiddleware in _client.py.
+- Make every change in src/ahttpx first and mirror it exactly (sync form) in src/httpx, or both packages drift; _network.py is not in the unasync list and is maintained separately in each tree.
+
+4. CONVENTIONS AND TESTS
+- Immutable-style models: methods named copy_* return new objects instead of mutating.
+- Type hints with X | None; mypy runs on both src/httpx and src/ahttpx (scripts/test).
+- Tests in tests/test_<module>.py target the sync httpx package only: pytest fixtures create httpx.Client() and httpx.serve_http(handler) servers; unit tests construct httpx.URL, httpx.Headers, httpx.QueryParams, httpx.Request/Response directly and assert on str(), repr(), .body, .text.
+
+5. PITFALLS
+- Do not look for or recreate the 0.x API (AsyncClient, Timeout, Limits, codes, HTTPStatusError); it does not exist here.
+- repr() output is asserted in tests; keep formats stable.
+- Async and sync trees must stay in sync; tests only exercise httpx.
