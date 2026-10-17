@@ -469,3 +469,5 @@ gemma_agent/
   (~200 s lab, same caps as the public Budget-Fit that completes) bound the safe zone from above.
   Implication: v29 (185-198 s lab) is near the edge; v29c36 (221 s) is too risky; do not submit it.
 - 10-16 20:11 UTC: v29 submitted (ref 57282040), per the user's earlier approval for this slot.
+- v29 public 0.18 (10-16 submission, scored by 10-17 23:10 UTC): new best, up from 0.10. Completed
+  inside the runtime limit. Leaderboard at that time: leaders 0.24, cluster 0.22.
