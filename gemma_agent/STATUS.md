@@ -471,3 +471,4 @@ gemma_agent/
 - 10-16 20:11 UTC: v29 submitted (ref 57282040), per the user's earlier approval for this slot.
 - v29 public 0.18 (10-16 submission, scored by 10-17 23:10 UTC): new best, up from 0.10. Completed
   inside the runtime limit. Leaderboard at that time: leaders 0.24, cluster 0.22.
+- 10-17 23:17 UTC: v29 resubmitted unchanged (ref 57328737, user-approved) to measure run-to-run variance.
