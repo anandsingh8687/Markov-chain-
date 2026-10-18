@@ -1,0 +1,13 @@
+name: lead
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Runs the solver once, guards against an empty patch, submits.
+instruction: !include prompts/lead.md
+tools:
+  - agent_tool:
+      config_path: sub_agents/solver.yaml
+  - run_command
+  - read_file
+  - edit_file
+  - get_status
+  - submit_patch
+generate_content_config: !include configs/sampling_lead.yaml

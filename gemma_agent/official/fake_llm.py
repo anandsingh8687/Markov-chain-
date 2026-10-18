@@ -142,7 +142,37 @@ def script(scenario, agent, pkg, pkg_init):
     return S[scenario][agent]
 
 
+def lead_solver_script(scenario, agent, pkg_init):
+    """bundle_v31a: lead (agent_tool solver -> submit_patch -> empty-patch guard) and solver (sub-agent)."""
+    layout = cmd("git ls-files | sed 's|/[^/]*$||' | sort -u | head -60")
+    mark = cmd("printf '\\nSWE_MARK = 1\\n' >> %s" % pkg_init)
+    call_solver = tool("solver", request="start")
+    sub = tool("submit_patch")
+    S = {
+        # solver edits and reports; lead submits once and stops
+        "at_edit": {"solver": [layout, mark, text("Changed %s." % pkg_init)],
+                    "lead": [call_solver, sub, text("DONE")]},
+        # solver changes nothing; lead sees patch_size 0, applies the reported fix, resubmits
+        "at_empty": {"solver": [layout, text("NONE %s line 1: append SWE_MARK = 1" % pkg_init)],
+                     "lead": [call_solver, sub, cmd("cat -n %s | sed -n 1,5p" % pkg_init), mark, sub, text("DONE")]},
+        # solver ignores its 25-call cap: calls past the shared 28 are refused; it must still return
+        "at_budget": {"solver": [layout] + [cmd("echo step %d" % i) for i in range(32)] + [text("NONE nothing found")],
+                      "lead": [call_solver, sub, text("DONE")]},
+        # solver edits then stalls until the session timeout: the fallback must capture the edit
+        "at_timeout": {"solver": [layout, mark] + [cmd("sleep 4; echo waiting")] * 400,
+                       "lead": [call_solver, sub, text("DONE")]},
+    }
+    return S[scenario][agent]
+
+
+LEAD_SOLVER = ("at_edit", "at_empty", "at_budget", "at_timeout")
+
+
 def agent_of(system):
+    if "You coordinate the fix" in system:
+        return "lead"
+    if "You are the solver" in system:
+        return "solver"
     if "You are attempt A" in system or "attempt A of two" in system:
         return "a"
     if "You are attempt B" in system or "attempt B of two" in system:
@@ -193,7 +223,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         assistants = [mm for mm in msgs if mm.get("role") == "assistant"]
         last_tool = next((_text(mm.get("content")) for mm in reversed(msgs) if mm.get("role") == "tool"), "")
         prev_calls = [tc["function"]["name"] for tc in (assistants[-1].get("tool_calls") or [])] if assistants else []
-        if "submit_patch" in prev_calls:
+        if self.scenario in LEAD_SOLVER and agent in ("lead", "solver"):
+            steps = lead_solver_script(self.scenario, agent, pkg_init)
+            i = len(assistants)
+            action = steps[i] if i < len(steps) else steps[-1]
+        elif "submit_patch" in prev_calls:
             action = text("Submitted the chosen patch.")
         elif FINAL in last_tool:
             action = tool("submit_patch")

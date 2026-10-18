@@ -501,3 +501,10 @@ gemma_agent/
   guard, output caps), unseen-repo eval set, then v31p (2 parallel attempts) only if the measured
   best-of-2 ceiling on the eval set is >= 4 points. Never leave a daily slot empty.
 - 10-18 21:25 UTC: v29 third draw submitted (user-approved).
+- v31a (bundle_v31a): lead LlmAgent (thinking 512) -> agent_tool solver (v29 method, told 25 calls,
+  {problem_description} templated, ends with a report, output_key solver_report) -> submit_patch ->
+  if patch_size 0, one guarded edit from the solver's report, resubmit, DONE. The solver runs in
+  AgentTool's private runner (no compaction, no post-submit loop). Offline fake-LLM harness tests
+  (official/fake_llm.py scenarios at_edit, at_empty, at_budget, at_timeout) all pass: empty-patch guard
+  fires, over-budget solver returns without crashing, timeout fallback captures the edit. Verified in
+  swegemma 0.2.11 that any exception still grades the on-disk diff (evaluate.py:324).
