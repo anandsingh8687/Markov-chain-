@@ -478,3 +478,10 @@ gemma_agent/
   Kept 28 calls / 80 turns (32 calls pending timing calibration). Correction: post-budget submit_patch
   calls are accepted, not refused (submit/get_status are not budget-gated); main edit corruption cause
   is a backtick closing new_string (183 cases), not backslash-n (32). Design + reviews: research_v30.md.
+- Lab 17 (REAL clock, sequential like the scorer, 12 tasks): mean task seconds v28 343 (failed 12 h on
+  the scorer), v29 337/301 (two kernels; passed once), v29c36 361. Real = ~1.55x virtual. Projected
+  120 tasks: v28 11.4 h, v29 10.6 h, v29c36 12.0 h -> v29c36 is NOT viable; v29 has only a few % margin
+  (its second draw may time out). Per LLM step: ~4.1 s fixed + 29 ms per completion token; prompt
+  length has no measurable cost. Overhead outside the agent is 3-5 s except rich_3772 (~300 s, harness).
+  Conclusion: gains must come from better steps within ~28 calls and <= v29's tokens; cut tokens/calls
+  to build margin (v30: thinking 2048, terse thoughts, stop after one submit).
