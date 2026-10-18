@@ -508,3 +508,9 @@ gemma_agent/
   (official/fake_llm.py scenarios at_edit, at_empty, at_budget, at_timeout) all pass: empty-patch guard
   fires, over-budget solver returns without crashing, timeout fallback captures the edit. Verified in
   swegemma 0.2.11 that any exception still grades the on-disk diff (evaluate.py:324).
+- Lab 19 (REAL clock, 12 lab17 tasks): v31a 353 s/task mean (median 327) vs v29 319 (median 292) on
+  the same tasks -> v31a FAILS the timing gate (G0b). Solves 4 vs v29 3/5, empty 2 vs 2. Cause: per-token
+  decode time is flat (30-32 ms) but without compaction the solver's context grows (mean 9.8k, max 24k)
+  and it writes more per step (380-490 completion tokens/step at 10-25k context vs 270-305 for v29), so
+  the compaction savings are more than eaten. The solver also ignored its 25-call cap (28/28 on 10 of 12
+  tasks), so the empty-patch guard rarely had calls left. Not submitted.
