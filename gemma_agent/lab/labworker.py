@@ -44,6 +44,14 @@ submission and the prompt are untouched (eval_config time_minutes stays nominal)
 Clock 'scaled' is the documented fallback (real cap = nominal x measured slowdown):
 agent_elapsed_seconds = real elapsed / wall_scale and asyncio.timeout(d * wall_scale).
 Clock 'real' changes nothing (virtual seconds are still measured and reported).
+
+Call log: every LLM call the harness counts and every function response (author, branch, prompt/completion
+tokens, function-call ids, wall time) goes to <results_dir>/calls/<id>.jsonl. timepred.py prefers it to the
+ATIF trace, which merges a nested agent's first call into its caller's step (agent_tool, ParallelAgent).
+
+Optional job keys (make_lab --data-dir / --sandbox docker-like / --phase2-only / --grade-extra-patches; see
+the "data dir, per-task wheels, docker-like sandbox" section): tmpdir, sandbox, py313, image_dir,
+sandbox_dir, phase2_only, extra_patches, no_graphs. Jobs without them run exactly as before.
 """
 
 from __future__ import annotations
@@ -110,11 +118,13 @@ class _ClockState:
         self.text_turns: list = []  # (branch, virtual s, before submit) of text-only model turns
         self.loads: list = []
         self.sandbox_tmp: dict = {}
+        self.calllog: list = []  # per-event records for timepred (see _event_record), written to <results>/calls/
 
     def reset(self, ctx) -> None:
         self.ctx, self.tokens, self.calls, self.tool_s, self.v_at_submit = ctx, 0, 0, 0.0, None
         self.committed, self.epoch, self.last_call_wall, self.branch_calls = 0.0, {}, {}, {}
         self.text_turns, self.loads = [], []
+        self.calllog = [{"k": "start", "t": round(time.time(), 3)}]
         self.seen.clear()
 
     def charge_call(self, branch: str, tokens: int) -> None:
@@ -151,6 +161,34 @@ class _AsyncioProxy:
 
     def __getattr__(self, name):
         return getattr(asyncio, name)
+
+
+def _event_record(event, counted: bool) -> dict | None:
+    """Compact record of one ADK event for the call log: LLM calls the harness counted (author, branch, prompt
+    and completion tokens, function calls) and function responses (tool results, agent-tool returns).
+
+    The ATIF trace is lossy for nested agents (adk_eval_core's converter attaches an agent tool's first inner
+    function call to the caller's step and drops that inner LLM call's usage), so timepred prefers this log.
+    """
+    content = getattr(event, "content", None)
+    parts = getattr(content, "parts", None) or []
+    fc = [[getattr(p.function_call, "name", "") or "", getattr(p.function_call, "id", "") or ""]
+          for p in parts if getattr(p, "function_call", None)]
+    fr = [[getattr(p.function_response, "name", "") or "", getattr(p.function_response, "id", "") or ""]
+          for p in parts if getattr(p, "function_response", None)]
+    if not counted and not fr:
+        return None
+    rec = {"k": "llm" if counted else "resp", "t": round(time.time(), 3), "a": getattr(event, "author", "") or "",
+           "b": getattr(event, "branch", None) or ""}
+    if counted:
+        usage = getattr(event, "usage_metadata", None)
+        rec["pt"] = int(getattr(usage, "prompt_token_count", 0) or 0) if usage is not None else 0
+        rec["ct"] = int(getattr(usage, "candidates_token_count", 0) or 0) if usage is not None else 0
+        if fc:
+            rec["fc"] = fc
+    if fr:
+        rec["fr"] = fr
+    return rec
 
 
 def _is_text_turn(event) -> bool:
@@ -195,8 +233,16 @@ def install_clock(mode: str = "virtual", per_call: float | None = None, per_toke
         before = getattr(self, "llm_calls_used", 0)
         orig_handle(self, event, agent_name=agent_name)
         try:
+            counted = event is not None and st.active and getattr(self, "llm_calls_used", 0) > before
+            if event is not None and st.active:
+                ekey = ("log", getattr(event, "id", None) or id(event))
+                if ekey not in st.seen:
+                    rec = _event_record(event, counted)
+                    if rec is not None:
+                        st.seen.add(ekey)
+                        st.calllog.append(rec)
             # an LLM call exactly when the harness counted one (context.py handle_adk_event, step 2)
-            if event is not None and st.active and getattr(self, "llm_calls_used", 0) > before:
+            if counted:
                 key = getattr(event, "id", None) or id(event)
                 if key not in st.seen:
                     st.seen.add(key)
@@ -287,6 +333,342 @@ def install_clock(mode: str = "virtual", per_call: float | None = None, per_toke
     return st
 
 
+# ------------------------------------------------------------------ data dir, per-task wheels, docker-like sandbox
+#
+# Used only when make_lab.py gets --data-dir / --sandbox docker-like / --phase2-only / --grade-extra-patches
+# (job keys 'tmpdir', 'sandbox', 'py313', 'image_dir', 'sandbox_dir', 'phase2_only', 'extra_patches'). Jobs
+# without these keys run exactly as before.
+#
+# Why (swegemma 0.2.11):
+#  * the stock SubprocessManager skips install_editable_package and install_test_dependencies (both return
+#    early on type(docker).__name__ == 'SubprocessManager', harness/container_setup.py:506-531), so no wheel is
+#    injected and setup.py never runs; the sandbox venv is the host interpreter (py3.12 on the pinned Kaggle
+#    image) with the host site-packages visible. Fine for fastapi/rich (the host has their deps), wrong for
+#    eval-set repos. 'docker-like' gives each sandbox a python3.13 venv layered on an image venv (the
+#    Dockerfile.sandbox pip line) and maps /usr/local/lib/python3.13/site-packages onto it, so the harness
+#    streams the unpacked wheels in and runs <data>/sandbox/setup.py like the scorer's container.
+#  * the harness caches unpacked wheels as $TMPDIR/swegemma_sp_cache_v8/sp_base.tar (and sp_whl_<pkg>.tar) BY A
+#    FIXED NAME, whatever the wheel set (container_setup.py:233-246, 341). Per-task wheel sets therefore get
+#    their own TMPDIR keyed by the wheel set's content (tasks with identical sets share one cache); the pool
+#    deletes it when no pending or running job uses it.
+
+DOCKER_SP = "/usr/local/lib/python3.13/site-packages"
+IMAGE_PIP = ["pytest", "pytest-timeout==2.1.0", "typer", "pdm-backend", "setuptools", "wheel", "poetry-core",
+             "hatchling", "flit-core", "editables"]  # docker/Dockerfile.sandbox
+PY313_TARBALLS = ("python313.tar.gz", "python313.tgz", "tools/python313.tar.gz")
+IMAGE_WHEEL_DIRS = ("image_wheels", "wheels_pool", "wheels")
+
+
+def resolve_data_dir(spec: str | None, default: Path | None = None, roots: tuple = ("/kaggle/input",)) -> Path:
+    """A competition-format data dir (has tasks.jsonl) from a path, a glob, or a bare name searched under roots.
+
+    Kaggle mounts kernel outputs and datasets at varying depths (/kaggle/input/<slug>/...,
+    /kaggle/input/notebooks/<user>/<slug>/...), so a name that does not exist is looked up as a directory
+    name (or as a path suffix) under /kaggle/input, at most 5 levels deep.
+    """
+    import glob as _glob
+    if not spec:
+        if default is None:
+            raise FileNotFoundError("no data dir given")
+        return Path(default)
+    cands = [Path(p) for p in sorted(_glob.glob(spec))] if any(c in spec for c in "*?[") else [Path(spec)]
+    for c in cands:
+        if (c / "tasks.jsonl").is_file():
+            return c
+    suffix = spec.strip("/").split("/")
+    for root in roots:
+        if not os.path.isdir(root):
+            continue
+        for dirpath, dirnames, filenames in os.walk(root):
+            depth = dirpath[len(root):].count(os.sep)
+            if depth >= 5:
+                dirnames[:] = []
+            if "tasks.jsonl" in filenames and dirpath.rstrip("/").split("/")[-len(suffix):] == suffix:
+                return Path(dirpath)
+    raise FileNotFoundError(f"data dir {spec!r}: no tasks.jsonl found (also searched {roots})")
+
+
+def wheel_set_key(wheels_dir: Path) -> str:
+    import hashlib
+    names = sorted(p.name for p in Path(wheels_dir).glob("*.whl"))
+    return hashlib.sha1("\n".join(names).encode()).hexdigest()[:12]
+
+
+def resolve_task_wheels(data_dir: Path, task_id: str, link_root: Path) -> tuple[Path, bool]:
+    """(wheels dir for this task, per_task). Layouts, first match wins:
+      <data>/wheels_by_task/<id>/*.whl
+      <data>/wheels_manifest/<id>.txt (one wheel file name per line) + <data>/wheels_pool/ -> symlink dir
+      <data>/wheels (shared; per_task False)."""
+    data_dir = Path(data_dir)
+    d = data_dir / "wheels_by_task" / task_id
+    if d.is_dir() and any(d.glob("*.whl")):
+        return d, True
+    man = data_dir / "wheels_manifest" / f"{task_id}.txt"
+    if man.is_file():
+        pool = data_dir / "wheels_pool"
+        out = Path(link_root) / task_id
+        out.mkdir(parents=True, exist_ok=True)
+        for name in man.read_text().split():
+            name = os.path.basename(name)
+            src = pool / name
+            dst = out / name
+            if src.is_file() and not (dst.is_symlink() and os.readlink(dst) == str(src.resolve())):
+                if os.path.lexists(dst):
+                    dst.unlink()
+                dst.symlink_to(src.resolve())
+        return out, True
+    return data_dir / "wheels", False
+
+
+def find_python313(data_dir: Path | None = None, explicit: str | None = None,
+                   extract_to: Path = Path("/tmp/lab_py313")) -> str | None:
+    """python3.13 for the docker-like sandbox: explicit path, <data>/python313/bin/python3.13, a
+    python-build-standalone tarball in the data dir (uv python install output, relocatable), or PATH."""
+    import shutil
+    import tarfile
+    if explicit:
+        return explicit if os.path.exists(explicit) else None
+    if data_dir is not None:
+        p = Path(data_dir) / "python313" / "bin" / "python3.13"
+        if p.exists():
+            return str(p)
+        for rel in PY313_TARBALLS:
+            tb = Path(data_dir) / rel
+            if tb.is_file():
+                hit = sorted(Path(extract_to).glob("**/bin/python3.13"))
+                if not hit:
+                    extract_to.mkdir(parents=True, exist_ok=True)
+                    with tarfile.open(tb) as tf:
+                        tf.extractall(extract_to, filter="fully_trusted")
+                    hit = sorted(Path(extract_to).glob("**/bin/python3.13"))
+                if hit:
+                    return str(hit[0])
+    for c in (shutil.which("python3.13"), "/usr/bin/python3.13", "/usr/local/bin/python3.13"):
+        if c and os.path.exists(c):
+            return c
+    return None
+
+
+def install_python313_online(log=print) -> str | None:
+    """Kernel with internet: pip install uv; uv python install 3.13 (python-build-standalone)."""
+    try:
+        subprocess.run([sys.executable, "-m", "pip", "install", "-q", "uv"], check=True)
+        import shutil
+        uv = shutil.which("uv") or str(Path(sys.executable).parent / "uv")
+        subprocess.run([uv, "python", "install", "3.13"], check=True)
+        py = subprocess.run([uv, "python", "find", "3.13"], capture_output=True, text=True).stdout.strip()
+        return py or None
+    except Exception as exc:  # noqa: BLE001
+        log("uv python install 3.13 failed:", exc)
+        return None
+
+
+def prepare_image(python: str, image_dir: Path, wheel_dirs: list, shims_dir: Path | None = None, log=print,
+                  online: bool = False) -> dict:
+    """Build the 'swebench-sandbox' image as a python3.13 venv once (offline: pip --no-index --find-links).
+
+    Returns {'image_dir', 'missing': [packages that could not be installed]}. A missing build backend only
+    breaks `pip install -e /workspace` for repos that use it (the repo is still on sys.path via setup.py).
+    """
+    image_dir = Path(image_dir)
+    marker = image_dir / ".swegemma_image_ok"
+    if marker.exists():
+        try:  # run_official.py writes "ok"; this function writes the JSON list of missing packages
+            missing = json.loads(marker.read_text() or "[]")
+        except ValueError:
+            missing = []
+        return {"image_dir": str(image_dir), "missing": missing if isinstance(missing, list) else []}
+    subprocess.run([python, "-m", "venv", "--clear", str(image_dir)], check=True)
+    vpy = str(image_dir / "bin" / "python")
+    links = []
+    for d in wheel_dirs:
+        if d and Path(d).is_dir() and any(Path(d).glob("*.whl")):
+            links += ["--find-links", str(d)]
+    base = [vpy, "-m", "pip", "install", "-q", "--no-cache-dir", *([] if online else ["--no-index"]), *links]
+    missing: list = []
+    if subprocess.run(base + IMAGE_PIP).returncode != 0:
+        for pkg in IMAGE_PIP:
+            if subprocess.run(base + [pkg]).returncode != 0:
+                missing.append(pkg)
+    sp = next(image_dir.glob("lib/python3*/site-packages"))
+    for shim in ("imp.py", "telnetlib.py"):
+        src = Path(shims_dir) / shim if shims_dir else None
+        if src is not None and src.is_file():
+            (sp / shim).write_text(src.read_text())
+    marker.write_text(json.dumps(missing))
+    if missing:
+        log("image313: could not install", missing, "(no wheel in", [str(d) for d in wheel_dirs], ")")
+    return {"image_dir": str(image_dir), "missing": missing}
+
+
+def prepare_sandbox_env(data_dir: Path, opts: dict, log=print, competition_dir: Path | None = None) -> dict:
+    """Orchestrator side, once per kernel: python3.13 + image venv for 'docker-like', setup.py fallback."""
+    env: dict = {}
+    data_dir = Path(data_dir)
+    if not (data_dir / "sandbox" / "setup.py").is_file() and competition_dir is not None \
+            and (Path(competition_dir) / "sandbox" / "setup.py").is_file():
+        env["sandbox_dir"] = str(Path(competition_dir) / "sandbox")  # -> KAGGLE_SANDBOX_DIR in the worker
+    if opts.get("sandbox") == "docker-like":
+        py = find_python313(data_dir, opts.get("py313"))
+        if py is None and opts.get("internet"):
+            py = install_python313_online(log)
+        if py is None:
+            raise RuntimeError("docker-like sandbox needs python3.13: ship <data>/python313.tar.gz "
+                               "(uv python install 3.13; tar the cpython-3.13.* dir), pass --py313, or use --internet")
+        image = Path(opts.get("image_dir") or "/tmp/lab_image313")
+        shims = data_dir / "docker"
+        if not shims.is_dir() and competition_dir is not None:
+            shims = Path(competition_dir) / "docker"
+        wheel_dirs = [data_dir / d for d in IMAGE_WHEEL_DIRS] + [Path(p) for p in opts.get("image_wheel_dirs", [])]
+        img = prepare_image(py, image, wheel_dirs, shims, log, online=bool(opts.get("internet")))
+        env.update(py313=py, image_dir=img["image_dir"], image_missing=img["missing"])
+        log("docker-like sandbox: python", py, "image", img["image_dir"], "missing", img["missing"])
+    return env
+
+
+def job_extras(data_dir: Path, task_id: str, opts: dict, env: dict) -> dict:
+    """Extra job keys for one task-run (new modes only): data dir, per-task wheels + TMPDIR, sandbox env."""
+    data_dir = Path(data_dir)
+    work = Path(opts.get("work_root") or "/tmp/lab_work")
+    ex: dict = {"data_dir": str(data_dir)}
+    wdir, per_task = resolve_task_wheels(data_dir, task_id, work / "wheels")
+    ex["wheels_dir"] = str(wdir)
+    if per_task and opts.get("per_task_wheels", True):
+        key = wheel_set_key(wdir)
+        ex["tmpdir"] = str(work / "tmp" / key)
+        ex["wheels_key"] = key
+        ex["cleanup_tmpdir"] = not opts.get("keep_tmp", False)
+    for k in ("sandbox", "phase2_only", "extra_patches"):
+        if opts.get(k):
+            ex[k] = opts[k]
+    for k in ("py313", "image_dir", "sandbox_dir"):
+        if env.get(k):
+            ex[k] = env[k]
+    if opts.get("no_graphs"):
+        ex["no_graphs"] = True
+    return ex
+
+
+def make_docker_like_manager(image: Path, python: str, timeout_seconds: int, base_dir: Path | None = None,
+                             wheels_dir: Path | None = None, inject_wheels: bool = True):
+    """A SubprocessManager that behaves like the scorer's docker container (port of
+    gemma_agent/official/run_official.py:make_docker_like_manager, --deps image).
+
+    Its class name is deliberately not 'SubprocessManager', so the harness runs install_editable_package,
+    streams the unpacked wheels (<16 MB, plus the large ones the repo imports) into
+    /usr/local/lib/python3.13/site-packages (mapped to the sandbox venv) and runs sandbox/setup.py --fast-path.
+    Each sandbox: python3.13 venv layered on `image` (Dockerfile.sandbox packages), /wheels = symlinks to the
+    task's wheels, git identity in HOME (= sandbox tmp), as the Dockerfile sets it.
+    """
+    import shutil  # noqa: F401
+    import tarfile
+    import tempfile
+    import uuid
+
+    from swegemma.sandbox import SubprocessManager
+
+    image = Path(image)
+    image_sp = next(image.glob("lib/python3*/site-packages"))
+
+    class DockerLikeSandbox(SubprocessManager):
+        def start(self) -> str:
+            sid = str(uuid.uuid4())[:12]
+            root = Path(tempfile.mkdtemp(prefix=f"swegemma_sandbox_{sid}_",
+                                         dir=str(self.base_dir) if self.base_dir else None))
+            for d in ("workspace", "tmp", "wheels"):
+                (root / d).mkdir(parents=True, exist_ok=True)
+            if wheels_dir is not None:
+                for w in Path(wheels_dir).glob("*.whl"):
+                    (root / "wheels" / w.name).symlink_to(w.resolve())
+            venv_dir = root / "venv"
+            subprocess.run([python, "-m", "venv", "--without-pip", str(venv_dir)], check=True)
+            sp = next(venv_dir.glob("lib/python3*/site-packages"))
+            (sp / "_image.pth").write_text(str(image_sp) + "\n")
+            vpy = venv_dir / "bin" / "python3"
+            for script in (image / "bin").iterdir():  # console scripts (pip, pytest, ...) bound to this venv
+                if script.name.startswith(("python", "activate", "Activate")) or not script.is_file():
+                    continue
+                lines = script.read_text(errors="replace").splitlines(True)
+                if lines and lines[0].startswith("#!"):
+                    dst = venv_dir / "bin" / script.name
+                    dst.write_text(f"#!{vpy}\n" + "".join(lines[1:]))
+                    dst.chmod(0o755)
+            (root / "tmp" / ".gitconfig").write_text(
+                "[user]\n\temail = agent@eval\n\tname = Agent\n[init]\n\tdefaultBranch = main\n")
+            with self._lock:
+                self._sandboxes[sid] = {"root": root, "workspace": root / "workspace", "tmp": root / "tmp",
+                                        "wheels": root / "wheels", "venv": venv_dir, "sp": sp}
+                if self._default_sandbox_id is None:
+                    self._default_sandbox_id = sid
+            return sid
+
+        def _sp(self, sid: str) -> Path:
+            with self._lock:
+                return self._sandboxes[sid]["sp"]
+
+        def exec(self, sandbox_id: str, command: str, *, timeout: int | None = None):
+            if DOCKER_SP in command:
+                command = command.replace(DOCKER_SP, str(self._sp(sandbox_id)))
+            return super().exec(sandbox_id, command, timeout=timeout)
+
+    class DockerLikeSandboxWheels(DockerLikeSandbox):
+        def _stream_tar_via_exec_socket(self, sandbox_id: str, fileobj, dest: str) -> bool:
+            target = self._sp(sandbox_id) if dest.rstrip("/") == DOCKER_SP else Path(dest)
+            with tarfile.open(fileobj=fileobj, mode="r|") as tf:
+                tf.extractall(target, filter="fully_trusted")
+            return True
+
+        def extract_archive_to_container(self, sandbox_id: str, archive_path, dst_dir: str = "/workspace") -> bool:
+            return False  # its presence makes the harness stream wheels; False keeps copy+tar for snapshots
+
+    cls = DockerLikeSandboxWheels if inject_wheels else DockerLikeSandbox
+    return cls(timeout_seconds=timeout_seconds, base_dir=base_dir, system_site_packages=False)
+
+
+def install_patch_capture(paths: list) -> dict:
+    """Copy sandbox files (e.g. /tmp/a.diff, /tmp/b.diff of a two-attempt bundle) when the agent session stops.
+
+    Wraps SwegemmaContext.stop_agent_session (after the clock's wrapper): the agent sandbox still exists then
+    (it is stopped later in run_agent_sandbox's finally). Returns {sandbox path: text or None}.
+    """
+    from swegemma import context as ctxmod
+    C = ctxmod.SwegemmaContext
+    captured: dict = {}
+    inner = C.stop_agent_session
+
+    def stop_agent_session(self):
+        inner(self)
+        for p in paths:
+            if p in captured:
+                continue
+            try:
+                res = self.docker.exec(self.container_id, f"cat {p} 2>/dev/null", timeout=60)
+                captured[p] = (res.stdout or "") if res.exit_code == 0 else None
+            except Exception:  # noqa: BLE001
+                captured[p] = None
+
+    C.stop_agent_session = stop_agent_session
+    return captured
+
+
+def patch_files(patch: str) -> list:
+    """Files a unified diff touches: 'diff --git a/X b/Y' headers, else '+++ b/Y' (or '--- a/X' when deleted)."""
+    import re
+    out = [m.group(2) for m in re.finditer(r"^diff --git a/(\S+) b/(\S+)", patch or "", re.M)]
+    if not out:
+        minus = None
+        for line in (patch or "").splitlines():
+            if line.startswith("--- "):
+                minus = line[4:].split("\t")[0].strip()
+            elif line.startswith("+++ "):
+                plus = line[4:].split("\t")[0].strip()
+                f = plus if plus != "/dev/null" else (minus or "")
+                f = f[2:] if f.startswith(("a/", "b/")) else f
+                if f and f != "/dev/null":
+                    out.append(f)
+    return list(dict.fromkeys(out))
+
+
 # ------------------------------------------------------------------ one task-run (worker process)
 
 def _setup_logging(path: Path) -> None:
@@ -303,34 +685,50 @@ def _setup_logging(path: Path) -> None:
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
-def build_registry(api_base: str, served_model: str, alias: str, bundle: Path):
-    """VllmServer.create_model_registry pointed at the already-running server (as run_official.py)."""
+def build_registry(api_base: str, served_model: str, alias: str, bundle: Path | None):
+    """VllmServer.create_model_registry pointed at the already-running server (as run_official.py).
+    bundle None (phase2-only): no adapter manifest; no request is ever made."""
     from adk_submission import VllmConfig, VllmServer, discover_adapters
     from swegemma.config import ALLOWED_ADAPTER_EXTENSIONS
-    base = api_base.rstrip("/")
+    base = (api_base or "http://127.0.0.1:9/v1").rstrip("/")
 
     class ExternalVllm(VllmServer):
         @property
         def base_url(self) -> str:
             return base
 
-    manifest = discover_adapters(str(bundle), adapter_extensions=ALLOWED_ADAPTER_EXTENSIONS)
+    manifest = discover_adapters(str(bundle), adapter_extensions=ALLOWED_ADAPTER_EXTENSIONS) \
+        if bundle is not None else None
     server = ExternalVllm(VllmConfig(model=served_model, enable_lora=True), adapter_manifest=manifest)
     server.effective_model_path = served_model
     return server.create_model_registry(aliases=[alias], model_prefix="openai/", api_key="EMPTY")
 
 
 def run_job(job: dict) -> dict:
-    """Evaluate one task-run; returns the results.jsonl row (existing kernel format + extras)."""
+    """Evaluate one task-run; returns the results.jsonl row (existing kernel format + extras).
+
+    Optional job keys (new modes; absent = unchanged behaviour): tmpdir (per wheel set TMPDIR), sandbox
+    ('docker-like' + py313 + image_dir), sandbox_dir (KAGGLE_SANDBOX_DIR for setup.py), phase2_only ('gold' |
+    'empty': no model, verify that patch), extra_patches (sandbox paths graded after the run), no_graphs.
+    """
     t1 = time.time()
     res_dir = Path(job["results_dir"])
     tid = job["task_id"]
     base = {"bundle": job["bundle"], "id": tid, "replicate": job.get("replicate", 0)}
+    if job.get("tmpdir"):  # before anything calls tempfile.gettempdir() (the sp_base cache lives there)
+        import tempfile
+        Path(job["tmpdir"]).mkdir(parents=True, exist_ok=True)
+        os.environ["TMPDIR"] = job["tmpdir"]
+        tempfile.tempdir = job["tmpdir"]
+    if job.get("sandbox_dir"):
+        os.environ["KAGGLE_SANDBOX_DIR"] = job["sandbox_dir"]
     _setup_logging(res_dir / "worker_logs" / f"{tid}.log")
     st = None
+    extra: dict = {}
     try:
         st = install_clock(job.get("clock", "real"), job.get("per_call"), job.get("per_token"),
                            job.get("real_factor", 3.0), job.get("wall_scale", 1.0), job.get("tool_seconds", True))
+        captured = install_patch_capture(job["extra_patches"]) if job.get("extra_patches") else None
         import litellm
         import yaml
         from google.adk.agents.context_cache_config import ContextCacheConfig
@@ -341,25 +739,51 @@ def run_job(job: dict) -> dict:
         litellm.drop_params = True
 
         data = Path(job["data_dir"])
-        agent_dir = Path(job["bundle_dir"])
+        phase2 = job.get("phase2_only")
+        agent_dir = Path(job["bundle_dir"]) if job.get("bundle_dir") else None
         ev = (yaml.safe_load((agent_dir / "eval_config.yaml").read_text()) or {}).get("evaluation", {}) \
-            if (agent_dir / "eval_config.yaml").exists() else {}
+            if agent_dir is not None and (agent_dir / "eval_config.yaml").exists() else {}
         ev = ev or {}
         models = build_registry(job["api_base"], job["served_model"], job.get("alias", "gemma-4-31b-it-qat-w4a16-ct"), agent_dir)
         limits, gen_constraints = build_submission_limits()
-        cfg = EvalConfig(
-            tasks_path=data / "tasks.jsonl", snapshots_dir=data / "snapshots", results_dir=res_dir,
-            submission_dir=agent_dir, models=models, sandbox="subprocess",
-            timeout_seconds=int(ev.get("timeout_seconds", 300)), max_time_minutes=ev.get("max_time_minutes"),
-            max_tool_calls=ev.get("max_tool_calls"), max_turns=ev.get("max_turns"),
-            limits=limits, generation_constraints=gen_constraints,
-            context_cache_config=ContextCacheConfig(min_tokens=2048, ttl_seconds=1800, cache_intervals=10),
-            events_compaction_config=EventsCompactionConfig(compaction_interval=15, overlap_size=2,
-                                                            token_threshold=14336, event_retention_size=5),
-            graph_dir=str(data / "graphs"), embeddings_dir=str(data / "embeddings"),
-            wheels_dir=Path(job.get("wheels_dir") or data / "wheels"), verbose=False, display_mode="quiet")
+        graph_root = (res_dir / "_no_graphs") if job.get("no_graphs") else data
+        wheels = Path(job.get("wheels_dir") or data / "wheels")
+
+        def make_cfg(results_dir: Path):
+            return EvalConfig(
+                tasks_path=data / "tasks.jsonl", snapshots_dir=data / "snapshots", results_dir=results_dir,
+                submission_dir=agent_dir if agent_dir is not None else results_dir, models=models, sandbox="subprocess",
+                timeout_seconds=int(ev.get("timeout_seconds", 300)), max_time_minutes=ev.get("max_time_minutes"),
+                max_tool_calls=ev.get("max_tool_calls"), max_turns=ev.get("max_turns"),
+                limits=limits, generation_constraints=gen_constraints,
+                context_cache_config=ContextCacheConfig(min_tokens=2048, ttl_seconds=1800, cache_intervals=10),
+                events_compaction_config=EventsCompactionConfig(compaction_interval=15, overlap_size=2,
+                                                                token_threshold=14336, event_retention_size=5),
+                graph_dir=str(graph_root / "graphs"), embeddings_dir=str(graph_root / "embeddings"),
+                wheels_dir=wheels, verbose=False, display_mode="quiet")
+
+        def make_evaluator(cfg, patch_text=None):
+            if patch_text is None:
+                evaluator = Evaluator(cfg)
+            else:
+                from adk_eval_core.tracing import SessionTrace
+
+                class Phase2Evaluator(Evaluator):
+                    async def _run_agent_sandbox(self, task, snapshot_path, task_index, total_tasks, **kw):
+                        return patch_text, None, SessionTrace()
+                evaluator = Phase2Evaluator(cfg)
+            if job.get("sandbox") == "docker-like":
+                cmd_timeout = cfg.harness.command_timeout_seconds or 300
+                evaluator.sandbox = evaluator.docker = make_docker_like_manager(
+                    Path(job["image_dir"]), job["py313"], cmd_timeout, None, wheels)
+            return evaluator
+
+        cfg = make_cfg(res_dir)
         task = {t.instance_id: t for t in load_tasks(cfg.tasks_path)}[tid]
-        evaluator = Evaluator(cfg)
+        patch_text = None
+        if phase2:
+            patch_text = task.patch if phase2 == "gold" else ""
+        evaluator = make_evaluator(cfg, patch_text)
         r = asyncio.run(evaluator.evaluate_task(task=task, task_index=job.get("task_index", 1),
                                                 total_tasks=job.get("total_tasks", 1)))
         row = dict(base, **{
@@ -369,9 +793,38 @@ def run_job(job: dict) -> dict:
             "task_seconds": round(r.duration_seconds or 0, 1), "wall_seconds": round(time.time() - t1, 1),
             "error": str(r.error_message or "")[:800], "test_tail": (r.test_output or "")[-1500:],
             "patch": r.agent_patch or ""})
+        if captured is not None:  # grade the extra patches (e.g. attempt A / B of a two-attempt bundle)
+            for path in job["extra_patches"]:
+                name = Path(path).stem
+                text = captured.get(path)
+                info = {"path": path, "chars": len(text or ""), "files": patch_files(text or ""), "resolved": False}
+                if text and text.strip():
+                    t2 = time.time()
+                    try:
+                        sub = make_cfg(res_dir / "extra" / name)
+                        rr = asyncio.run(make_evaluator(sub, text).evaluate_task(task=task))
+                        info.update(resolved=bool(rr.resolved), status=rr.status, seconds=round(time.time() - t2, 1),
+                                    test_tail=(rr.test_output or "")[-300:])
+                    except Exception:  # noqa: BLE001
+                        info["error"] = traceback.format_exc()[-600:]
+                extra[name] = info
     except BaseException:  # noqa: BLE001 - a crashed task is a row
         row = dict(base, error="CRASH " + traceback.format_exc()[-1500:], patch="",
                    wall_seconds=round(time.time() - t1, 1))
+    if extra or job.get("extra_patches"):
+        row["extra_patches"] = extra
+    for k in ("phase2_only", "sandbox", "wheels_key"):
+        if job.get(k):
+            row[k] = job[k]
+    if job.get("tmpdir") or job.get("sandbox") or job.get("phase2_only"):
+        row["data_dir"] = job.get("data_dir")
+    if st is not None and len(st.calllog) > 1:
+        try:
+            cdir = res_dir / "calls"
+            cdir.mkdir(parents=True, exist_ok=True)
+            (cdir / f"{tid.replace('/', '__')}.jsonl").write_text("".join(json.dumps(x) + "\n" for x in st.calllog))
+        except OSError:
+            pass
     if st is not None:
         ctx = st.ctx
         before_submit = [t for t in st.text_turns if t[2]]
@@ -499,6 +952,7 @@ def run_pool(jobs: list[dict], concurrency: int, out: Path, log, python: str = s
                 log("start", stem, "active", len(running), "left", len(pending))
             time.sleep(poll)
             still = []
+            finished = []
             for p, job, lf, t0, stem in running:
                 rc = p.poll()
                 if rc is None and time.time() - t0 > kill_after:
@@ -531,7 +985,14 @@ def run_pool(jobs: list[dict], concurrency: int, out: Path, log, python: str = s
                     "patch" if row.get("patch") else "NO-PATCH", "calls", row.get("tool_calls"),
                     "llm", row.get("llm_calls"), "task_s", row.get("task_seconds"), "virt_s", row.get("virtual_seconds"),
                     "wall_s", row.get("wall_seconds"), str(row.get("error", ""))[:120])
+                finished.append(job)
             running = still
+            for job in finished:  # per wheel set TMPDIR (sp_base cache, leftover sandboxes): drop when unused
+                td = job.get("tmpdir")
+                if td and job.get("cleanup_tmpdir") and not any(
+                        j.get("tmpdir") == td for j in pending + [r[1] for r in running]):
+                    import shutil
+                    shutil.rmtree(td, ignore_errors=True)
     finally:
         if mlog is not None:
             mlog.stop_event.set()

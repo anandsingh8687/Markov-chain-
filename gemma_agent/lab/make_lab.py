@@ -30,6 +30,35 @@ tool time) + measured sandbox exec seconds, charged per ADK branch (parallel bra
 asyncio cap is --real-factor (3) x nominal (see labworker.py for the patched attributes). The helper
 tools of v23/v24 read the same clock from <sandbox tmp>/.swe_vclock. --wall-scale F is the fallback
 without a token clock: real cap and the agent's elapsed time are both scaled by F (the measured slowdown).
+
+Eval-set / other data (--data-dir, --sandbox docker-like, --grade-extra-patches, --labworker, --phase2-only):
+the kernel runs labworker processes (N = --concurrency; N=1 + real clock = one task at a time like the scorer)
+and every row also gets a call log in lab/<bundle>/r<rep>/calls/<id>.jsonl. Without these options the kernel
+is byte-identical to before.
+  --data-dir SPEC            competition-format dir inside the kernel: tasks.jsonl, snapshots/<id>.tgz, wheels/
+                             or wheels_by_task/<id>/ or wheels_manifest/<id>.txt + wheels_pool/, graphs/,
+                             embeddings/, sandbox/setup.py (falls back to the competition's), docker/ shims.
+                             SPEC = a path, a glob, or a name searched under /kaggle/input (mount depth varies).
+  --extra-kernel-sources U/S attach that kernel's output (e.g. the eval-set merge kernel); --extra-dataset-sources.
+  per-task wheels            each distinct wheel set gets its own TMPDIR (the harness caches unpacked wheels as
+                             $TMPDIR/swegemma_sp_cache_v8/sp_base.tar by a fixed name); removed when unused
+                             (--keep-tmp keeps them, --no-per-task-wheels uses <data>/wheels for all).
+  --sandbox docker-like      python3.13 venv on an image venv per sandbox, wheels streamed in, setup.py run, as
+                             in the scorer's container (the stock subprocess sandbox skips both and runs on the
+                             host python 3.12). Needs python3.13 in the kernel: <data>/python313.tar.gz (a
+                             relocatable `uv python install 3.13` tree) or <data>/python313/, or --py313; and
+                             offline wheels for the image's pip line in <data>/image_wheels/ (or wheels_pool/).
+  --grade-extra-patches P,Q  copy those sandbox files when the agent stops (two-attempt bundles: /tmp/a.diff,
+                             /tmp/b.diff) and verify each like the main patch -> row extra_patches.<stem>.
+  --phase2-only gold,empty   CPU kernel (enable_gpu false, no model, no vLLM): verify the reference patch and/or
+                             an empty patch per task; writes lab/valid_ids.txt (gold passes, empty fails).
+
+    python gemma_agent/lab/make_lab.py --bundles v29=gemma_agent/bundle_v29 --tasks @evalset_all.txt \
+        --data-dir evalset-merge --extra-kernel-sources anandsingh8687/evalset-merge --sandbox docker-like \
+        --concurrency 6 --virtual-clock --out /tmp/lab20 --slug gemma-agent-lab20
+    python gemma_agent/lab/make_lab.py --tasks @ids5.txt --phase2-only gold,empty --data-dir evalset-merge \
+        --extra-kernel-sources anandsingh8687/evalset-merge --sandbox docker-like --out /tmp/p2 --slug evalset-smoke
+Afterwards: timepred.py (predicted scorer seconds) and stats.py (solves, paired tests, mechanisms).
 """
 
 from __future__ import annotations
@@ -214,12 +243,72 @@ log('done', len(summary), 'rows')
 
 SEQUENTIAL_SPLIT = "import asyncio\nlimits, gen_constraints"
 
+# --data-dir / --sandbox docker-like / --grade-extra-patches: the concurrent tail (labworker processes, N may be 1
+# = one task at a time like the scorer) with the data dir resolved inside the kernel and per-task job extras.
+DATA_BLOCK = r"""
+DATA_OPTS = __DATA_OPTS__
+COMPETITION_DIR = DATA_DIR
+DATA_DIR = labworker.resolve_data_dir(DATA_OPTS.get('data_dir'), DATA_DIR)
+log('data dir', DATA_DIR, 'tasks', sum(1 for _ in open(DATA_DIR / 'tasks.jsonl')))
+SANDBOX_ENV = labworker.prepare_sandbox_env(DATA_DIR, DATA_OPTS, log, COMPETITION_DIR)
+"""
+JOB_APPEND_OLD = "                     clock=CLOCK, task_index=TASK_IDS.index(tid) + 1, total_tasks=len(TASK_IDS), **CLOCK_ARGS))\n"
+JOB_APPEND_NEW = ("                     clock=CLOCK, task_index=TASK_IDS.index(tid) + 1, total_tasks=len(TASK_IDS), **CLOCK_ARGS))\n"
+                  "    jobs[-1].update(labworker.job_extras(DATA_DIR, tid, DATA_OPTS, SANDBOX_ENV))\n")
+
+# --phase2-only: a CPU kernel (no vLLM, no model): verify the gold and/or empty patch of each task with the
+# real verifier through labworker, e.g. to smoke-test a new data dir. Results dirs lab/<mode>/r0.
+PHASE2_TAIL = r"""
+import yaml
+LABWORKER_SRC = __LABWORKER__
+CONCURRENCY = __CONCURRENCY__
+MODES = __MODES__
+Path('/kaggle/working/labworker.py').write_text(LABWORKER_SRC)
+sys.path.insert(0, '/kaggle/working')
+import labworker
+log('cpu_count', os.cpu_count(), 'loadavg', os.getloadavg())
+""" + DATA_BLOCK + r"""
+jobs = []
+for tid in TASK_IDS:
+    for mode in MODES:
+        job = dict(bundle=mode, replicate=0, task_id=tid, bundle_dir=None, results_dir=str(OUT / mode / 'r0'),
+                   data_dir=str(DATA_DIR), api_base=None, served_model='none', clock='real',
+                   task_index=TASK_IDS.index(tid) + 1, total_tasks=len(TASK_IDS))
+        job.update(labworker.job_extras(DATA_DIR, tid, DATA_OPTS, SANDBOX_ENV))
+        job['phase2_only'] = mode
+        jobs.append(job)
+log('phase2 plan', len(jobs), 'checks', 'modes', MODES, 'N', CONCURRENCY)
+t0 = time.time()
+summary = labworker.run_pool(jobs, CONCURRENCY, OUT, log, kill_after=3600)
+log('pool done in', round(time.time() - t0), 's')
+by = {}
+for r in summary:
+    by.setdefault(r['id'], {})[r['bundle']] = bool(r.get('resolved_kaggle_env'))
+valid = [t for t, v in by.items() if v.get('gold', True) and not v.get('empty', False)]
+log('valid (gold passes, empty fails):', len(valid), 'of', len(by))
+(OUT / 'valid_ids.txt').write_text('\n'.join(valid) + '\n')
+log('done', len(summary), 'rows')
+"""
+PHASE2_SPLIT = "import litellm, torch, yaml\n"
+
 
 def build_kernel(bundles: dict, tasks: list[str], concurrency: int = 1, replicates: int = 1, clock: str = "real",
-                 clock_args: dict | None = None, seed: int = 0, metrics_interval: float = 30.0) -> str:
-    """Kernel source. concurrency 1 / replicates 1 / real clock -> the unchanged sequential kernel."""
+                 clock_args: dict | None = None, seed: int = 0, metrics_interval: float = 30.0,
+                 data_opts: dict | None = None) -> str:
+    """Kernel source. concurrency 1 / replicates 1 / real clock / no data_opts -> the unchanged sequential kernel.
+
+    data_opts (any of --data-dir, --sandbox docker-like, --grade-extra-patches, --phase2-only): labworker
+    path even at concurrency 1; phase2_only -> the CPU kernel (no vLLM)."""
     code = KERNEL_TEMPLATE.replace("__BUNDLES__", repr(bundles)).replace("__TASK_IDS__", repr(tasks))
-    if concurrency <= 1 and replicates <= 1 and clock == "real":
+    worker_src = None
+    if data_opts and data_opts.get("phase2_modes"):
+        worker_src = (Path(__file__).resolve().parent / "labworker.py").read_text()
+        head = code[:code.index(PHASE2_SPLIT)]
+        tail = (PHASE2_TAIL.replace("__LABWORKER__", repr(worker_src)).replace("__CONCURRENCY__", repr(concurrency))
+                .replace("__MODES__", repr(list(data_opts["phase2_modes"])))
+                .replace("__DATA_OPTS__", repr({k: v for k, v in data_opts.items() if k != "phase2_modes"})))
+        return head + tail
+    if concurrency <= 1 and replicates <= 1 and clock == "real" and not data_opts:
         return code
     head = code[:code.index(SEQUENTIAL_SPLIT)]
     worker_src = (Path(__file__).resolve().parent / "labworker.py").read_text()
@@ -227,12 +316,16 @@ def build_kernel(bundles: dict, tasks: list[str], concurrency: int = 1, replicat
             .replace("__REPLICATES__", repr(replicates)).replace("__CLOCK__", repr(clock))
             .replace("__CLOCK_ARGS__", repr(clock_args or {})).replace("__SEED__", repr(seed))
             .replace("__METRICS_INTERVAL__", repr(metrics_interval)))
+    if data_opts:
+        assert JOB_APPEND_OLD in tail and "import labworker\n" in tail
+        tail = tail.replace("import labworker\n", "import labworker\n" + DATA_BLOCK.replace("__DATA_OPTS__", repr(data_opts)), 1)
+        tail = tail.replace(JOB_APPEND_OLD, JOB_APPEND_NEW)
     return head + tail
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--bundles", nargs="+", required=True, help="name=path pairs")
+    ap.add_argument("--bundles", nargs="+", default=[], help="name=path pairs (not needed with --phase2-only)")
     ap.add_argument("--tasks", nargs="+", required=True, help="task ids, or @file with ids")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--slug", default="gemma-agent-lab")
@@ -253,7 +346,54 @@ def main() -> None:
                     help="fallback without --virtual-clock: real cap and agent elapsed scaled by this slowdown")
     ap.add_argument("--seed", type=int, default=0, help="bundle-order shuffle seed")
     ap.add_argument("--metrics-interval", type=float, default=30.0, help="seconds between vLLM /metrics scrapes")
+    g = ap.add_argument_group("data dir / eval set (any of these switches the kernel to labworker processes, "
+                              "N=--concurrency, 1 = one task at a time like the scorer)")
+    g.add_argument("--data-dir", default=None,
+                   help="competition-format data dir inside the kernel (tasks.jsonl, snapshots/, wheels/ or "
+                        "wheels_by_task/<id>/ or wheels_manifest/<id>.txt + wheels_pool/, graphs/, embeddings/, "
+                        "sandbox/setup.py): a path, a glob, or a name searched under /kaggle/input")
+    g.add_argument("--extra-kernel-sources", nargs="+", default=[],
+                   help="kernel outputs to attach (user/slug), e.g. the eval-set merge kernel")
+    g.add_argument("--extra-dataset-sources", nargs="+", default=[], help="datasets to attach (user/slug)")
+    g.add_argument("--sandbox", choices=["subprocess", "docker-like"], default="subprocess",
+                   help="docker-like: python3.13 sandbox + streamed wheels + setup.py like the scorer's container "
+                        "(needs <data>/python313.tar.gz or --py313, and image wheels in <data>/image_wheels)")
+    g.add_argument("--py313", default=None, help="python3.13 path inside the kernel (docker-like)")
+    g.add_argument("--internet", action="store_true",
+                   help="enable kernel internet; docker-like then installs python3.13 with uv and the image's pip "
+                        "line from PyPI when the data dir does not ship them")
+    g.add_argument("--no-per-task-wheels", action="store_true",
+                   help="use <data>/wheels for every task even if wheels_by_task/ or wheels_manifest/ exist")
+    g.add_argument("--keep-tmp", action="store_true", help="keep the per-wheel-set TMPDIRs (sp_base caches)")
+    g.add_argument("--no-graphs", action="store_true", help="do not pass graphs/embeddings (drops the prompt section)")
+    g.add_argument("--grade-extra-patches", default=None,
+                   help="comma list of sandbox files (e.g. /tmp/a.diff,/tmp/b.diff) captured when the agent stops "
+                        "and verified like the main patch; rows get extra_patches.<stem>.resolved")
+    g.add_argument("--labworker", action="store_true",
+                   help="run through labworker processes even with no other option (N=--concurrency, real clock = "
+                        "the scorer's sequential timing): rows get labworker's fields and <results>/calls/<id>.jsonl "
+                        "call logs, which timepred needs for agent_tool / ParallelAgent bundles")
+    g.add_argument("--phase2-only", default=None,
+                   help="gold, empty or gold,empty: CPU kernel (no GPU, no model) that verifies those patches")
     a = ap.parse_args()
+    if not a.bundles and not a.phase2_only:
+        ap.error("--bundles is required unless --phase2-only is given")
+    data_opts: dict = {}
+    if a.data_dir or a.sandbox != "subprocess" or a.grade_extra_patches or a.phase2_only or a.labworker:
+        data_opts = {"labworker": True, "data_dir": a.data_dir, "sandbox": a.sandbox if a.sandbox != "subprocess" else None,
+                     "py313": a.py313, "per_task_wheels": not a.no_per_task_wheels, "keep_tmp": a.keep_tmp,
+                     "internet": a.internet,
+                     "no_graphs": a.no_graphs,
+                     "extra_patches": [x.strip() for x in a.grade_extra_patches.split(",") if x.strip()]
+                     if a.grade_extra_patches else None}
+        data_opts = {k: v for k, v in data_opts.items() if v not in (None, False, [])}
+        data_opts.setdefault("per_task_wheels", False)
+        if a.phase2_only:
+            modes = [m.strip() for m in a.phase2_only.split(",") if m.strip()]
+            bad = [m for m in modes if m not in ("gold", "empty")]
+            if bad:
+                ap.error(f"--phase2-only: unknown mode(s) {bad}")
+            data_opts["phase2_modes"] = modes
     tasks: list[str] = []
     for x in a.tasks:
         tasks += Path(x[1:]).read_text().split() if x.startswith("@") else [x]
@@ -264,11 +404,17 @@ def main() -> None:
         root = Path(path)
         bundles[name] = {str(p.relative_to(root)): p.read_text() for p in sorted(root.rglob("*")) if p.is_file()}
     clock = "virtual" if a.virtual_clock else ("scaled" if a.wall_scale != 1.0 else "real")
+    multi = [n for n, files in bundles.items() if any(k.startswith("sub_agents/") for k in files)
+             or "agent_tool" in files.get("agent.yaml", "")]
+    if multi and not data_opts and a.concurrency <= 1 and a.replicates <= 1 and clock == "real":
+        print(f"warning: {multi} use sub-agents; the sequential kernel saves only ATIF traces, which merge nested "
+              "agents' calls. Add --labworker for call logs (timepred/stats read them).")
     if clock != "real" and a.concurrency <= 1:
         print("warning: a virtual/scaled clock is only meaningful with --concurrency > 1")
     clock_args = {"per_call": a.vc_per_call, "per_token": a.vc_per_token, "real_factor": a.real_factor,
                   "wall_scale": a.wall_scale, "tool_seconds": not a.vc_no_tool_seconds}
-    code = build_kernel(bundles, tasks, a.concurrency, a.replicates, clock, clock_args, a.seed, a.metrics_interval)
+    code = build_kernel(bundles, tasks, a.concurrency, a.replicates, clock, clock_args, a.seed, a.metrics_interval,
+                        data_opts or None)
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / "lab.py").write_text(code)
     meta = {
@@ -283,10 +429,26 @@ def main() -> None:
         # Kaggle's default image moved to Python 3.13 on 10-03 (unpinned kernels failed at pip install).
         "docker_image": "gcr.io/kaggle-private-byod/python@sha256:37c64f7dd9c54116ecd1bcc88817c5469b88387388fade02bfa8bf3fc647d461",
     }
+    if a.internet:
+        meta["enable_internet"] = True
+    if a.extra_kernel_sources:
+        meta["kernel_sources"] = list(dict.fromkeys(meta["kernel_sources"] + a.extra_kernel_sources))
+    if a.extra_dataset_sources:
+        meta["dataset_sources"] = list(dict.fromkeys(meta["dataset_sources"] + a.extra_dataset_sources))
+    if a.phase2_only:  # CPU only: no GPU, no model
+        meta["enable_gpu"] = False
+        meta.pop("machine_shape", None)
+        meta["model_sources"] = []
+    assert meta["is_private"] is True and meta["enable_tpu"] is False
     (a.out / "kernel-metadata.json").write_text(json.dumps(meta, indent=2))
+    if a.phase2_only:
+        print(f"wrote {a.out}: CPU phase-2 kernel, {len(tasks)} task(s) x {data_opts['phase2_modes']}, "
+              f"concurrency {a.concurrency}, data {a.data_dir or 'competition'}")
+        return
     runs = len(bundles) * len(tasks) * a.replicates
     print(f"wrote {a.out} with {len(bundles)} bundle(s) x {len(tasks)} task(s) x {a.replicates} replicate(s) "
-          f"= {runs} task-runs, concurrency {a.concurrency}, clock {clock}")
+          f"= {runs} task-runs, concurrency {a.concurrency}, clock {clock}"
+          + (f", data opts {data_opts}" if data_opts else ""))
 
 if __name__ == "__main__":
     main()
