@@ -493,3 +493,10 @@ gemma_agent/
 - Lab 18 (paired gate, 73 tasks): v30 30/73 (17 + 13 holdout) vs v29 32/73 (18 + 14); v30 faster
   (191 vs 210 s virtual, 8.3k vs 8.8k tokens). Gate FAILED on solves (noise-level -2); v30 not submitted.
   The token savings from thinking 2048 + terse thoughts are real (-6%, -9% time).
+- 10-18 strategy research (research_strategy_1018.md, research_1018/): public recipes all average
+  ~9-10/58 over repeat identical draws (Budget-Fit 10.1, the "0.22" V10 bundle ~9.7); board 0.22/0.24
+  are best-of-many draws. v29 (mean 10) is at par. Real levers: time per task (14% harness waste:
+  compaction 30 s + post-submit 14 s), the empty-patch failure class, and unused GPU parallel capacity
+  (2 streams = 1.8x tokens). Plan: v31a (solver inside agent_tool: no compaction, lead's empty-diff
+  guard, output caps), unseen-repo eval set, then v31p (2 parallel attempts) only if the measured
+  best-of-2 ceiling on the eval set is >= 4 points. Never leave a daily slot empty.
