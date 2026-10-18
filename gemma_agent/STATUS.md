@@ -500,3 +500,4 @@ gemma_agent/
   (2 streams = 1.8x tokens). Plan: v31a (solver inside agent_tool: no compaction, lead's empty-diff
   guard, output caps), unseen-repo eval set, then v31p (2 parallel attempts) only if the measured
   best-of-2 ceiling on the eval set is >= 4 points. Never leave a daily slot empty.
+- 10-18 21:25 UTC: v29 third draw submitted (user-approved).
