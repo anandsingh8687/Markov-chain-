@@ -146,7 +146,7 @@ def one(c, wid):
         mirror = WORK / 'mirrors' / (r['repo'].replace('/', '__') + '.git')
         info = B.build_task(r, OUT, WORK / 'build', mirror, os.environ.get('EVALSET_PIP', 'pip'), env, blog)
         stage = 'emit'
-        row, src_ps = EM.task_row(r, c['src'], info, gh)
+        row, src_ps = EM.task_row(r, c['src'], info, None)  # GitHub only for tasks that survive the check
         stage = 'check'
         chk = GC.check(row, OUT / 'snapshots' / f'{iid}.tgz', OUT / 'wheels_by_task' / iid, WORK / 'check', cfg,
                        rounds=a.rounds, timeout=a.check_timeout)
@@ -161,6 +161,8 @@ def one(c, wid):
             stats['invalid'] += 1
             log(f'INVALID {iid}: {chk["reason"]}')
             return
+        stage = 'emit'
+        row, src_ps = EM.task_row(r, c['src'], info, gh)
         stage = 'graph'
         try:
             make_graph(iid, r, info)

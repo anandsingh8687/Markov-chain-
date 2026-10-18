@@ -4,7 +4,7 @@ Library: GH(cache_path).pr(repo, number) -> {'title','body'} | None ; GH.repo(re
 CLI:     python -I gh_meta.py CACHE_JSON CANDIDATES_JSON      (fills the cache for every candidate; resumable)
 
 Auth: GITHUB_TOKEN / GH_TOKEN if set, otherwise unauthenticated (60 requests/h per IP). When the API answers with a
-rate-limit 403/429 the client stops calling for the rest of the process (no long sleeps) and callers fall back to the
+rate-limit 403/429 the client stops calling until the window resets (no sleeping) and callers fall back to the
 git-derived PR title/body (build.git_facts) or the issue text; the source used is recorded per task in tasks_meta.
 Locally `gh api` can stand in (GH_USE_CLI=1), but this session's GitHub proxy only serves attached repositories.
 """
@@ -19,7 +19,8 @@ class GH:
         self.lock = threading.Lock()
         self.token = os.environ.get('GITHUB_TOKEN') or os.environ.get('GH_TOKEN')
         self.use_cli = os.environ.get('GH_USE_CLI') == '1'
-        self.blocked = None  # reason string once rate limited
+        self.blocked = None  # reason string while rate limited (until blocked_until)
+        self.blocked_until = 0.0
         self.calls = 0
 
     def _save(self):
@@ -29,7 +30,9 @@ class GH:
 
     def _get(self, endpoint):
         if self.blocked:
-            return None, self.blocked
+            if time.time() < self.blocked_until:
+                return None, self.blocked
+            self.blocked = None  # the hourly window has reset: try again
         self.calls += 1
         if self.use_cli:
             x = subprocess.run(['gh', 'api', endpoint], capture_output=True, text=True, timeout=60)
@@ -48,6 +51,11 @@ class GH:
                     return None, 'http 404'
                 if e.code in (403, 429):
                     rem = e.headers.get('X-RateLimit-Remaining')
+                    try:
+                        self.blocked_until = max(time.time() + 60, float(e.headers.get('X-RateLimit-Reset') or 0) + 5)
+                    except ValueError:
+                        self.blocked_until = time.time() + 900
+                    self.blocked_until = min(self.blocked_until, time.time() + 3700)
                     self.blocked = f'rate-limited (http {e.code}, remaining={rem}, reset={e.headers.get("X-RateLimit-Reset")})'
                     return None, self.blocked
                 err = f'http {e.code}'
