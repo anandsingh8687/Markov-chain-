@@ -1,0 +1,8 @@
+# Native tools, thinking on (budget 2048 enforced by the harness). Run time is dominated by
+# completion tokens; the call cap keeps the 8-minute cap inside the 12-hour run.
+# The grader's own pytest uses a fixed 300 s.
+evaluation:
+  timeout_seconds: 240
+  max_tool_calls: 28
+  max_time_minutes: 8
+  max_turns: 80

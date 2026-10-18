@@ -472,3 +472,9 @@ gemma_agent/
 - v29 public 0.18 (10-16 submission, scored by 10-17 23:10 UTC): new best, up from 0.10. Completed
   inside the runtime limit. Leaderboard at that time: leaders 0.24, cluster 0.22.
 - 10-17 23:17 UTC: v29 resubmitted unchanged (ref 57328737, user-approved) to measure run-to-run variance.
+- v30 (bundle_v30, CPU-checked only): v29 + thinking_budget 2048 (-6.5..-8% tokens), short-thought rule,
+  batched per-string greps (head -10 each), trace-the-value rule, sibling-registration rule for
+  features, src-layout __file__ guard in the reproducer, budget_warning -> edit now, submit once then stop.
+  Kept 28 calls / 80 turns (32 calls pending timing calibration). Correction: post-budget submit_patch
+  calls are accepted, not refused (submit/get_status are not budget-gated); main edit corruption cause
+  is a backtick closing new_string (183 cases), not backslash-n (32). Design + reviews: research_v30.md.
