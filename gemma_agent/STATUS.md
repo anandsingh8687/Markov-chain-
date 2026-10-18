@@ -490,3 +490,6 @@ gemma_agent/
 - 10-18: strategy reset. Incremental prompt A/B on the public-repo lab is below the lab's noise and does
   not predict the private-repo LB. Launched a structural research pass (parallel throughput / ADK
   architectures, private-repo-like eval set, LoRA feasibility, forum since 10-15, evidence review).
+- Lab 18 (paired gate, 73 tasks): v30 30/73 (17 + 13 holdout) vs v29 32/73 (18 + 14); v30 faster
+  (191 vs 210 s virtual, 8.3k vs 8.8k tokens). Gate FAILED on solves (noise-level -2); v30 not submitted.
+  The token savings from thinking 2048 + terse thoughts are real (-6%, -9% time).
