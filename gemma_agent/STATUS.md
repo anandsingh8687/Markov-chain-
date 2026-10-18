@@ -485,3 +485,8 @@ gemma_agent/
   length has no measurable cost. Overhead outside the agent is 3-5 s except rich_3772 (~300 s, harness).
   Conclusion: gains must come from better steps within ~28 calls and <= v29's tokens; cut tokens/calls
   to build margin (v30: thinking 2048, terse thoughts, stop after one submit).
+- v29 second draw (identical zip): public 0.15. v29 mean over 2 draws ~0.165 (~9.5/58). The 0.22 public
+  bundle (same YAML, different prompt) and the 0.24 leaders are 3.5-4.5 tasks ahead.
+- 10-18: strategy reset. Incremental prompt A/B on the public-repo lab is below the lab's noise and does
+  not predict the private-repo LB. Launched a structural research pass (parallel throughput / ADK
+  architectures, private-repo-like eval set, LoRA feasibility, forum since 10-15, evidence review).
