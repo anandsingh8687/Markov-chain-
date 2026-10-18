@@ -1,0 +1,4460 @@
+{
+ "frac_a": 0.6,
+ "parts": 4,
+ "repos": {
+  "a2aproject/a2a-python": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "B"
+  },
+  "absaoss/generate-release-notes": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "academysoftwarefoundation/opentimelineio": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "adrn/gala": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "aeon-toolkit/aeon": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "aeye-lab/pymovements": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "B"
+  },
+  "ag2ai/faststream": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "agentscope-ai/qwenpaw": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "agronholm/anyio": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "agronholm/sqlacodegen": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "B"
+  },
+  "aiogram/aiogram": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "airtai/faststream": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "B"
+  },
+  "alibaba/opensandbox": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "allenai/rslearn": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "amaranth-lang/amaranth": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "amoffat/sh": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "apache/iceberg-python": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "apiflask/apiflask": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "ardupilot/methodicconfigurator": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "aristanetworks/anta": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "B"
+  },
+  "asdf-format/asdf": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "aspp/pelita": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "B"
+  },
+  "astanin/python-tabulate": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "astronomer/astronomer-cosmos": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "astronomy-commons/hats": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "astronomy-commons/lsdb": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "astropy/astroquery": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "astropy/ccdproc": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "autrainer/autrainer": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "aws-cloudformation/cfn-lint": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "B"
+  },
+  "aws-cloudformation/cfn-python-lint": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "aws/bedrock-agentcore-sdk-python": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "azure-samples/azure-search-openai-demo": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "azuread/microsoft-authentication-library-for-python": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "bas-amop/polarroute-server": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "basicmachines-co/basic-memory": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "beever-ai/beever-atlas": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "beeware/briefcase": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "bids-standard/pybids": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "bluesky/bluesky": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "bqskit/bqskit": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "brian-team/brian2": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "brianpugh/cyclopts": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "cal-itp/benefits": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "callowayproject/bump-my-version": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "canopen-python/canopen": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "cdcgov/pyrenew": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "cdent/gabbi": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "cekit/cekit": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "celery/celery": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "B"
+  },
+  "climlab/climlab": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "codezonediitj/pydatastructs": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "cogent3/cogent3": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "collective/icalendar": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "con/nwb2bids": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "conda/conda-lock": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "containers/ramalama": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "copier-org/copier": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "cpp-linter/cpp-linter-hooks": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "B"
+  },
+  "crewaiinc/crewai": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "cs-si/eodag": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "B"
+  },
+  "cta-observatory/ctapipe": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "dagster-io/dagster": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "dask/fastparquet": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "databricks/dbt-databricks": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "davidyz/vectorcode": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "delgan/loguru": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "deshaw/pyflyby": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "destine-climate-dt/aqua": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "developmentseed/titiler": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "diamondlightsource/mx-bluesky": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "django-guardian/django-guardian": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "docling-project/docling": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "dpkp/kafka-python": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "dstackai/gpuhunt": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "dynaconf/dynaconf": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "ecmwf/earthkit-data": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "elementsinteractive/twyn": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "esmvalgroup/esmvalcore": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "ethereum/web3.py": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "facelessuser/pymdown-extensions": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "feature-engine/feature_engine": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "feder-observatory/stellarphot": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "fsspec/filesystem_spec": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "fsspec/universal_pathlib": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "gammapy/gammapy": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "gaogaotiantian/coredumpy": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "geopandas/geopandas": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "B"
+  },
+  "gidgethub/gidgethub": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "gitpython-developers/gitpython": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "google/adk-python": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "google/flax": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "googleapis/python-api-core": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "googleapis/python-bigquery": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "googlefonts/ufo2ft": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "graphistry/pygraphistry": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "great-expectations/great_expectations": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "gtalarico/pyairtable": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "B"
+  },
+  "hdmf-dev/hdmf": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "B"
+  },
+  "hgrecco/pint-pandas": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "hkuds/openharness": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "holoviz/holoviews": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "B"
+  },
+  "holoviz/param": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "B"
+  },
+  "huggingface/huggingface_hub": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "B"
+  },
+  "huggingface/smolagents": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "hynek/svcs": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "hypothesisworks/hypothesis": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "idaholab/montepy": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "irrdnet/irrd": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "iterative/shtab": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "jawah/niquests": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "jax-ml/jax": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "jazzband/tablib": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "jelmer/dulwich": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "B"
+  },
+  "jlowin/fastmcp": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "joke2k/django-environ": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "joke2k/faker": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "jonathonreinhart/scuba": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "joshuadavidthomas/django-bird": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "jsonpickle/jsonpickle": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "juaai/stationbench": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "jupyter/jupyter_client": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "koaning/scikit-lego": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "B"
+  },
+  "koxudaxi/datamodel-code-generator": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "kubeflow/pipelines": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "lektor/lektor": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "leshchenko1979/fast_bitrix24": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "lightning-ai/litdata": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "lincc-frameworks/nested-pandas": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "litestar-org/advanced-alchemy": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "litestar-org/litestar": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "litestar-org/polyfactory": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "lmstudio-ai/venvstacks": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "luolingchun/flask-openapi3": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "macbre/sql-metadata": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "B"
+  },
+  "mahjongrepository/mahjong": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "marketsquare/robotframework-robocop": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "marshmallow-code/marshmallow": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "matchms/matchms": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "materials-consortia/optimade-python-tools": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "materialsproject/custodian": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "matthewwithanm/python-markdownify": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "B"
+  },
+  "meltano/meltano": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "meltano/sdk": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "mempalace/mempalace": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "microsoft/agents-for-python": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "microsoft/fabric-cicd": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "B"
+  },
+  "milvus-io/pymilvus": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "mindscapehq/raygun4py": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "mitmproxy/mitmproxy": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "mitmproxy/pdoc": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "B"
+  },
+  "mmcdermott/meds_transforms": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "mmornati/home-assistant-csnet-home": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "mne-tools/mne-bids": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "more-itertools/more-itertools": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "movingpandas/movingpandas": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "mpmath/mpmath": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "B"
+  },
+  "mwouts/jupytext": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "narwhals-dev/narwhals": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "natlibfi/annif": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "ncar/geocat-comp": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "nesquena/hermes-webui": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "neurodatawithoutborders/pynwb": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "neuroinformatics-unit/movement": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "newton-physics/newton": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "niconoe/pyinaturalist": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "nolar/kopf": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "oceanparcels/parcels": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "octodns/octodns": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "olofk/fusesoc": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "ome-zarr-models/ome-zarr-models-py": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "omni-us/jsonargparse": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "onnx/sklearn-onnx": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "B"
+  },
+  "ooo0ooo/leanclient": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "open-telemetry/opentelemetry-python": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "openai/openai-agents-python": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "B"
+  },
+  "openatx/adbutils": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "openforcefield/openff-toolkit": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "openfreeenergy/openfe": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "openmdao/openmdao": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "openradar/xradar": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "openwisp/netjsonconfig": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "opsmill/infrahub": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "optuna/optuna": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "oracle/macaron": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "pab1it0/prometheus-mcp-server": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "pallets/click": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "pasteurlabs/tesseract-core": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "patrick-kidger/equinox": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "pdm-project/pdm": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "pgmpy/pgmpy": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "pipecat-ai/pipecat": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "piskvorky/smart_open": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "prjemian/spec2nexus": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "probabl-ai/skore": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "prometheus/client_python": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "psd-tools/psd-tools": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "psf/black": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "B"
+  },
+  "pvlib/pvlib-python": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "py-pdf/pdfly": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "pybamm-team/pybamm": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "pyca/cryptography": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "pycqa/bandit": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "pycqa/isort": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "pycqa/pyflakes": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "pydap/pydap": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "B"
+  },
+  "pydata/sparse": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "pydy/pydy": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "pyfar/pyrato": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "pyinfra-dev/pyinfra": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "pyjanitor-devs/pyjanitor": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "pymc-devs/pymc": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "B"
+  },
+  "pymc-devs/pytensor": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "pymodbus-dev/pymodbus": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "B"
+  },
+  "pyomo/pyomo": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "pypa/build": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "pypa/pipx": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "pypa/setuptools": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "A"
+  },
+  "pypa/twine": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "pypsa/linopy": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "pypsa/pypsa": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "B"
+  },
+  "pysal/libpysal": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "pysmt/pysmt": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "pytest-dev/pyfakefs": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "B"
+  },
+  "python-attrs/attrs": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "python-markdown/markdown": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "B"
+  },
+  "python-scim/scim2-models": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "B"
+  },
+  "python-trio/trio": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "python-wheel-build/fromager": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "B"
+  },
+  "python/typing_extensions": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "pyvrp/pyvrp": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "qbraid/pyqasm": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "qiskit/qiskit-ibm-runtime": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "quantconnect/lean-cli": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "quantecon/quantecon.py": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "quantumlib/recirq": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "radiasoft/pykern": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "raullenchai/rapid-mlx": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "B"
+  },
+  "reagento/dishka": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "reframe-hpc/reframe": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "B"
+  },
+  "rhayes777/pyautofit": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "robotpy/cxxheaderparser": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "schemathesis/schemathesis": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "B"
+  },
+  "scikit-learn/scikit-learn": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "scipp/plopp": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "scitools/iris": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "sciunto-org/python-bibtexparser": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "sdv-dev/copulas": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "sdv-dev/rdt": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "B"
+  },
+  "sdv-dev/sdmetrics": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "sdv-dev/sdv": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "sigma67/ytmusicapi": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "silx-kit/silx": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "simpeg/simpeg": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "skrub-data/skrub": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "B"
+  },
+  "sktime/skpro": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "softlayer/softlayer-python": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "sopel-irc/sopel": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "spacetelescope/gwcs": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "spack/spack": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "B"
+  },
+  "spikeinterface/spikeinterface": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "B"
+  },
+  "spulec/freezegun": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "sqlfluff/sqlfluff": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "stanfordnlp/dspy": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "stefmolin/data-morph": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "stfc/fparser": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "stfc/psyclone": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "B"
+  },
+  "strands-agents/sdk-python": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "stravalib/stravalib": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "sunpy/sunpy": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "A"
+  },
+  "systemd/mkosi": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "tatuylonen/wiktextract": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "tefra/xsdata": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "terrapower/armi": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "B"
+  },
+  "tianocore/edk2-pytool-library": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "tobikodata/sqlmesh": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "tornadoweb/tornado": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "B"
+  },
+  "tox-dev/sphinx-autodoc-typehints": {
+   "n_candidates": 2,
+   "part": 3,
+   "split": "B"
+  },
+  "transientskp/pyse": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "travisghansen/hass-opnsense": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "trinodb/trino-python-client": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "tskit-dev/tskit": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "tweag/fawltydeps": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "twisted/towncrier": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "B"
+  },
+  "ucfopen/canvasapi": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "ultraplot/ultraplot": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "A"
+  },
+  "unit8co/darts": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "A"
+  },
+  "useblocks/sphinx-needs": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "uxarray/uxarray": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "A"
+  },
+  "vndee/llm-sandbox": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "vprusso/toqito": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "B"
+  },
+  "vrsen/agency-swarm": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "B"
+  },
+  "wemake-services/wemake-python-styleguide": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "wntrblm/nox": {
+   "n_candidates": 1,
+   "part": 2,
+   "split": "A"
+  },
+  "xknx/xknx": {
+   "n_candidates": 2,
+   "part": 1,
+   "split": "B"
+  },
+  "xlsform/pyxform": {
+   "n_candidates": 1,
+   "part": 4,
+   "split": "B"
+  },
+  "youssofal/mtplx": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "A"
+  },
+  "yt-dlp/yt-dlp": {
+   "n_candidates": 2,
+   "part": 2,
+   "split": "B"
+  },
+  "yt-project/unyt": {
+   "n_candidates": 1,
+   "part": 1,
+   "split": "B"
+  },
+  "yukinarit/pyserde": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "B"
+  },
+  "zarr-developers/virtualizarr": {
+   "n_candidates": 1,
+   "part": 3,
+   "split": "A"
+  },
+  "zwicker-group/py-pde": {
+   "n_candidates": 2,
+   "part": 4,
+   "split": "B"
+  }
+ },
+ "seed": 20261018,
+ "source": "candidates_v1.json",
+ "tasks": {
+  "AbsaOSS__generate-release-notes-207": {
+   "created_at": "2025-11-06",
+   "part": 2,
+   "repo": "AbsaOSS/generate-release-notes",
+   "split": "A",
+   "src": "lb"
+  },
+  "BQSKit__bqskit-337": {
+   "created_at": "2025-06-09",
+   "part": 3,
+   "repo": "BQSKit/bqskit",
+   "split": "B",
+   "src": "lb"
+  },
+  "BrianPugh__cyclopts-633": {
+   "created_at": "2025-10-24",
+   "part": 1,
+   "repo": "BrianPugh/cyclopts",
+   "split": "A",
+   "src": "lb"
+  },
+  "BrianPugh__cyclopts-701": {
+   "created_at": "2025-11-22",
+   "part": 1,
+   "repo": "BrianPugh/cyclopts",
+   "split": "A",
+   "src": "lb"
+  },
+  "CDCgov__PyRenew-482": {
+   "created_at": "2025-02-11",
+   "part": 1,
+   "repo": "CDCgov/PyRenew",
+   "split": "B",
+   "src": "rb"
+  },
+  "Davidyz__VectorCode-27": {
+   "created_at": "2025-03-21",
+   "part": 4,
+   "repo": "Davidyz/VectorCode",
+   "split": "B",
+   "src": "lb"
+  },
+  "DiamondLightSource__mx-bluesky-1519": {
+   "created_at": "2025-12-11",
+   "part": 1,
+   "repo": "DiamondLightSource/mx-bluesky",
+   "split": "A",
+   "src": "lb"
+  },
+  "ESMValGroup__ESMValCore-2668": {
+   "created_at": "2025-02-19",
+   "part": 4,
+   "repo": "ESMValGroup/ESMValCore",
+   "split": "B",
+   "src": "rb"
+  },
+  "JonathonReinhart__scuba-269": {
+   "created_at": "2025-06-08",
+   "part": 3,
+   "repo": "JonathonReinhart/scuba",
+   "split": "A",
+   "src": "lb"
+  },
+  "Lightning-AI__litdata-499": {
+   "created_at": "2025-03-06",
+   "part": 4,
+   "repo": "Lightning-AI/litdata",
+   "split": "B",
+   "src": "lb"
+  },
+  "MahjongRepository__mahjong-62": {
+   "created_at": "2025-05-09",
+   "part": 1,
+   "repo": "MahjongRepository/mahjong",
+   "split": "A",
+   "src": "lb"
+  },
+  "MindscapeHQ__raygun4py-119": {
+   "created_at": "2025-05-20",
+   "part": 2,
+   "repo": "MindscapeHQ/raygun4py",
+   "split": "A",
+   "src": "lb"
+  },
+  "NCAR__geocat-comp-691": {
+   "created_at": "2025-02-20",
+   "part": 3,
+   "repo": "NCAR/geocat-comp",
+   "split": "A",
+   "src": "rb"
+  },
+  "OpenFreeEnergy__openfe-1186": {
+   "created_at": "2025-03-10",
+   "part": 2,
+   "repo": "OpenFreeEnergy/openfe",
+   "split": "A",
+   "src": "lb"
+  },
+  "PyPSA__PyPSA-1414": {
+   "created_at": "2025-10-20",
+   "part": 4,
+   "repo": "PyPSA/PyPSA",
+   "split": "B",
+   "src": "lb"
+  },
+  "PyPSA__linopy-494": {
+   "created_at": "2025-09-07",
+   "part": 3,
+   "repo": "PyPSA/linopy",
+   "split": "A",
+   "src": "lb"
+  },
+  "UXARRAY__uxarray-1158": {
+   "created_at": "2025-02-07",
+   "part": 1,
+   "repo": "UXARRAY/uxarray",
+   "split": "A",
+   "src": "rb"
+  },
+  "UXARRAY__uxarray-1423": {
+   "created_at": "2025-12-10",
+   "part": 1,
+   "repo": "UXARRAY/uxarray",
+   "split": "A",
+   "src": "lb"
+  },
+  "Ultraplot__UltraPlot-357": {
+   "created_at": "2025-10-04",
+   "part": 2,
+   "repo": "Ultraplot/UltraPlot",
+   "split": "A",
+   "src": "lb"
+  },
+  "VRSEN__agency-swarm-468": {
+   "created_at": "2025-12-01",
+   "part": 2,
+   "repo": "VRSEN/agency-swarm",
+   "split": "B",
+   "src": "lb"
+  },
+  "XKNX__xknx-1663": {
+   "created_at": "2025-02-18",
+   "part": 1,
+   "repo": "XKNX/xknx",
+   "split": "B",
+   "src": "lb"
+  },
+  "a2aproject__a2a-python-576": {
+   "created_at": "2025-12-03",
+   "part": 1,
+   "repo": "a2aproject/a2a-python",
+   "split": "B",
+   "src": "lb"
+  },
+  "a2aproject__a2a-python-682_interface": {
+   "created_at": "2026-02-11",
+   "part": 1,
+   "repo": "a2aproject/a2a-python",
+   "split": "B",
+   "src": "lb"
+  },
+  "academysoftwarefoundation__opentimelineio-1862": {
+   "created_at": "2025-03-30",
+   "part": 2,
+   "repo": "AcademySoftwareFoundation/OpenTimelineIO",
+   "split": "B",
+   "src": "v2"
+  },
+  "adrn__gala-495": {
+   "created_at": "2025-10-20",
+   "part": 1,
+   "repo": "adrn/gala",
+   "split": "A",
+   "src": "lb"
+  },
+  "aeon-toolkit__aeon-2822": {
+   "created_at": "2025-05-19",
+   "part": 3,
+   "repo": "aeon-toolkit/aeon",
+   "split": "A",
+   "src": "v2"
+  },
+  "aeye-lab__pymovements-1106": {
+   "created_at": "2025-04-20",
+   "part": 3,
+   "repo": "aeye-lab/pymovements",
+   "split": "B",
+   "src": "v2"
+  },
+  "aeye-lab__pymovements-1154": {
+   "created_at": "2025-05-14",
+   "part": 3,
+   "repo": "aeye-lab/pymovements",
+   "split": "B",
+   "src": "v2"
+  },
+  "ag2ai__faststream-2701": {
+   "created_at": "2025-12-02",
+   "part": 1,
+   "repo": "ag2ai/faststream",
+   "split": "A",
+   "src": "lb"
+  },
+  "agentscope-ai__qwenpaw-3278": {
+   "created_at": "2026-04-12",
+   "part": 3,
+   "repo": "agentscope-ai/QwenPaw",
+   "split": "A",
+   "src": "lb"
+  },
+  "agronholm__anyio-1121": {
+   "created_at": "2026-04-21",
+   "part": 4,
+   "repo": "agronholm/anyio",
+   "split": "A",
+   "src": "lb"
+  },
+  "agronholm__anyio-935": {
+   "created_at": "2025-06-29",
+   "part": 4,
+   "repo": "agronholm/anyio",
+   "split": "A",
+   "src": "v2"
+  },
+  "agronholm__sqlacodegen-391": {
+   "created_at": "2025-03-28",
+   "part": 3,
+   "repo": "agronholm/sqlacodegen",
+   "split": "B",
+   "src": "lb"
+  },
+  "agronholm__sqlacodegen-419": {
+   "created_at": "2025-08-03",
+   "part": 3,
+   "repo": "agronholm/sqlacodegen",
+   "split": "B",
+   "src": "lb"
+  },
+  "aiogram__aiogram-1665": {
+   "created_at": "2025-04-03",
+   "part": 3,
+   "repo": "aiogram/aiogram",
+   "split": "B",
+   "src": "v2"
+  },
+  "airtai__faststream-2073": {
+   "created_at": "2025-02-18",
+   "part": 3,
+   "repo": "airtai/faststream",
+   "split": "B",
+   "src": "v2"
+  },
+  "airtai__faststream-2153": {
+   "created_at": "2025-03-30",
+   "part": 3,
+   "repo": "airtai/faststream",
+   "split": "B",
+   "src": "v2"
+  },
+  "alibaba__opensandbox-426": {
+   "created_at": "2026-03-11",
+   "part": 3,
+   "repo": "alibaba/OpenSandbox",
+   "split": "A",
+   "src": "lb"
+  },
+  "alibaba__opensandbox-816": {
+   "created_at": "2026-04-29",
+   "part": 3,
+   "repo": "alibaba/OpenSandbox",
+   "split": "A",
+   "src": "lb"
+  },
+  "allenai__rslearn-142": {
+   "created_at": "2025-02-19",
+   "part": 2,
+   "repo": "allenai/rslearn",
+   "split": "A",
+   "src": "lb"
+  },
+  "amaranth-lang__amaranth-1570": {
+   "created_at": "2025-03-05",
+   "part": 2,
+   "repo": "amaranth-lang/amaranth",
+   "split": "A",
+   "src": "v2"
+  },
+  "amoffat__sh-750": {
+   "created_at": "2025-02-23",
+   "part": 3,
+   "repo": "amoffat/sh",
+   "split": "B",
+   "src": "v2"
+  },
+  "apache__iceberg-python-3295": {
+   "created_at": "2026-04-28",
+   "part": 4,
+   "repo": "apache/iceberg-python",
+   "split": "B",
+   "src": "lb"
+  },
+  "apiflask__apiflask-659": {
+   "created_at": "2025-05-04",
+   "part": 3,
+   "repo": "apiflask/apiflask",
+   "split": "A",
+   "src": "v2"
+  },
+  "ardupilot__methodicconfigurator-1201": {
+   "created_at": "2026-01-22",
+   "part": 1,
+   "repo": "ArduPilot/MethodicConfigurator",
+   "split": "A",
+   "src": "lb"
+  },
+  "aristanetworks__anta-1176": {
+   "created_at": "2025-04-21",
+   "part": 4,
+   "repo": "aristanetworks/anta",
+   "split": "B",
+   "src": "v2"
+  },
+  "aristanetworks__anta-1250": {
+   "created_at": "2025-06-16",
+   "part": 4,
+   "repo": "aristanetworks/anta",
+   "split": "B",
+   "src": "v2"
+  },
+  "asdf-format__asdf-1907": {
+   "created_at": "2025-03-12",
+   "part": 4,
+   "repo": "asdf-format/asdf",
+   "split": "B",
+   "src": "v2"
+  },
+  "aspp__pelita-863": {
+   "created_at": "2025-03-13",
+   "part": 3,
+   "repo": "ASPP/pelita",
+   "split": "B",
+   "src": "v2"
+  },
+  "aspp__pelita-875": {
+   "created_at": "2025-04-28",
+   "part": 3,
+   "repo": "ASPP/pelita",
+   "split": "B",
+   "src": "v2"
+  },
+  "astanin__python-tabulate-362": {
+   "created_at": "2025-03-17",
+   "part": 2,
+   "repo": "astanin/python-tabulate",
+   "split": "A",
+   "src": "v2"
+  },
+  "astronomer__astronomer-cosmos-2332": {
+   "created_at": "2026-02-05",
+   "part": 1,
+   "repo": "astronomer/astronomer-cosmos",
+   "split": "A",
+   "src": "lb"
+  },
+  "astronomy-commons__hats-648": {
+   "created_at": "2026-03-06",
+   "part": 2,
+   "repo": "astronomy-commons/hats",
+   "split": "A",
+   "src": "lb"
+  },
+  "astronomy-commons__lsdb-1349": {
+   "created_at": "2026-04-29",
+   "part": 2,
+   "repo": "astronomy-commons/lsdb",
+   "split": "B",
+   "src": "lb"
+  },
+  "astropy__astroquery-3224": {
+   "created_at": "2025-02-22",
+   "part": 4,
+   "repo": "astropy/astroquery",
+   "split": "A",
+   "src": "lb"
+  },
+  "astropy__astroquery-3275": {
+   "created_at": "2025-03-26",
+   "part": 4,
+   "repo": "astropy/astroquery",
+   "split": "A",
+   "src": "lb"
+  },
+  "astropy__ccdproc-867": {
+   "created_at": "2025-02-07",
+   "part": 4,
+   "repo": "astropy/ccdproc",
+   "split": "A",
+   "src": "v2"
+  },
+  "astropy__ccdproc-901": {
+   "created_at": "2025-07-13",
+   "part": 4,
+   "repo": "astropy/ccdproc",
+   "split": "A",
+   "src": "v2"
+  },
+  "autrainer__autrainer-115": {
+   "created_at": "2025-03-16",
+   "part": 2,
+   "repo": "autrainer/autrainer",
+   "split": "B",
+   "src": "lb"
+  },
+  "aws-cloudformation__cfn-lint-4116": {
+   "created_at": "2025-04-19",
+   "part": 2,
+   "repo": "aws-cloudformation/cfn-lint",
+   "split": "B",
+   "src": "v2"
+  },
+  "aws-cloudformation__cfn-lint-4149": {
+   "created_at": "2025-05-21",
+   "part": 2,
+   "repo": "aws-cloudformation/cfn-lint",
+   "split": "B",
+   "src": "v2"
+  },
+  "aws-cloudformation__cfn-python-lint-4368": {
+   "created_at": "2026-02-10",
+   "part": 1,
+   "repo": "aws-cloudformation/cfn-python-lint",
+   "split": "B",
+   "src": "lb"
+  },
+  "aws__bedrock-agentcore-sdk-python-279_interface": {
+   "created_at": "2026-02-23",
+   "part": 1,
+   "repo": "aws/bedrock-agentcore-sdk-python",
+   "split": "A",
+   "src": "lb"
+  },
+  "azure-samples__azure-search-openai-demo-3025": {
+   "created_at": "2026-04-06",
+   "part": 3,
+   "repo": "Azure-Samples/azure-search-openai-demo",
+   "split": "B",
+   "src": "lb"
+  },
+  "azuread__microsoft-authentication-library-for-python-795": {
+   "created_at": "2025-03-07",
+   "part": 3,
+   "repo": "AzureAD/microsoft-authentication-library-for-python",
+   "split": "A",
+   "src": "v2"
+  },
+  "bas-amop__PolarRoute-server-159": {
+   "created_at": "2025-11-14",
+   "part": 2,
+   "repo": "bas-amop/PolarRoute-server",
+   "split": "B",
+   "src": "lb"
+  },
+  "basicmachines-co__basic-memory-341": {
+   "created_at": "2025-10-08",
+   "part": 1,
+   "repo": "basicmachines-co/basic-memory",
+   "split": "A",
+   "src": "lb"
+  },
+  "basicmachines-co__basic-memory-484": {
+   "created_at": "2025-12-29",
+   "part": 1,
+   "repo": "basicmachines-co/basic-memory",
+   "split": "A",
+   "src": "lb"
+  },
+  "beever-ai__beever-atlas-102": {
+   "created_at": "2026-04-29",
+   "part": 3,
+   "repo": "Beever-AI/beever-atlas",
+   "split": "A",
+   "src": "lb"
+  },
+  "beeware__briefcase-2546": {
+   "created_at": "2025-11-01",
+   "part": 2,
+   "repo": "beeware/briefcase",
+   "split": "A",
+   "src": "lb"
+  },
+  "beeware__briefcase-2651": {
+   "created_at": "2026-01-27",
+   "part": 2,
+   "repo": "beeware/briefcase",
+   "split": "A",
+   "src": "lb"
+  },
+  "bids-standard__pybids-1123": {
+   "created_at": "2025-03-05",
+   "part": 3,
+   "repo": "bids-standard/pybids",
+   "split": "B",
+   "src": "v2"
+  },
+  "bluesky__bluesky-1932": {
+   "created_at": "2025-07-17",
+   "part": 3,
+   "repo": "bluesky/bluesky",
+   "split": "B",
+   "src": "v2"
+  },
+  "brian-team__brian2-1609": {
+   "created_at": "2025-04-02",
+   "part": 4,
+   "repo": "brian-team/brian2",
+   "split": "A",
+   "src": "v2"
+  },
+  "cal-itp__benefits-3330": {
+   "created_at": "2025-11-20",
+   "part": 1,
+   "repo": "cal-itp/benefits",
+   "split": "A",
+   "src": "lb"
+  },
+  "callowayproject__bump-my-version-326": {
+   "created_at": "2025-03-22",
+   "part": 1,
+   "repo": "callowayproject/bump-my-version",
+   "split": "A",
+   "src": "v2"
+  },
+  "canopen-python__canopen-613": {
+   "created_at": "2025-09-04",
+   "part": 4,
+   "repo": "canopen-python/canopen",
+   "split": "B",
+   "src": "lb"
+  },
+  "cdent__gabbi-342": {
+   "created_at": "2025-05-22",
+   "part": 4,
+   "repo": "cdent/gabbi",
+   "split": "A",
+   "src": "v2"
+  },
+  "cekit__cekit-937": {
+   "created_at": "2025-04-29",
+   "part": 2,
+   "repo": "cekit/cekit",
+   "split": "B",
+   "src": "v2"
+  },
+  "celery__celery-9614": {
+   "created_at": "2025-03-13",
+   "part": 3,
+   "repo": "celery/celery",
+   "split": "B",
+   "src": "v2"
+  },
+  "celery__celery-9795": {
+   "created_at": "2025-07-03",
+   "part": 3,
+   "repo": "celery/celery",
+   "split": "B",
+   "src": "v2"
+  },
+  "climlab__climlab-251": {
+   "created_at": "2025-02-28",
+   "part": 4,
+   "repo": "climlab/climlab",
+   "split": "B",
+   "src": "rb"
+  },
+  "codezonediitj__pydatastructs-643": {
+   "created_at": "2025-03-13",
+   "part": 1,
+   "repo": "codezonediitj/pydatastructs",
+   "split": "B",
+   "src": "v2"
+  },
+  "cogent3__cogent3-2269": {
+   "created_at": "2025-03-26",
+   "part": 2,
+   "repo": "cogent3/cogent3",
+   "split": "B",
+   "src": "v2"
+  },
+  "collective__icalendar-880": {
+   "created_at": "2025-07-16",
+   "part": 1,
+   "repo": "collective/icalendar",
+   "split": "A",
+   "src": "v2"
+  },
+  "collective__icalendar-921": {
+   "created_at": "2025-10-19",
+   "part": 1,
+   "repo": "collective/icalendar",
+   "split": "A",
+   "src": "lb"
+  },
+  "con__nwb2bids-347_interface": {
+   "created_at": "2026-03-18",
+   "part": 3,
+   "repo": "con/nwb2bids",
+   "split": "A",
+   "src": "lb"
+  },
+  "conda__conda-lock-772": {
+   "created_at": "2025-02-12",
+   "part": 3,
+   "repo": "conda/conda-lock",
+   "split": "B",
+   "src": "v2"
+  },
+  "containers__ramalama-2487": {
+   "created_at": "2026-03-05",
+   "part": 4,
+   "repo": "containers/ramalama",
+   "split": "B",
+   "src": "lb"
+  },
+  "copier-org__copier-2189": {
+   "created_at": "2025-06-13",
+   "part": 2,
+   "repo": "copier-org/copier",
+   "split": "A",
+   "src": "v2"
+  },
+  "copier-org__copier-2646": {
+   "created_at": "2026-04-30",
+   "part": 2,
+   "repo": "copier-org/copier",
+   "split": "A",
+   "src": "lb"
+  },
+  "cpp-linter__cpp-linter-hooks-142": {
+   "created_at": "2025-11-04",
+   "part": 1,
+   "repo": "cpp-linter/cpp-linter-hooks",
+   "split": "B",
+   "src": "lb"
+  },
+  "cpp-linter__cpp-linter-hooks-206_interface": {
+   "created_at": "2026-04-05",
+   "part": 1,
+   "repo": "cpp-linter/cpp-linter-hooks",
+   "split": "B",
+   "src": "lb"
+  },
+  "crewaiinc__crewai-2570": {
+   "created_at": "2025-04-10",
+   "part": 3,
+   "repo": "crewAIInc/crewAI",
+   "split": "B",
+   "src": "v2"
+  },
+  "cs-si__eodag-1717": {
+   "created_at": "2025-07-01",
+   "part": 2,
+   "repo": "CS-SI/eodag",
+   "split": "B",
+   "src": "v2"
+  },
+  "cs-si__eodag-2176": {
+   "created_at": "2026-05-11",
+   "part": 2,
+   "repo": "CS-SI/eodag",
+   "split": "B",
+   "src": "lb"
+  },
+  "cta-observatory__ctapipe-2732": {
+   "created_at": "2025-04-02",
+   "part": 1,
+   "repo": "cta-observatory/ctapipe",
+   "split": "A",
+   "src": "v2"
+  },
+  "cta-observatory__ctapipe-2738": {
+   "created_at": "2025-04-11",
+   "part": 1,
+   "repo": "cta-observatory/ctapipe",
+   "split": "A",
+   "src": "v2"
+  },
+  "dagster-io__dagster-33605": {
+   "created_at": "2026-03-15",
+   "part": 2,
+   "repo": "dagster-io/dagster",
+   "split": "A",
+   "src": "lb"
+  },
+  "dask__fastparquet-961": {
+   "created_at": "2025-08-22",
+   "part": 1,
+   "repo": "dask/fastparquet",
+   "split": "A",
+   "src": "lb"
+  },
+  "databricks__dbt-databricks-1131": {
+   "created_at": "2025-08-04",
+   "part": 1,
+   "repo": "databricks/dbt-databricks",
+   "split": "B",
+   "src": "lb"
+  },
+  "delgan__loguru-1425": {
+   "created_at": "2026-01-04",
+   "part": 2,
+   "repo": "Delgan/loguru",
+   "split": "A",
+   "src": "lb"
+  },
+  "delgan__loguru-1451": {
+   "created_at": "2026-03-25",
+   "part": 2,
+   "repo": "Delgan/loguru",
+   "split": "A",
+   "src": "lb"
+  },
+  "deshaw__pyflyby-391": {
+   "created_at": "2025-06-02",
+   "part": 4,
+   "repo": "deshaw/pyflyby",
+   "split": "A",
+   "src": "v2"
+  },
+  "destine-climate-dt__aqua-2768": {
+   "created_at": "2026-03-12",
+   "part": 3,
+   "repo": "DestinE-Climate-DT/AQUA",
+   "split": "A",
+   "src": "lb"
+  },
+  "developmentseed__titiler-1138": {
+   "created_at": "2025-04-24",
+   "part": 1,
+   "repo": "developmentseed/titiler",
+   "split": "B",
+   "src": "v2"
+  },
+  "django-guardian__django-guardian-904": {
+   "created_at": "2025-09-06",
+   "part": 1,
+   "repo": "django-guardian/django-guardian",
+   "split": "A",
+   "src": "lb"
+  },
+  "docling-project__docling-2983": {
+   "created_at": "2026-02-12",
+   "part": 2,
+   "repo": "docling-project/docling",
+   "split": "A",
+   "src": "lb"
+  },
+  "dpkp__kafka-python-2608": {
+   "created_at": "2025-05-01",
+   "part": 1,
+   "repo": "dpkp/kafka-python",
+   "split": "A",
+   "src": "v2"
+  },
+  "dpkp__kafka-python-2616": {
+   "created_at": "2025-05-08",
+   "part": 1,
+   "repo": "dpkp/kafka-python",
+   "split": "A",
+   "src": "v2"
+  },
+  "dstackai__gpuhunt-197": {
+   "created_at": "2025-11-04",
+   "part": 4,
+   "repo": "dstackai/gpuhunt",
+   "split": "A",
+   "src": "lb"
+  },
+  "dynaconf__dynaconf-1293": {
+   "created_at": "2025-05-06",
+   "part": 4,
+   "repo": "dynaconf/dynaconf",
+   "split": "A",
+   "src": "v2"
+  },
+  "dynaconf__dynaconf-1295": {
+   "created_at": "2025-05-06",
+   "part": 4,
+   "repo": "dynaconf/dynaconf",
+   "split": "A",
+   "src": "v2"
+  },
+  "ecmwf__earthkit-data-650": {
+   "created_at": "2025-03-12",
+   "part": 4,
+   "repo": "ecmwf/earthkit-data",
+   "split": "A",
+   "src": "v2"
+  },
+  "ecmwf__earthkit-data-671": {
+   "created_at": "2025-04-04",
+   "part": 4,
+   "repo": "ecmwf/earthkit-data",
+   "split": "A",
+   "src": "v2"
+  },
+  "elementsinteractive__twyn-317": {
+   "created_at": "2025-09-10",
+   "part": 3,
+   "repo": "elementsinteractive/twyn",
+   "split": "A",
+   "src": "lb"
+  },
+  "ethereum__web3.py-3702": {
+   "created_at": "2025-05-19",
+   "part": 3,
+   "repo": "ethereum/web3.py",
+   "split": "A",
+   "src": "v2"
+  },
+  "ethereum__web3.py-3800": {
+   "created_at": "2026-01-08",
+   "part": 3,
+   "repo": "ethereum/web3.py",
+   "split": "A",
+   "src": "lb"
+  },
+  "facelessuser__pymdown-extensions-2807": {
+   "created_at": "2025-12-14",
+   "part": 4,
+   "repo": "facelessuser/pymdown-extensions",
+   "split": "A",
+   "src": "lb"
+  },
+  "feature-engine__feature_engine-857": {
+   "created_at": "2025-04-27",
+   "part": 1,
+   "repo": "feature-engine/feature_engine",
+   "split": "B",
+   "src": "v2"
+  },
+  "feder-observatory__stellarphot-526": {
+   "created_at": "2025-06-12",
+   "part": 4,
+   "repo": "feder-observatory/stellarphot",
+   "split": "B",
+   "src": "lb"
+  },
+  "fsspec__filesystem_spec-1829": {
+   "created_at": "2025-04-26",
+   "part": 4,
+   "repo": "fsspec/filesystem_spec",
+   "split": "A",
+   "src": "v2"
+  },
+  "fsspec__universal_pathlib-495": {
+   "created_at": "2025-12-02",
+   "part": 1,
+   "repo": "fsspec/universal_pathlib",
+   "split": "A",
+   "src": "lb"
+  },
+  "gammapy__gammapy-5958": {
+   "created_at": "2025-06-30",
+   "part": 3,
+   "repo": "gammapy/gammapy",
+   "split": "A",
+   "src": "v2"
+  },
+  "gammapy__gammapy-6409": {
+   "created_at": "2026-02-18",
+   "part": 3,
+   "repo": "gammapy/gammapy",
+   "split": "A",
+   "src": "lb"
+  },
+  "gaogaotiantian__coredumpy-40": {
+   "created_at": "2025-03-05",
+   "part": 4,
+   "repo": "gaogaotiantian/coredumpy",
+   "split": "A",
+   "src": "rb"
+  },
+  "geopandas__geopandas-3564": {
+   "created_at": "2025-05-12",
+   "part": 4,
+   "repo": "geopandas/geopandas",
+   "split": "B",
+   "src": "v2"
+  },
+  "geopandas__geopandas-3591": {
+   "created_at": "2025-06-05",
+   "part": 4,
+   "repo": "geopandas/geopandas",
+   "split": "B",
+   "src": "v2"
+  },
+  "gidgethub__gidgethub-225": {
+   "created_at": "2025-08-08",
+   "part": 4,
+   "repo": "gidgethub/gidgethub",
+   "split": "A",
+   "src": "lb"
+  },
+  "gitpython-developers__GitPython-2051": {
+   "created_at": "2025-06-11",
+   "part": 2,
+   "repo": "gitpython-developers/GitPython",
+   "split": "A",
+   "src": "lb"
+  },
+  "google__adk-python-2478": {
+   "created_at": "2025-08-12",
+   "part": 4,
+   "repo": "google/adk-python",
+   "split": "A",
+   "src": "lb"
+  },
+  "google__adk-python-3088": {
+   "created_at": "2025-10-03",
+   "part": 4,
+   "repo": "google/adk-python",
+   "split": "A",
+   "src": "lb"
+  },
+  "google__flax-5171": {
+   "created_at": "2026-01-06",
+   "part": 2,
+   "repo": "google/flax",
+   "split": "B",
+   "src": "lb"
+  },
+  "googleapis__python-api-core-821": {
+   "created_at": "2025-05-23",
+   "part": 1,
+   "repo": "googleapis/python-api-core",
+   "split": "A",
+   "src": "v2"
+  },
+  "googleapis__python-bigquery-2135": {
+   "created_at": "2025-02-18",
+   "part": 3,
+   "repo": "googleapis/python-bigquery",
+   "split": "A",
+   "src": "v2"
+  },
+  "googleapis__python-bigquery-2218": {
+   "created_at": "2025-06-18",
+   "part": 3,
+   "repo": "googleapis/python-bigquery",
+   "split": "A",
+   "src": "v2"
+  },
+  "googlefonts__ufo2ft-930": {
+   "created_at": "2025-07-09",
+   "part": 2,
+   "repo": "googlefonts/ufo2ft",
+   "split": "A",
+   "src": "v2"
+  },
+  "graphistry__pygraphistry-1277": {
+   "created_at": "2026-05-04",
+   "part": 3,
+   "repo": "graphistry/pygraphistry",
+   "split": "B",
+   "src": "lb"
+  },
+  "great-expectations__great_expectations-11276": {
+   "created_at": "2025-06-26",
+   "part": 1,
+   "repo": "great-expectations/great_expectations",
+   "split": "A",
+   "src": "v2"
+  },
+  "gtalarico__pyairtable-422": {
+   "created_at": "2025-02-20",
+   "part": 1,
+   "repo": "gtalarico/pyairtable",
+   "split": "B",
+   "src": "v2"
+  },
+  "gtalarico__pyairtable-431": {
+   "created_at": "2025-04-07",
+   "part": 1,
+   "repo": "gtalarico/pyairtable",
+   "split": "B",
+   "src": "v2"
+  },
+  "hdmf-dev__hdmf-1270": {
+   "created_at": "2025-05-02",
+   "part": 4,
+   "repo": "hdmf-dev/hdmf",
+   "split": "B",
+   "src": "v2"
+  },
+  "hdmf-dev__hdmf-1374": {
+   "created_at": "2026-01-09",
+   "part": 4,
+   "repo": "hdmf-dev/hdmf",
+   "split": "B",
+   "src": "lb"
+  },
+  "hgrecco__pint-pandas-287": {
+   "created_at": "2025-08-16",
+   "part": 2,
+   "repo": "hgrecco/pint-pandas",
+   "split": "A",
+   "src": "lb"
+  },
+  "hkuds__openharness-217": {
+   "created_at": "2026-04-30",
+   "part": 2,
+   "repo": "HKUDS/OpenHarness",
+   "split": "A",
+   "src": "lb"
+  },
+  "holoviz__holoviews-6534": {
+   "created_at": "2025-03-13",
+   "part": 3,
+   "repo": "holoviz/holoviews",
+   "split": "B",
+   "src": "v2"
+  },
+  "holoviz__holoviews-6783": {
+   "created_at": "2026-01-22",
+   "part": 3,
+   "repo": "holoviz/holoviews",
+   "split": "B",
+   "src": "lb"
+  },
+  "holoviz__param-1073": {
+   "created_at": "2025-09-23",
+   "part": 2,
+   "repo": "holoviz/param",
+   "split": "B",
+   "src": "lb"
+  },
+  "holoviz__param-1117": {
+   "created_at": "2026-03-25",
+   "part": 2,
+   "repo": "holoviz/param",
+   "split": "B",
+   "src": "lb"
+  },
+  "huggingface__huggingface_hub-3200": {
+   "created_at": "2025-07-03",
+   "part": 1,
+   "repo": "huggingface/huggingface_hub",
+   "split": "B",
+   "src": "v2"
+  },
+  "huggingface__huggingface_hub-4056": {
+   "created_at": "2026-04-06",
+   "part": 1,
+   "repo": "huggingface/huggingface_hub",
+   "split": "B",
+   "src": "lb"
+  },
+  "huggingface__smolagents-790": {
+   "created_at": "2025-02-25",
+   "part": 2,
+   "repo": "huggingface/smolagents",
+   "split": "B",
+   "src": "rb"
+  },
+  "hynek__svcs-140": {
+   "created_at": "2025-09-10",
+   "part": 2,
+   "repo": "hynek/svcs",
+   "split": "A",
+   "src": "lb"
+  },
+  "hypothesisworks__hypothesis-4298": {
+   "created_at": "2025-03-13",
+   "part": 4,
+   "repo": "HypothesisWorks/hypothesis",
+   "split": "A",
+   "src": "v2"
+  },
+  "hypothesisworks__hypothesis-4349": {
+   "created_at": "2025-04-07",
+   "part": 4,
+   "repo": "HypothesisWorks/hypothesis",
+   "split": "A",
+   "src": "v2"
+  },
+  "idaholab__montepy-882": {
+   "created_at": "2026-01-18",
+   "part": 2,
+   "repo": "idaholab/MontePy",
+   "split": "A",
+   "src": "lb"
+  },
+  "idaholab__montepy-933_interface": {
+   "created_at": "2026-03-20",
+   "part": 2,
+   "repo": "idaholab/MontePy",
+   "split": "A",
+   "src": "lb"
+  },
+  "irrdnet__irrd-987": {
+   "created_at": "2025-02-13",
+   "part": 2,
+   "repo": "irrdnet/irrd",
+   "split": "B",
+   "src": "v2"
+  },
+  "iterative__shtab-182": {
+   "created_at": "2025-03-10",
+   "part": 3,
+   "repo": "iterative/shtab",
+   "split": "A",
+   "src": "v2"
+  },
+  "jawah__niquests-277": {
+   "created_at": "2025-08-15",
+   "part": 3,
+   "repo": "jawah/niquests",
+   "split": "A",
+   "src": "lb"
+  },
+  "jax-ml__jax-28612": {
+   "created_at": "2025-05-08",
+   "part": 4,
+   "repo": "jax-ml/jax",
+   "split": "A",
+   "src": "v2"
+  },
+  "jazzband__tablib-613": {
+   "created_at": "2025-02-19",
+   "part": 3,
+   "repo": "jazzband/tablib",
+   "split": "A",
+   "src": "v2"
+  },
+  "jelmer__dulwich-1578": {
+   "created_at": "2025-06-08",
+   "part": 1,
+   "repo": "jelmer/dulwich",
+   "split": "B",
+   "src": "v2"
+  },
+  "jelmer__dulwich-1699": {
+   "created_at": "2025-07-13",
+   "part": 1,
+   "repo": "jelmer/dulwich",
+   "split": "B",
+   "src": "v2"
+  },
+  "jlowin__fastmcp-1425": {
+   "created_at": "2025-08-09",
+   "part": 4,
+   "repo": "jlowin/fastmcp",
+   "split": "B",
+   "src": "lb"
+  },
+  "joke2k__django-environ-592": {
+   "created_at": "2026-02-21",
+   "part": 3,
+   "repo": "joke2k/django-environ",
+   "split": "A",
+   "src": "lb"
+  },
+  "joke2k__faker-2309": {
+   "created_at": "2026-01-12",
+   "part": 1,
+   "repo": "joke2k/faker",
+   "split": "B",
+   "src": "lb"
+  },
+  "joshuadavidthomas__django-bird-219": {
+   "created_at": "2025-03-06",
+   "part": 3,
+   "repo": "joshuadavidthomas/django-bird",
+   "split": "A",
+   "src": "v2"
+  },
+  "joshuadavidthomas__django-bird-239": {
+   "created_at": "2026-02-11",
+   "part": 3,
+   "repo": "joshuadavidthomas/django-bird",
+   "split": "A",
+   "src": "lb"
+  },
+  "jsonpickle__jsonpickle-565": {
+   "created_at": "2025-06-08",
+   "part": 4,
+   "repo": "jsonpickle/jsonpickle",
+   "split": "A",
+   "src": "v2"
+  },
+  "jsonpickle__jsonpickle-588": {
+   "created_at": "2026-01-12",
+   "part": 4,
+   "repo": "jsonpickle/jsonpickle",
+   "split": "A",
+   "src": "lb"
+  },
+  "juaAI__stationbench-41": {
+   "created_at": "2025-02-26",
+   "part": 2,
+   "repo": "juaAI/stationbench",
+   "split": "B",
+   "src": "lb"
+  },
+  "jupyter__jupyter_client-1060": {
+   "created_at": "2025-04-08",
+   "part": 4,
+   "repo": "jupyter/jupyter_client",
+   "split": "A",
+   "src": "v2"
+  },
+  "koaning__scikit-lego-736": {
+   "created_at": "2025-03-16",
+   "part": 2,
+   "repo": "koaning/scikit-lego",
+   "split": "B",
+   "src": "v2"
+  },
+  "koaning__scikit-lego-738": {
+   "created_at": "2025-03-27",
+   "part": 2,
+   "repo": "koaning/scikit-lego",
+   "split": "B",
+   "src": "v2"
+  },
+  "koxudaxi__datamodel-code-generator-2998": {
+   "created_at": "2026-02-14",
+   "part": 2,
+   "repo": "koxudaxi/datamodel-code-generator",
+   "split": "A",
+   "src": "lb"
+  },
+  "koxudaxi__datamodel-code-generator-3071": {
+   "created_at": "2026-04-04",
+   "part": 2,
+   "repo": "koxudaxi/datamodel-code-generator",
+   "split": "A",
+   "src": "lb"
+  },
+  "kubeflow__pipelines-13112": {
+   "created_at": "2026-03-23",
+   "part": 3,
+   "repo": "kubeflow/pipelines",
+   "split": "A",
+   "src": "lb"
+  },
+  "lektor__lektor-1224": {
+   "created_at": "2025-04-21",
+   "part": 4,
+   "repo": "lektor/lektor",
+   "split": "A",
+   "src": "v2"
+  },
+  "leshchenko1979__fast_bitrix24-257": {
+   "created_at": "2025-02-10",
+   "part": 1,
+   "repo": "leshchenko1979/fast_bitrix24",
+   "split": "A",
+   "src": "v2"
+  },
+  "lincc-frameworks__nested-pandas-302": {
+   "created_at": "2025-07-02",
+   "part": 1,
+   "repo": "lincc-frameworks/nested-pandas",
+   "split": "A",
+   "src": "lb"
+  },
+  "lincc-frameworks__nested-pandas-425": {
+   "created_at": "2026-01-05",
+   "part": 1,
+   "repo": "lincc-frameworks/nested-pandas",
+   "split": "A",
+   "src": "lb"
+  },
+  "litestar-org__advanced-alchemy-673_interface": {
+   "created_at": "2026-02-06",
+   "part": 1,
+   "repo": "litestar-org/advanced-alchemy",
+   "split": "B",
+   "src": "lb"
+  },
+  "litestar-org__litestar-4128": {
+   "created_at": "2025-04-19",
+   "part": 1,
+   "repo": "litestar-org/litestar",
+   "split": "B",
+   "src": "v2"
+  },
+  "litestar-org__polyfactory-653": {
+   "created_at": "2025-03-01",
+   "part": 4,
+   "repo": "litestar-org/polyfactory",
+   "split": "B",
+   "src": "v2"
+  },
+  "lmstudio-ai__venvstacks-197": {
+   "created_at": "2025-06-02",
+   "part": 1,
+   "repo": "lmstudio-ai/venvstacks",
+   "split": "A",
+   "src": "lb"
+  },
+  "luolingchun__flask-openapi3-232": {
+   "created_at": "2025-08-05",
+   "part": 3,
+   "repo": "luolingchun/flask-openapi3",
+   "split": "A",
+   "src": "lb"
+  },
+  "macbre__sql-metadata-583": {
+   "created_at": "2025-08-25",
+   "part": 2,
+   "repo": "macbre/sql-metadata",
+   "split": "B",
+   "src": "lb"
+  },
+  "macbre__sql-metadata-625_interface": {
+   "created_at": "2026-05-07",
+   "part": 2,
+   "repo": "macbre/sql-metadata",
+   "split": "B",
+   "src": "lb"
+  },
+  "marketsquare__robotframework-robocop-1374": {
+   "created_at": "2025-04-02",
+   "part": 2,
+   "repo": "MarketSquare/robotframework-robocop",
+   "split": "B",
+   "src": "v2"
+  },
+  "marshmallow-code__marshmallow-2925_interface": {
+   "created_at": "2026-03-25",
+   "part": 3,
+   "repo": "marshmallow-code/marshmallow",
+   "split": "B",
+   "src": "lb"
+  },
+  "matchms__matchms-759": {
+   "created_at": "2025-03-12",
+   "part": 2,
+   "repo": "matchms/matchms",
+   "split": "A",
+   "src": "rb"
+  },
+  "matchms__matchms-809": {
+   "created_at": "2025-06-13",
+   "part": 2,
+   "repo": "matchms/matchms",
+   "split": "A",
+   "src": "v2"
+  },
+  "materials-consortia__optimade-python-tools-2250": {
+   "created_at": "2025-03-20",
+   "part": 1,
+   "repo": "Materials-Consortia/optimade-python-tools",
+   "split": "B",
+   "src": "v2"
+  },
+  "materialsproject__custodian-379": {
+   "created_at": "2025-05-12",
+   "part": 3,
+   "repo": "materialsproject/custodian",
+   "split": "A",
+   "src": "lb"
+  },
+  "materialsproject__custodian-381": {
+   "created_at": "2025-05-15",
+   "part": 3,
+   "repo": "materialsproject/custodian",
+   "split": "A",
+   "src": "v2"
+  },
+  "matthewwithanm__python-markdownify-214": {
+   "created_at": "2025-04-20",
+   "part": 2,
+   "repo": "matthewwithanm/python-markdownify",
+   "split": "B",
+   "src": "v2"
+  },
+  "matthewwithanm__python-markdownify-230": {
+   "created_at": "2025-06-29",
+   "part": 2,
+   "repo": "matthewwithanm/python-markdownify",
+   "split": "B",
+   "src": "v2"
+  },
+  "meltano__meltano-9950": {
+   "created_at": "2026-04-10",
+   "part": 2,
+   "repo": "meltano/meltano",
+   "split": "A",
+   "src": "lb"
+  },
+  "meltano__sdk-3019": {
+   "created_at": "2025-05-05",
+   "part": 3,
+   "repo": "meltano/sdk",
+   "split": "A",
+   "src": "v2"
+  },
+  "meltano__sdk-3091": {
+   "created_at": "2025-06-12",
+   "part": 3,
+   "repo": "meltano/sdk",
+   "split": "A",
+   "src": "v2"
+  },
+  "mempalace__mempalace-1004": {
+   "created_at": "2026-04-18",
+   "part": 4,
+   "repo": "MemPalace/mempalace",
+   "split": "A",
+   "src": "lb"
+  },
+  "microsoft__Agents-for-python-264": {
+   "created_at": "2025-12-01",
+   "part": 1,
+   "repo": "microsoft/Agents-for-python",
+   "split": "B",
+   "src": "lb"
+  },
+  "microsoft__fabric-cicd-394": {
+   "created_at": "2025-07-03",
+   "part": 1,
+   "repo": "microsoft/fabric-cicd",
+   "split": "B",
+   "src": "lb"
+  },
+  "microsoft__fabric-cicd-465": {
+   "created_at": "2025-08-06",
+   "part": 1,
+   "repo": "microsoft/fabric-cicd",
+   "split": "B",
+   "src": "lb"
+  },
+  "milvus-io__pymilvus-3273": {
+   "created_at": "2026-02-10",
+   "part": 1,
+   "repo": "milvus-io/pymilvus",
+   "split": "A",
+   "src": "lb"
+  },
+  "mitmproxy__mitmproxy-7827": {
+   "created_at": "2025-08-06",
+   "part": 4,
+   "repo": "mitmproxy/mitmproxy",
+   "split": "A",
+   "src": "lb"
+  },
+  "mitmproxy__pdoc-806": {
+   "created_at": "2025-05-04",
+   "part": 4,
+   "repo": "mitmproxy/pdoc",
+   "split": "B",
+   "src": "v2"
+  },
+  "mitmproxy__pdoc-813": {
+   "created_at": "2025-06-04",
+   "part": 4,
+   "repo": "mitmproxy/pdoc",
+   "split": "B",
+   "src": "v2"
+  },
+  "mmcdermott__MEDS_transforms-242": {
+   "created_at": "2025-02-02",
+   "part": 1,
+   "repo": "mmcdermott/MEDS_transforms",
+   "split": "A",
+   "src": "lb"
+  },
+  "mmornati__home-assistant-csnet-home-132": {
+   "created_at": "2025-11-15",
+   "part": 3,
+   "repo": "mmornati/home-assistant-csnet-home",
+   "split": "B",
+   "src": "lb"
+  },
+  "mne-tools__mne-bids-1388": {
+   "created_at": "2025-03-28",
+   "part": 3,
+   "repo": "mne-tools/mne-bids",
+   "split": "A",
+   "src": "lb"
+  },
+  "more-itertools__more-itertools-1028": {
+   "created_at": "2025-07-14",
+   "part": 4,
+   "repo": "more-itertools/more-itertools",
+   "split": "A",
+   "src": "v2"
+  },
+  "movingpandas__movingpandas-469": {
+   "created_at": "2025-05-12",
+   "part": 4,
+   "repo": "movingpandas/movingpandas",
+   "split": "A",
+   "src": "lb"
+  },
+  "mpmath__mpmath-966": {
+   "created_at": "2025-06-03",
+   "part": 2,
+   "repo": "mpmath/mpmath",
+   "split": "B",
+   "src": "v2"
+  },
+  "mpmath__mpmath-992": {
+   "created_at": "2025-08-14",
+   "part": 2,
+   "repo": "mpmath/mpmath",
+   "split": "B",
+   "src": "lb"
+  },
+  "mwouts__jupytext-1443": {
+   "created_at": "2025-10-06",
+   "part": 4,
+   "repo": "mwouts/jupytext",
+   "split": "A",
+   "src": "lb"
+  },
+  "narwhals-dev__narwhals-3478": {
+   "created_at": "2026-02-16",
+   "part": 1,
+   "repo": "narwhals-dev/narwhals",
+   "split": "A",
+   "src": "lb"
+  },
+  "narwhals-dev__narwhals-3480": {
+   "created_at": "2026-02-19",
+   "part": 1,
+   "repo": "narwhals-dev/narwhals",
+   "split": "A",
+   "src": "lb"
+  },
+  "natlibfi__annif-832": {
+   "created_at": "2025-02-03",
+   "part": 1,
+   "repo": "NatLibFi/Annif",
+   "split": "B",
+   "src": "v2"
+  },
+  "ncar__geocat-comp-811": {
+   "created_at": "2026-01-17",
+   "part": 3,
+   "repo": "NCAR/geocat-comp",
+   "split": "A",
+   "src": "lb"
+  },
+  "nesquena__hermes-webui-2056": {
+   "created_at": "2026-05-11",
+   "part": 4,
+   "repo": "nesquena/hermes-webui",
+   "split": "A",
+   "src": "lb"
+  },
+  "neurodatawithoutborders__pynwb-2052": {
+   "created_at": "2025-03-04",
+   "part": 2,
+   "repo": "NeurodataWithoutBorders/pynwb",
+   "split": "A",
+   "src": "v2"
+  },
+  "neurodatawithoutborders__pynwb-2060": {
+   "created_at": "2025-03-19",
+   "part": 2,
+   "repo": "NeurodataWithoutBorders/pynwb",
+   "split": "A",
+   "src": "v2"
+  },
+  "neuroinformatics-unit__movement-432": {
+   "created_at": "2025-02-24",
+   "part": 1,
+   "repo": "neuroinformatics-unit/movement",
+   "split": "A",
+   "src": "lb"
+  },
+  "newton-physics__newton-1582": {
+   "created_at": "2026-02-09",
+   "part": 4,
+   "repo": "newton-physics/newton",
+   "split": "A",
+   "src": "lb"
+  },
+  "niconoe__pyinaturalist-643": {
+   "created_at": "2026-01-07",
+   "part": 3,
+   "repo": "niconoe/pyinaturalist",
+   "split": "A",
+   "src": "lb"
+  },
+  "nolar__kopf-1225": {
+   "created_at": "2026-01-30",
+   "part": 3,
+   "repo": "nolar/kopf",
+   "split": "B",
+   "src": "lb"
+  },
+  "oOo0oOo__leanclient-24": {
+   "created_at": "2025-12-14",
+   "part": 2,
+   "repo": "oOo0oOo/leanclient",
+   "split": "B",
+   "src": "lb"
+  },
+  "oceanparcels__parcels-2091": {
+   "created_at": "2025-07-17",
+   "part": 2,
+   "repo": "OceanParcels/Parcels",
+   "split": "A",
+   "src": "v2"
+  },
+  "octodns__octodns-1300": {
+   "created_at": "2025-09-08",
+   "part": 4,
+   "repo": "octodns/octodns",
+   "split": "B",
+   "src": "lb"
+  },
+  "olofk__fusesoc-776_interface": {
+   "created_at": "2026-05-07",
+   "part": 3,
+   "repo": "olofk/fusesoc",
+   "split": "A",
+   "src": "lb"
+  },
+  "ome-zarr-models__ome-zarr-models-py-206": {
+   "created_at": "2025-06-09",
+   "part": 4,
+   "repo": "ome-zarr-models/ome-zarr-models-py",
+   "split": "A",
+   "src": "lb"
+  },
+  "omni-us__jsonargparse-827": {
+   "created_at": "2026-01-07",
+   "part": 4,
+   "repo": "omni-us/jsonargparse",
+   "split": "A",
+   "src": "lb"
+  },
+  "omni-us__jsonargparse-839": {
+   "created_at": "2026-02-02",
+   "part": 4,
+   "repo": "omni-us/jsonargparse",
+   "split": "A",
+   "src": "lb"
+  },
+  "onnx__sklearn-onnx-1163": {
+   "created_at": "2025-02-03",
+   "part": 2,
+   "repo": "onnx/sklearn-onnx",
+   "split": "B",
+   "src": "v2"
+  },
+  "onnx__sklearn-onnx-1169": {
+   "created_at": "2025-03-04",
+   "part": 2,
+   "repo": "onnx/sklearn-onnx",
+   "split": "B",
+   "src": "v2"
+  },
+  "open-telemetry__opentelemetry-python-4614": {
+   "created_at": "2025-06-04",
+   "part": 3,
+   "repo": "open-telemetry/opentelemetry-python",
+   "split": "A",
+   "src": "lb"
+  },
+  "open-telemetry__opentelemetry-python-4891": {
+   "created_at": "2026-02-01",
+   "part": 3,
+   "repo": "open-telemetry/opentelemetry-python",
+   "split": "A",
+   "src": "lb"
+  },
+  "openai__openai-agents-python-1965": {
+   "created_at": "2025-10-21",
+   "part": 1,
+   "repo": "openai/openai-agents-python",
+   "split": "B",
+   "src": "lb"
+  },
+  "openai__openai-agents-python-2144": {
+   "created_at": "2025-12-03",
+   "part": 1,
+   "repo": "openai/openai-agents-python",
+   "split": "B",
+   "src": "lb"
+  },
+  "openatx__adbutils-188": {
+   "created_at": "2025-08-14",
+   "part": 4,
+   "repo": "openatx/adbutils",
+   "split": "A",
+   "src": "lb"
+  },
+  "openforcefield__openff-toolkit-2026": {
+   "created_at": "2025-02-27",
+   "part": 3,
+   "repo": "openforcefield/openff-toolkit",
+   "split": "A",
+   "src": "rb"
+  },
+  "openmdao__openmdao-3522": {
+   "created_at": "2025-05-05",
+   "part": 4,
+   "repo": "OpenMDAO/OpenMDAO",
+   "split": "A",
+   "src": "v2"
+  },
+  "openmdao__openmdao-3543": {
+   "created_at": "2025-06-02",
+   "part": 4,
+   "repo": "OpenMDAO/OpenMDAO",
+   "split": "A",
+   "src": "v2"
+  },
+  "openradar__xradar-269": {
+   "created_at": "2025-02-07",
+   "part": 1,
+   "repo": "openradar/xradar",
+   "split": "B",
+   "src": "rb"
+  },
+  "openwisp__netjsonconfig-343": {
+   "created_at": "2025-02-28",
+   "part": 4,
+   "repo": "openwisp/netjsonconfig",
+   "split": "A",
+   "src": "v2"
+  },
+  "opsmill__infrahub-8407": {
+   "created_at": "2026-02-17",
+   "part": 2,
+   "repo": "opsmill/infrahub",
+   "split": "A",
+   "src": "lb"
+  },
+  "opsmill__infrahub-8423": {
+   "created_at": "2026-02-19",
+   "part": 2,
+   "repo": "opsmill/infrahub",
+   "split": "A",
+   "src": "lb"
+  },
+  "optuna__optuna-6428": {
+   "created_at": "2026-02-09",
+   "part": 3,
+   "repo": "optuna/optuna",
+   "split": "A",
+   "src": "lb"
+  },
+  "oracle__macaron-1136": {
+   "created_at": "2025-08-01",
+   "part": 3,
+   "repo": "oracle/macaron",
+   "split": "A",
+   "src": "lb"
+  },
+  "pab1it0__prometheus-mcp-server-76": {
+   "created_at": "2025-09-21",
+   "part": 3,
+   "repo": "pab1it0/prometheus-mcp-server",
+   "split": "B",
+   "src": "lb"
+  },
+  "pallets__click-2935": {
+   "created_at": "2025-05-20",
+   "part": 3,
+   "repo": "pallets/click",
+   "split": "A",
+   "src": "v2"
+  },
+  "pallets__click-3239": {
+   "created_at": "2026-03-02",
+   "part": 3,
+   "repo": "pallets/click",
+   "split": "A",
+   "src": "lb"
+  },
+  "pasteurlabs__tesseract-core-302": {
+   "created_at": "2025-08-01",
+   "part": 3,
+   "repo": "pasteurlabs/tesseract-core",
+   "split": "B",
+   "src": "lb"
+  },
+  "patrick-kidger__equinox-1018": {
+   "created_at": "2025-05-08",
+   "part": 4,
+   "repo": "patrick-kidger/equinox",
+   "split": "A",
+   "src": "v2"
+  },
+  "patrick-kidger__equinox-993": {
+   "created_at": "2025-04-10",
+   "part": 4,
+   "repo": "patrick-kidger/equinox",
+   "split": "A",
+   "src": "v2"
+  },
+  "pdm-project__pdm-3575": {
+   "created_at": "2025-07-21",
+   "part": 4,
+   "repo": "pdm-project/pdm",
+   "split": "A",
+   "src": "v2"
+  },
+  "pdm-project__pdm-3759": {
+   "created_at": "2026-04-01",
+   "part": 4,
+   "repo": "pdm-project/pdm",
+   "split": "A",
+   "src": "lb"
+  },
+  "pgmpy__pgmpy-2111": {
+   "created_at": "2025-05-25",
+   "part": 4,
+   "repo": "pgmpy/pgmpy",
+   "split": "A",
+   "src": "lb"
+  },
+  "pgmpy__pgmpy-3137": {
+   "created_at": "2026-03-22",
+   "part": 4,
+   "repo": "pgmpy/pgmpy",
+   "split": "A",
+   "src": "lb"
+  },
+  "pipecat-ai__pipecat-2413": {
+   "created_at": "2025-08-11",
+   "part": 2,
+   "repo": "pipecat-ai/pipecat",
+   "split": "A",
+   "src": "lb"
+  },
+  "pipecat-ai__pipecat-4283": {
+   "created_at": "2026-04-13",
+   "part": 2,
+   "repo": "pipecat-ai/pipecat",
+   "split": "A",
+   "src": "lb"
+  },
+  "piskvorky__smart_open-889": {
+   "created_at": "2025-10-11",
+   "part": 4,
+   "repo": "piskvorky/smart_open",
+   "split": "A",
+   "src": "lb"
+  },
+  "piskvorky__smart_open-892": {
+   "created_at": "2025-10-11",
+   "part": 4,
+   "repo": "piskvorky/smart_open",
+   "split": "A",
+   "src": "lb"
+  },
+  "prjemian__spec2nexus-315": {
+   "created_at": "2025-05-08",
+   "part": 2,
+   "repo": "prjemian/spec2nexus",
+   "split": "A",
+   "src": "lb"
+  },
+  "probabl-ai__skore-1287": {
+   "created_at": "2025-02-04",
+   "part": 2,
+   "repo": "probabl-ai/skore",
+   "split": "A",
+   "src": "lb"
+  },
+  "probabl-ai__skore-1335": {
+   "created_at": "2025-02-15",
+   "part": 2,
+   "repo": "probabl-ai/skore",
+   "split": "A",
+   "src": "lb"
+  },
+  "prometheus__client_python-1134": {
+   "created_at": "2025-09-11",
+   "part": 2,
+   "repo": "prometheus/client_python",
+   "split": "B",
+   "src": "lb"
+  },
+  "psd-tools__psd-tools-551": {
+   "created_at": "2026-02-24",
+   "part": 1,
+   "repo": "psd-tools/psd-tools",
+   "split": "A",
+   "src": "lb"
+  },
+  "psd-tools__psd-tools-593": {
+   "created_at": "2026-03-17",
+   "part": 1,
+   "repo": "psd-tools/psd-tools",
+   "split": "A",
+   "src": "lb"
+  },
+  "psf__black-4676": {
+   "created_at": "2025-06-01",
+   "part": 2,
+   "repo": "psf/black",
+   "split": "B",
+   "src": "lb"
+  },
+  "psf__black-4952": {
+   "created_at": "2026-01-10",
+   "part": 2,
+   "repo": "psf/black",
+   "split": "B",
+   "src": "lb"
+  },
+  "pvlib__pvlib-python-2393": {
+   "created_at": "2025-02-20",
+   "part": 3,
+   "repo": "pvlib/pvlib-python",
+   "split": "A",
+   "src": "v2"
+  },
+  "pvlib__pvlib-python-2451": {
+   "created_at": "2025-04-30",
+   "part": 3,
+   "repo": "pvlib/pvlib-python",
+   "split": "A",
+   "src": "v2"
+  },
+  "py-pdf__pdfly-219": {
+   "created_at": "2025-12-19",
+   "part": 1,
+   "repo": "py-pdf/pdfly",
+   "split": "A",
+   "src": "lb"
+  },
+  "pybamm-team__PyBaMM-5061": {
+   "created_at": "2025-06-16",
+   "part": 1,
+   "repo": "pybamm-team/PyBaMM",
+   "split": "A",
+   "src": "lb"
+  },
+  "pybamm-team__pybamm-5061": {
+   "created_at": "2025-06-16",
+   "part": 1,
+   "repo": "pybamm-team/PyBaMM",
+   "split": "A",
+   "src": "v2"
+  },
+  "pyca__cryptography-12673": {
+   "created_at": "2025-03-24",
+   "part": 4,
+   "repo": "pyca/cryptography",
+   "split": "A",
+   "src": "v2"
+  },
+  "pycqa__bandit-1235": {
+   "created_at": "2025-02-17",
+   "part": 2,
+   "repo": "PyCQA/bandit",
+   "split": "A",
+   "src": "v2"
+  },
+  "pycqa__isort-2491": {
+   "created_at": "2026-03-12",
+   "part": 2,
+   "repo": "PyCQA/isort",
+   "split": "A",
+   "src": "lb"
+  },
+  "pycqa__pyflakes-836": {
+   "created_at": "2025-03-31",
+   "part": 1,
+   "repo": "PyCQA/pyflakes",
+   "split": "A",
+   "src": "v2"
+  },
+  "pydap__pydap-519": {
+   "created_at": "2025-07-01",
+   "part": 1,
+   "repo": "pydap/pydap",
+   "split": "B",
+   "src": "v2"
+  },
+  "pydap__pydap-624": {
+   "created_at": "2026-01-26",
+   "part": 1,
+   "repo": "pydap/pydap",
+   "split": "B",
+   "src": "lb"
+  },
+  "pydata__sparse-870": {
+   "created_at": "2025-05-10",
+   "part": 1,
+   "repo": "pydata/sparse",
+   "split": "A",
+   "src": "v2"
+  },
+  "pydata__sparse-888": {
+   "created_at": "2025-07-19",
+   "part": 1,
+   "repo": "pydata/sparse",
+   "split": "A",
+   "src": "v2"
+  },
+  "pydy__pydy-525": {
+   "created_at": "2025-09-03",
+   "part": 1,
+   "repo": "pydy/pydy",
+   "split": "A",
+   "src": "lb"
+  },
+  "pyfar__pyrato-113": {
+   "created_at": "2026-01-06",
+   "part": 1,
+   "repo": "pyfar/pyrato",
+   "split": "A",
+   "src": "lb"
+  },
+  "pyinfra-dev__pyinfra-1630": {
+   "created_at": "2026-03-24",
+   "part": 1,
+   "repo": "pyinfra-dev/pyinfra",
+   "split": "A",
+   "src": "lb"
+  },
+  "pyinfra-dev__pyinfra-1665": {
+   "created_at": "2026-04-14",
+   "part": 1,
+   "repo": "pyinfra-dev/pyinfra",
+   "split": "A",
+   "src": "lb"
+  },
+  "pyjanitor-devs__pyjanitor-1451": {
+   "created_at": "2025-03-02",
+   "part": 1,
+   "repo": "pyjanitor-devs/pyjanitor",
+   "split": "A",
+   "src": "v2"
+  },
+  "pymc-devs__pymc-7809": {
+   "created_at": "2025-06-03",
+   "part": 4,
+   "repo": "pymc-devs/pymc",
+   "split": "B",
+   "src": "v2"
+  },
+  "pymc-devs__pymc-7858": {
+   "created_at": "2025-07-20",
+   "part": 4,
+   "repo": "pymc-devs/pymc",
+   "split": "B",
+   "src": "v2"
+  },
+  "pymc-devs__pytensor-1435": {
+   "created_at": "2025-05-31",
+   "part": 4,
+   "repo": "pymc-devs/pytensor",
+   "split": "A",
+   "src": "v2"
+  },
+  "pymc-devs__pytensor-1701": {
+   "created_at": "2025-10-28",
+   "part": 4,
+   "repo": "pymc-devs/pytensor",
+   "split": "A",
+   "src": "lb"
+  },
+  "pymodbus-dev__pymodbus-2593": {
+   "created_at": "2025-03-03",
+   "part": 3,
+   "repo": "pymodbus-dev/pymodbus",
+   "split": "B",
+   "src": "v2"
+  },
+  "pymodbus-dev__pymodbus-2678": {
+   "created_at": "2025-06-02",
+   "part": 3,
+   "repo": "pymodbus-dev/pymodbus",
+   "split": "B",
+   "src": "v2"
+  },
+  "pyomo__pyomo-3541": {
+   "created_at": "2025-03-26",
+   "part": 4,
+   "repo": "Pyomo/pyomo",
+   "split": "A",
+   "src": "v2"
+  },
+  "pyomo__pyomo-3588": {
+   "created_at": "2025-04-30",
+   "part": 4,
+   "repo": "Pyomo/pyomo",
+   "split": "A",
+   "src": "v2"
+  },
+  "pypa__build-1027": {
+   "created_at": "2026-04-10",
+   "part": 2,
+   "repo": "pypa/build",
+   "split": "A",
+   "src": "lb"
+  },
+  "pypa__pipx-1625": {
+   "created_at": "2025-04-30",
+   "part": 1,
+   "repo": "pypa/pipx",
+   "split": "A",
+   "src": "v2"
+  },
+  "pypa__setuptools-4980": {
+   "created_at": "2025-05-04",
+   "part": 4,
+   "repo": "pypa/setuptools",
+   "split": "A",
+   "src": "v2"
+  },
+  "pypa__setuptools-4985": {
+   "created_at": "2025-05-06",
+   "part": 4,
+   "repo": "pypa/setuptools",
+   "split": "A",
+   "src": "v2"
+  },
+  "pypa__twine-1309": {
+   "created_at": "2026-04-17",
+   "part": 4,
+   "repo": "pypa/twine",
+   "split": "B",
+   "src": "lb"
+  },
+  "pypsa__linopy-438": {
+   "created_at": "2025-04-02",
+   "part": 3,
+   "repo": "PyPSA/linopy",
+   "split": "A",
+   "src": "v2"
+  },
+  "pypsa__pypsa-1653": {
+   "created_at": "2026-04-13",
+   "part": 4,
+   "repo": "PyPSA/PyPSA",
+   "split": "B",
+   "src": "lb"
+  },
+  "pysal__libpysal-777": {
+   "created_at": "2025-03-20",
+   "part": 2,
+   "repo": "pysal/libpysal",
+   "split": "A",
+   "src": "v2"
+  },
+  "pysmt__pysmt-812": {
+   "created_at": "2025-05-23",
+   "part": 4,
+   "repo": "pysmt/pysmt",
+   "split": "A",
+   "src": "v2"
+  },
+  "pytest-dev__pyfakefs-1170": {
+   "created_at": "2025-05-23",
+   "part": 3,
+   "repo": "pytest-dev/pyfakefs",
+   "split": "B",
+   "src": "v2"
+  },
+  "pytest-dev__pyfakefs-1269": {
+   "created_at": "2026-01-13",
+   "part": 3,
+   "repo": "pytest-dev/pyfakefs",
+   "split": "B",
+   "src": "lb"
+  },
+  "python-attrs__attrs-1410": {
+   "created_at": "2025-02-22",
+   "part": 1,
+   "repo": "python-attrs/attrs",
+   "split": "A",
+   "src": "v2"
+  },
+  "python-attrs__attrs-1417": {
+   "created_at": "2025-03-12",
+   "part": 1,
+   "repo": "python-attrs/attrs",
+   "split": "A",
+   "src": "v2"
+  },
+  "python-markdown__markdown-1529": {
+   "created_at": "2025-04-26",
+   "part": 1,
+   "repo": "Python-Markdown/markdown",
+   "split": "B",
+   "src": "v2"
+  },
+  "python-markdown__markdown-1587": {
+   "created_at": "2026-01-20",
+   "part": 1,
+   "repo": "Python-Markdown/markdown",
+   "split": "B",
+   "src": "lb"
+  },
+  "python-scim__scim2-models-120": {
+   "created_at": "2026-01-25",
+   "part": 3,
+   "repo": "python-scim/scim2-models",
+   "split": "B",
+   "src": "lb"
+  },
+  "python-scim__scim2-models-126": {
+   "created_at": "2026-01-29",
+   "part": 3,
+   "repo": "python-scim/scim2-models",
+   "split": "B",
+   "src": "lb"
+  },
+  "python-trio__trio-3280": {
+   "created_at": "2025-06-06",
+   "part": 1,
+   "repo": "python-trio/trio",
+   "split": "A",
+   "src": "v2"
+  },
+  "python-trio__trio-3334": {
+   "created_at": "2025-09-21",
+   "part": 1,
+   "repo": "python-trio/trio",
+   "split": "A",
+   "src": "lb"
+  },
+  "python-wheel-build__fromager-1106": {
+   "created_at": "2026-05-04",
+   "part": 2,
+   "repo": "python-wheel-build/fromager",
+   "split": "B",
+   "src": "lb"
+  },
+  "python-wheel-build__fromager-1124": {
+   "created_at": "2026-05-07",
+   "part": 2,
+   "repo": "python-wheel-build/fromager",
+   "split": "B",
+   "src": "lb"
+  },
+  "python__typing_extensions-614": {
+   "created_at": "2025-06-03",
+   "part": 3,
+   "repo": "python/typing_extensions",
+   "split": "B",
+   "src": "v2"
+  },
+  "pyvrp__pyvrp-803": {
+   "created_at": "2025-05-15",
+   "part": 3,
+   "repo": "PyVRP/PyVRP",
+   "split": "A",
+   "src": "v2"
+  },
+  "qBraid__pyqasm-155": {
+   "created_at": "2025-03-03",
+   "part": 1,
+   "repo": "qBraid/pyqasm",
+   "split": "A",
+   "src": "rb"
+  },
+  "qBraid__pyqasm-168": {
+   "created_at": "2025-04-03",
+   "part": 1,
+   "repo": "qBraid/pyqasm",
+   "split": "A",
+   "src": "lb"
+  },
+  "qiskit__qiskit-ibm-runtime-2187": {
+   "created_at": "2025-03-18",
+   "part": 3,
+   "repo": "Qiskit/qiskit-ibm-runtime",
+   "split": "A",
+   "src": "v2"
+  },
+  "quantconnect__lean-cli-555": {
+   "created_at": "2025-02-28",
+   "part": 3,
+   "repo": "QuantConnect/lean-cli",
+   "split": "A",
+   "src": "v2"
+  },
+  "quantecon__quantecon.py-769": {
+   "created_at": "2025-06-22",
+   "part": 2,
+   "repo": "QuantEcon/QuantEcon.py",
+   "split": "B",
+   "src": "v2"
+  },
+  "quantumlib__ReCirq-410": {
+   "created_at": "2025-08-01",
+   "part": 2,
+   "repo": "quantumlib/ReCirq",
+   "split": "B",
+   "src": "lb"
+  },
+  "radiasoft__pykern-578": {
+   "created_at": "2025-06-28",
+   "part": 2,
+   "repo": "radiasoft/pykern",
+   "split": "A",
+   "src": "lb"
+  },
+  "raullenchai__rapid-mlx-289": {
+   "created_at": "2026-05-07",
+   "part": 4,
+   "repo": "raullenchai/Rapid-MLX",
+   "split": "B",
+   "src": "lb"
+  },
+  "raullenchai__rapid-mlx-341_interface": {
+   "created_at": "2026-05-09",
+   "part": 4,
+   "repo": "raullenchai/Rapid-MLX",
+   "split": "B",
+   "src": "lb"
+  },
+  "reagento__dishka-436": {
+   "created_at": "2025-04-15",
+   "part": 1,
+   "repo": "reagento/dishka",
+   "split": "A",
+   "src": "v2"
+  },
+  "reagento__dishka-512": {
+   "created_at": "2025-08-02",
+   "part": 1,
+   "repo": "reagento/dishka",
+   "split": "A",
+   "src": "lb"
+  },
+  "reframe-hpc__reframe-3553": {
+   "created_at": "2025-09-17",
+   "part": 4,
+   "repo": "reframe-hpc/reframe",
+   "split": "B",
+   "src": "lb"
+  },
+  "reframe-hpc__reframe-3660_interface": {
+   "created_at": "2026-04-27",
+   "part": 4,
+   "repo": "reframe-hpc/reframe",
+   "split": "B",
+   "src": "lb"
+  },
+  "rhayes777__pyautofit-1115": {
+   "created_at": "2025-03-05",
+   "part": 1,
+   "repo": "rhayes777/PyAutoFit",
+   "split": "A",
+   "src": "v2"
+  },
+  "rhayes777__pyautofit-1133": {
+   "created_at": "2025-05-02",
+   "part": 1,
+   "repo": "rhayes777/PyAutoFit",
+   "split": "A",
+   "src": "v2"
+  },
+  "robotpy__cxxheaderparser-124": {
+   "created_at": "2025-07-15",
+   "part": 3,
+   "repo": "robotpy/cxxheaderparser",
+   "split": "A",
+   "src": "v2"
+  },
+  "robotpy__cxxheaderparser-125": {
+   "created_at": "2025-07-15",
+   "part": 3,
+   "repo": "robotpy/cxxheaderparser",
+   "split": "A",
+   "src": "v2"
+  },
+  "schemathesis__schemathesis-3933": {
+   "created_at": "2026-05-04",
+   "part": 1,
+   "repo": "schemathesis/schemathesis",
+   "split": "B",
+   "src": "lb"
+  },
+  "schemathesis__schemathesis-4087": {
+   "created_at": "2026-05-12",
+   "part": 1,
+   "repo": "schemathesis/schemathesis",
+   "split": "B",
+   "src": "lb"
+  },
+  "scikit-learn__scikit-learn-33168": {
+   "created_at": "2026-02-01",
+   "part": 2,
+   "repo": "scikit-learn/scikit-learn",
+   "split": "A",
+   "src": "lb"
+  },
+  "scikit-learn__scikit-learn-33565": {
+   "created_at": "2026-03-17",
+   "part": 2,
+   "repo": "scikit-learn/scikit-learn",
+   "split": "A",
+   "src": "lb"
+  },
+  "scipp__plopp-445": {
+   "created_at": "2025-04-25",
+   "part": 3,
+   "repo": "scipp/plopp",
+   "split": "A",
+   "src": "lb"
+  },
+  "scipp__plopp-513": {
+   "created_at": "2026-01-22",
+   "part": 3,
+   "repo": "scipp/plopp",
+   "split": "A",
+   "src": "lb"
+  },
+  "scitools__iris-6416": {
+   "created_at": "2025-04-23",
+   "part": 3,
+   "repo": "SciTools/iris",
+   "split": "A",
+   "src": "v2"
+  },
+  "sciunto-org__python-bibtexparser-515": {
+   "created_at": "2026-01-17",
+   "part": 3,
+   "repo": "sciunto-org/python-bibtexparser",
+   "split": "B",
+   "src": "lb"
+  },
+  "sdv-dev__SDMetrics-723": {
+   "created_at": "2025-02-12",
+   "part": 4,
+   "repo": "sdv-dev/SDMetrics",
+   "split": "A",
+   "src": "lb"
+  },
+  "sdv-dev__SDV-2706": {
+   "created_at": "2025-10-06",
+   "part": 3,
+   "repo": "sdv-dev/SDV",
+   "split": "A",
+   "src": "lb"
+  },
+  "sdv-dev__SDV-2709": {
+   "created_at": "2025-10-06",
+   "part": 3,
+   "repo": "sdv-dev/SDV",
+   "split": "A",
+   "src": "lb"
+  },
+  "sdv-dev__copulas-473": {
+   "created_at": "2025-05-23",
+   "part": 2,
+   "repo": "sdv-dev/Copulas",
+   "split": "B",
+   "src": "v2"
+  },
+  "sdv-dev__rdt-1020": {
+   "created_at": "2025-07-15",
+   "part": 2,
+   "repo": "sdv-dev/RDT",
+   "split": "B",
+   "src": "v2"
+  },
+  "sdv-dev__rdt-992": {
+   "created_at": "2025-05-07",
+   "part": 2,
+   "repo": "sdv-dev/RDT",
+   "split": "B",
+   "src": "v2"
+  },
+  "sigma67__ytmusicapi-909_interface": {
+   "created_at": "2026-04-23",
+   "part": 4,
+   "repo": "sigma67/ytmusicapi",
+   "split": "B",
+   "src": "lb"
+  },
+  "silx-kit__silx-4242": {
+   "created_at": "2025-03-27",
+   "part": 2,
+   "repo": "silx-kit/silx",
+   "split": "A",
+   "src": "v2"
+  },
+  "silx-kit__silx-4282": {
+   "created_at": "2025-04-14",
+   "part": 2,
+   "repo": "silx-kit/silx",
+   "split": "A",
+   "src": "v2"
+  },
+  "simpeg__simpeg-1633": {
+   "created_at": "2025-03-20",
+   "part": 2,
+   "repo": "simpeg/simpeg",
+   "split": "A",
+   "src": "v2"
+  },
+  "simpeg__simpeg-1637": {
+   "created_at": "2025-03-28",
+   "part": 2,
+   "repo": "simpeg/simpeg",
+   "split": "A",
+   "src": "rb"
+  },
+  "skrub-data__skrub-1445": {
+   "created_at": "2025-06-17",
+   "part": 2,
+   "repo": "skrub-data/skrub",
+   "split": "B",
+   "src": "v2"
+  },
+  "skrub-data__skrub-1899": {
+   "created_at": "2026-02-12",
+   "part": 2,
+   "repo": "skrub-data/skrub",
+   "split": "B",
+   "src": "lb"
+  },
+  "sktime__skpro-574": {
+   "created_at": "2025-08-01",
+   "part": 1,
+   "repo": "sktime/skpro",
+   "split": "B",
+   "src": "lb"
+  },
+  "softlayer__softlayer-python-2214": {
+   "created_at": "2025-02-20",
+   "part": 4,
+   "repo": "softlayer/softlayer-python",
+   "split": "B",
+   "src": "v2"
+  },
+  "sopel-irc__sopel-2653": {
+   "created_at": "2025-02-01",
+   "part": 1,
+   "repo": "sopel-irc/sopel",
+   "split": "B",
+   "src": "v2"
+  },
+  "spacetelescope__gwcs-565": {
+   "created_at": "2025-02-13",
+   "part": 2,
+   "repo": "spacetelescope/gwcs",
+   "split": "A",
+   "src": "v2"
+  },
+  "spack__spack-51723": {
+   "created_at": "2025-12-09",
+   "part": 4,
+   "repo": "spack/spack",
+   "split": "B",
+   "src": "lb"
+  },
+  "spack__spack-52244": {
+   "created_at": "2026-04-13",
+   "part": 4,
+   "repo": "spack/spack",
+   "split": "B",
+   "src": "lb"
+  },
+  "spikeinterface__spikeinterface-3778": {
+   "created_at": "2025-03-17",
+   "part": 3,
+   "repo": "SpikeInterface/spikeinterface",
+   "split": "B",
+   "src": "v2"
+  },
+  "spikeinterface__spikeinterface-3829": {
+   "created_at": "2025-04-02",
+   "part": 3,
+   "repo": "SpikeInterface/spikeinterface",
+   "split": "B",
+   "src": "v2"
+  },
+  "spulec__freezegun-582": {
+   "created_at": "2025-08-09",
+   "part": 2,
+   "repo": "spulec/freezegun",
+   "split": "B",
+   "src": "lb"
+  },
+  "sqlfluff__sqlfluff-7617": {
+   "created_at": "2026-03-16",
+   "part": 4,
+   "repo": "sqlfluff/sqlfluff",
+   "split": "A",
+   "src": "lb"
+  },
+  "stanfordnlp__dspy-8890": {
+   "created_at": "2025-10-02",
+   "part": 3,
+   "repo": "stanfordnlp/dspy",
+   "split": "A",
+   "src": "lb"
+  },
+  "stanfordnlp__dspy-9478_interface": {
+   "created_at": "2026-03-20",
+   "part": 3,
+   "repo": "stanfordnlp/dspy",
+   "split": "A",
+   "src": "lb"
+  },
+  "stefmolin__data-morph-265": {
+   "created_at": "2025-02-12",
+   "part": 3,
+   "repo": "stefmolin/data-morph",
+   "split": "B",
+   "src": "lb"
+  },
+  "stfc__PSyclone-3093": {
+   "created_at": "2025-08-14",
+   "part": 1,
+   "repo": "stfc/PSyclone",
+   "split": "B",
+   "src": "lb"
+  },
+  "stfc__fparser-467": {
+   "created_at": "2025-06-17",
+   "part": 2,
+   "repo": "stfc/fparser",
+   "split": "A",
+   "src": "v2"
+  },
+  "stfc__psyclone-3029": {
+   "created_at": "2025-06-11",
+   "part": 1,
+   "repo": "stfc/PSyclone",
+   "split": "B",
+   "src": "v2"
+  },
+  "strands-agents__sdk-python-1719": {
+   "created_at": "2026-02-18",
+   "part": 2,
+   "repo": "strands-agents/sdk-python",
+   "split": "A",
+   "src": "lb"
+  },
+  "strands-agents__sdk-python-1734": {
+   "created_at": "2026-02-19",
+   "part": 2,
+   "repo": "strands-agents/sdk-python",
+   "split": "A",
+   "src": "lb"
+  },
+  "stravalib__stravalib-709_interface": {
+   "created_at": "2026-02-01",
+   "part": 4,
+   "repo": "stravalib/stravalib",
+   "split": "A",
+   "src": "lb"
+  },
+  "sunpy__sunpy-8316": {
+   "created_at": "2025-08-08",
+   "part": 3,
+   "repo": "sunpy/sunpy",
+   "split": "A",
+   "src": "lb"
+  },
+  "sunpy__sunpy-8548_interface": {
+   "created_at": "2026-03-21",
+   "part": 3,
+   "repo": "sunpy/sunpy",
+   "split": "A",
+   "src": "lb"
+  },
+  "systemd__mkosi-3586": {
+   "created_at": "2025-03-08",
+   "part": 1,
+   "repo": "systemd/mkosi",
+   "split": "A",
+   "src": "v2"
+  },
+  "tatuylonen__wiktextract-1220": {
+   "created_at": "2025-05-22",
+   "part": 2,
+   "repo": "tatuylonen/wiktextract",
+   "split": "A",
+   "src": "v2"
+  },
+  "tatuylonen__wiktextract-1271": {
+   "created_at": "2025-07-10",
+   "part": 2,
+   "repo": "tatuylonen/wiktextract",
+   "split": "A",
+   "src": "v2"
+  },
+  "tefra__xsdata-1126": {
+   "created_at": "2025-03-08",
+   "part": 3,
+   "repo": "tefra/xsdata",
+   "split": "A",
+   "src": "lb"
+  },
+  "terrapower__armi-2175": {
+   "created_at": "2025-07-07",
+   "part": 3,
+   "repo": "terrapower/armi",
+   "split": "B",
+   "src": "v2"
+  },
+  "terrapower__armi-2285": {
+   "created_at": "2025-09-17",
+   "part": 3,
+   "repo": "terrapower/armi",
+   "split": "B",
+   "src": "lb"
+  },
+  "tianocore__edk2-pytool-library-698": {
+   "created_at": "2025-02-20",
+   "part": 4,
+   "repo": "tianocore/edk2-pytool-library",
+   "split": "A",
+   "src": "lb"
+  },
+  "tobikodata__sqlmesh-4347": {
+   "created_at": "2025-05-09",
+   "part": 2,
+   "repo": "TobikoData/sqlmesh",
+   "split": "A",
+   "src": "v2"
+  },
+  "tornadoweb__tornado-3503": {
+   "created_at": "2025-05-22",
+   "part": 4,
+   "repo": "tornadoweb/tornado",
+   "split": "B",
+   "src": "v2"
+  },
+  "tornadoweb__tornado-3521": {
+   "created_at": "2025-07-22",
+   "part": 4,
+   "repo": "tornadoweb/tornado",
+   "split": "B",
+   "src": "v2"
+  },
+  "tox-dev__sphinx-autodoc-typehints-606": {
+   "created_at": "2026-02-17",
+   "part": 3,
+   "repo": "tox-dev/sphinx-autodoc-typehints",
+   "split": "B",
+   "src": "lb"
+  },
+  "tox-dev__sphinx-autodoc-typehints-607": {
+   "created_at": "2026-02-17",
+   "part": 3,
+   "repo": "tox-dev/sphinx-autodoc-typehints",
+   "split": "B",
+   "src": "lb"
+  },
+  "transientskp__pyse-120": {
+   "created_at": "2025-02-01",
+   "part": 3,
+   "repo": "transientskp/pyse",
+   "split": "A",
+   "src": "rb"
+  },
+  "travisghansen__hass-opnsense-433": {
+   "created_at": "2025-09-05",
+   "part": 4,
+   "repo": "travisghansen/hass-opnsense",
+   "split": "B",
+   "src": "lb"
+  },
+  "trinodb__trino-python-client-564": {
+   "created_at": "2025-06-04",
+   "part": 1,
+   "repo": "trinodb/trino-python-client",
+   "split": "B",
+   "src": "v2"
+  },
+  "tskit-dev__tskit-3274": {
+   "created_at": "2025-09-19",
+   "part": 3,
+   "repo": "tskit-dev/tskit",
+   "split": "A",
+   "src": "lb"
+  },
+  "tweag__fawltydeps-492": {
+   "created_at": "2025-06-03",
+   "part": 2,
+   "repo": "tweag/FawltyDeps",
+   "split": "A",
+   "src": "v2"
+  },
+  "tweag__fawltydeps-495": {
+   "created_at": "2025-06-11",
+   "part": 2,
+   "repo": "tweag/FawltyDeps",
+   "split": "A",
+   "src": "v2"
+  },
+  "twisted__towncrier-696": {
+   "created_at": "2025-03-31",
+   "part": 3,
+   "repo": "twisted/towncrier",
+   "split": "B",
+   "src": "v2"
+  },
+  "ucfopen__canvasapi-716": {
+   "created_at": "2026-03-31",
+   "part": 4,
+   "repo": "ucfopen/canvasapi",
+   "split": "A",
+   "src": "lb"
+  },
+  "ultraplot__ultraplot-696": {
+   "created_at": "2026-04-16",
+   "part": 2,
+   "repo": "Ultraplot/UltraPlot",
+   "split": "A",
+   "src": "lb"
+  },
+  "unit8co__darts-3065": {
+   "created_at": "2026-04-10",
+   "part": 4,
+   "repo": "unit8co/darts",
+   "split": "A",
+   "src": "lb"
+  },
+  "useblocks__sphinx-needs-1428": {
+   "created_at": "2025-03-24",
+   "part": 1,
+   "repo": "useblocks/sphinx-needs",
+   "split": "A",
+   "src": "v2"
+  },
+  "vndee__llm-sandbox-101": {
+   "created_at": "2025-10-07",
+   "part": 4,
+   "repo": "vndee/llm-sandbox",
+   "split": "B",
+   "src": "lb"
+  },
+  "vprusso__toqito-1484_interface": {
+   "created_at": "2026-03-19",
+   "part": 1,
+   "repo": "vprusso/toqito",
+   "split": "B",
+   "src": "lb"
+  },
+  "vprusso__toqito-1538": {
+   "created_at": "2026-04-22",
+   "part": 1,
+   "repo": "vprusso/toqito",
+   "split": "B",
+   "src": "lb"
+  },
+  "wemake-services__wemake-python-styleguide-3382": {
+   "created_at": "2025-04-09",
+   "part": 2,
+   "repo": "wemake-services/wemake-python-styleguide",
+   "split": "A",
+   "src": "lb"
+  },
+  "wntrblm__nox-932": {
+   "created_at": "2025-02-11",
+   "part": 2,
+   "repo": "wntrblm/nox",
+   "split": "A",
+   "src": "v2"
+  },
+  "xknx__xknx-1663": {
+   "created_at": "2025-02-18",
+   "part": 1,
+   "repo": "XKNX/xknx",
+   "split": "B",
+   "src": "v2"
+  },
+  "xlsform__pyxform-772": {
+   "created_at": "2025-06-14",
+   "part": 4,
+   "repo": "XLSForm/pyxform",
+   "split": "B",
+   "src": "v2"
+  },
+  "youssofal__mtplx-21": {
+   "created_at": "2026-05-07",
+   "part": 1,
+   "repo": "youssofal/MTPLX",
+   "split": "A",
+   "src": "lb"
+  },
+  "yt-dlp__yt-dlp-13361": {
+   "created_at": "2025-06-01",
+   "part": 2,
+   "repo": "yt-dlp/yt-dlp",
+   "split": "B",
+   "src": "v2"
+  },
+  "yt-dlp__yt-dlp-13403": {
+   "created_at": "2025-06-05",
+   "part": 2,
+   "repo": "yt-dlp/yt-dlp",
+   "split": "B",
+   "src": "v2"
+  },
+  "yt-project__unyt-593": {
+   "created_at": "2025-10-08",
+   "part": 1,
+   "repo": "yt-project/unyt",
+   "split": "B",
+   "src": "lb"
+  },
+  "yukinarit__pyserde-646": {
+   "created_at": "2025-04-26",
+   "part": 4,
+   "repo": "yukinarit/pyserde",
+   "split": "B",
+   "src": "v2"
+  },
+  "yukinarit__pyserde-657": {
+   "created_at": "2025-08-10",
+   "part": 4,
+   "repo": "yukinarit/pyserde",
+   "split": "B",
+   "src": "lb"
+  },
+  "zarr-developers__virtualizarr-979": {
+   "created_at": "2026-04-24",
+   "part": 3,
+   "repo": "zarr-developers/VirtualiZarr",
+   "split": "A",
+   "src": "lb"
+  },
+  "zwicker-group__py-pde-712": {
+   "created_at": "2025-09-05",
+   "part": 4,
+   "repo": "zwicker-group/py-pde",
+   "split": "B",
+   "src": "lb"
+  },
+  "zwicker-group__py-pde-733": {
+   "created_at": "2025-12-01",
+   "part": 4,
+   "repo": "zwicker-group/py-pde",
+   "split": "B",
+   "src": "lb"
+  }
+ }
+}

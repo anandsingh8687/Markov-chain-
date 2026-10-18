@@ -1,0 +1,159 @@
+[
+{
+"instance_id": "BrianPugh__cyclopts-633",
+"repo": "BrianPugh/cyclopts",
+"created_at": "2025-10-24",
+"python": "3.12",
+"install": "pip install -e .[dev] --quiet",
+"n_files": 1,
+"gold_lines": 13,
+"n_test_files": 1,
+"f2p": 2,
+"p2p": 90,
+"ps_len": 524,
+"src": "lb",
+"split": "A",
+"part": 1
+},
+{
+"instance_id": "a2aproject__a2a-python-576",
+"repo": "a2aproject/a2a-python",
+"created_at": "2025-12-03",
+"python": "3.12",
+"install": "pip install -e . --quiet && pip install pytest pytest-asyncio pytest-cov respx uvicorn --quiet",
+"n_files": 2,
+"gold_lines": 6,
+"n_test_files": 2,
+"f2p": 2,
+"p2p": 37,
+"ps_len": 3658,
+"src": "lb",
+"split": "B",
+"part": 1
+},
+{
+"instance_id": "callowayproject__bump-my-version-326",
+"repo": "callowayproject/bump-my-version",
+"created_at": "2025-03-22",
+"img": "python_base_310",
+"lines": 10,
+"diff": "medium",
+"cats": [
+"regression_bug"
+],
+"prlen": 59,
+"src": "v2",
+"split": "A",
+"part": 1
+},
+{
+"instance_id": "CDCgov__PyRenew-482",
+"repo": "CDCgov/PyRenew",
+"created_at": "2025-02-11",
+"python": "3.12",
+"install": "pip install -e .[dev]",
+"n_files": 1,
+"gold_lines": 140,
+"n_test_files": 1,
+"f2p": 8,
+"p2p": 3,
+"ps_len": 63,
+"src": "rb",
+"split": "B",
+"part": 1
+},
+{
+"instance_id": "adrn__gala-495",
+"repo": "adrn/gala",
+"created_at": "2025-10-20",
+"python": "3.11",
+"install": "pip install -e \".[test]\" --quiet",
+"n_files": 3,
+"gold_lines": 69,
+"n_test_files": 1,
+"f2p": 2,
+"p2p": 2,
+"ps_len": 150,
+"src": "lb",
+"split": "A",
+"part": 1
+},
+{
+"instance_id": "codezonediitj__pydatastructs-643",
+"repo": "codezonediitj/pydatastructs",
+"created_at": "2025-03-13",
+"img": "python_base_310",
+"lines": 111,
+"diff": "medium",
+"cats": [
+"core_feat",
+"documentation_enh"
+],
+"prlen": 1045,
+"src": "v2",
+"split": "B",
+"part": 1
+},
+{
+"instance_id": "ag2ai__faststream-2701",
+"repo": "ag2ai/faststream",
+"created_at": "2025-12-02",
+"python": "3.12",
+"install": "pip install uv --quiet && uv pip install --system --group optionals --group testing . --quiet",
+"n_files": 1,
+"gold_lines": 16,
+"n_test_files": 1,
+"f2p": 1,
+"p2p": 3,
+"ps_len": 820,
+"src": "lb",
+"split": "A",
+"part": 1
+},
+{
+"instance_id": "collective__icalendar-880",
+"repo": "collective/icalendar",
+"created_at": "2025-07-16",
+"img": "python_base_310",
+"lines": 17,
+"diff": "easy",
+"cats": [
+"minor_bug"
+],
+"prlen": 2478,
+"src": "v2",
+"split": "A",
+"part": 1
+},
+{
+"instance_id": "ardupilot__methodicconfigurator-1201",
+"repo": "ArduPilot/MethodicConfigurator",
+"created_at": "2026-01-22",
+"python": "3.12",
+"install": "pip install -q -e . && pip install -q pytest pyautogui",
+"n_files": 1,
+"gold_lines": 5,
+"n_test_files": 1,
+"f2p": 1,
+"p2p": 242,
+"ps_len": 1153,
+"src": "lb",
+"split": "A",
+"part": 1
+},
+{
+"instance_id": "cta-observatory__ctapipe-2732",
+"repo": "cta-observatory/ctapipe",
+"created_at": "2025-04-02",
+"img": "python_base_310",
+"lines": 13,
+"diff": "easy",
+"cats": [
+"minor_bug"
+],
+"prlen": 147,
+"src": "v2",
+"split": "A",
+"part": 1
+}
+]
