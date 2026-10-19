@@ -514,3 +514,10 @@ gemma_agent/
   and it writes more per step (380-490 completion tokens/step at 10-25k context vs 270-305 for v29), so
   the compaction savings are more than eaten. The solver also ignored its 25-call cap (28/28 on 10 of 12
   tasks), so the empty-patch guard rarely had calls left. Not submitted.
+- Eval set v1 ready (gemma_agent/evalset/, Kaggle kernel source anandsingh8687/evalset-v1-merge):
+  161 valid tasks / 128 repos (SWE-rebench family, 2025-02..2026-05, PR-style text, blank hints,
+  max async share 1.56%), split A 89 (tuning) / B 72 (sealed); 6 interface-dependent tasks flagged.
+  Lab tooling: make_lab --data-dir/--sandbox docker-like/--internet, timepred.py (within 0.8% of the
+  real-clock lab17 runs), stats.py (McNemar, bootstrap, mechanism dashboard), selftest.py.
+- Lab 20 (running): v29 vs v30 paired on 60 split-A eval tasks (ev20a/ev20b), corrected virtual clock.
+  Questions: calibration vs LB (~16%), failure breakdown on unfamiliar repos, v30 non-inferiority + time.
