@@ -544,3 +544,6 @@ gemma_agent/
   stop, judge failing tests against the issue since hidden tests replace outdated ones, feature-sibling
   rules), with all three reviewers' required edits merged (research_v32.md). Needs the eval-set gate after
   the 10-24 quota reset: tokens/calls <= v30, solves >= v30 on split A.
+- Lab 20b: still RUNNING at 10-19 08:08 UTC (6.4 h) with an empty live log; probably hung or waiting
+  for an accelerator after the quota ran out (quota shows 32.5 h used of 30). The CLI cannot cancel it;
+  ask the user to stop it in the Kaggle UI (gemma-agent-lab20b). Its 30 tasks are treated as lost.
