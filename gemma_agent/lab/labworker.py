@@ -476,6 +476,19 @@ def find_python313(data_dir: Path | None = None, explicit: str | None = None,
     return None
 
 
+def find_kit_dir(roots: tuple = ("/kaggle/input",)) -> Path | None:
+    """An attached input (e.g. the py313kit kernel output) holding python313.tar.gz, at most 5 levels deep."""
+    for root in roots:
+        if not os.path.isdir(root):
+            continue
+        for dirpath, dirnames, filenames in os.walk(root):
+            if dirpath[len(root):].count(os.sep) >= 5:
+                dirnames[:] = []
+            if "python313.tar.gz" in filenames:
+                return Path(dirpath)
+    return None
+
+
 def install_python313_online(log=print) -> str | None:
     """Kernel with internet: pip install uv; uv python install 3.13 (python-build-standalone)."""
     try:
@@ -537,6 +550,13 @@ def prepare_sandbox_env(data_dir: Path, opts: dict, log=print, competition_dir: 
         env["sandbox_dir"] = str(Path(competition_dir) / "sandbox")  # -> KAGGLE_SANDBOX_DIR in the worker
     if opts.get("sandbox") == "docker-like":
         py = find_python313(data_dir, opts.get("py313"))
+        kit = None
+        if py is None and not opts.get("py313"):
+            kit = find_kit_dir()  # GPU kernels with the competition attached cannot enable internet
+            if kit is not None:
+                py = find_python313(kit)
+                opts = dict(opts, image_wheel_dirs=list(opts.get("image_wheel_dirs", [])) + [str(kit / "image_wheels")])
+                log("docker-like sandbox: using kit", kit)
         if py is None and opts.get("internet"):
             py = install_python313_online(log)
         if py is None:

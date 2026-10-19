@@ -521,3 +521,7 @@ gemma_agent/
   real-clock lab17 runs), stats.py (McNemar, bootstrap, mechanism dashboard), selftest.py.
 - Lab 20 (running): v29 vs v30 paired on 60 split-A eval tasks (ev20a/ev20b), corrected virtual clock.
   Questions: calibration vs LB (~16%), failure breakdown on unfamiliar repos, v30 non-inferiority + time.
+- GPU kernels with the competition attached cannot enable internet ("Internet cannot be enabled for this
+  competition with the current accelerator"), so the docker-like sandbox gets python3.13 + image wheels
+  from a CPU kit kernel (anandsingh8687/py313kit, gemma_agent/lab/py313kit/kit.py) attached as a kernel
+  source; labworker.find_kit_dir() locates it. Lab 20 relaunched this way.
