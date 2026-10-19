@@ -532,3 +532,8 @@ gemma_agent/
   all gold files touched but wrong logic 4, wrong files only 3. 16/30 tasks need 2-4 files.
   Lab 20b (other 30 tasks) ran out of weekly GPU quota (0.23 h left at 04:50 UTC); likely lost.
   GPU quota exhausted until 10-24 00:00 UTC.
+- CORRECTION to the lab 20a breakdown: counting gold SOURCE files only (changelog/docs excluded; hidden
+  tests never check them), 21/30 tasks need one source file and v29's 19 failures are: right files but
+  wrong logic 10, empty patch 6, wrong files 3 (v30: 9 / 7 / 1, +1 partial). Localisation is mostly fine;
+  the targets are semantic correctness once the file is found, and empty patches. v32 design workflow
+  (CPU only) running on the 21 failed eval tasks.
