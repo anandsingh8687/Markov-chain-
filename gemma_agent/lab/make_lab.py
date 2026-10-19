@@ -339,6 +339,10 @@ def main() -> None:
                     help="s per LLM call (default 0.164 with measured tool seconds, 0.95 with --vc-no-tool-seconds)")
     ap.add_argument("--vc-per-token", type=float, default=None,
                     help="s per completion token (default 0.0221, or 0.0287 with --vc-no-tool-seconds)")
+    ap.add_argument("--vc-per-kuncached", type=float, default=None,
+                    help="opt-in: s per 1k uncached prompt tokens (timepred fit 0.335; off by default)")
+    ap.add_argument("--vc-per-compaction", type=float, default=None,
+                    help="opt-in: s per ADK compaction, prompt < 0.7x the stream's previous one (timepred fit 25.4)")
     ap.add_argument("--vc-no-tool-seconds", action="store_true",
                     help="token clock fitted on total task time (0.95/0.0287) without measured tool seconds")
     ap.add_argument("--real-factor", type=float, default=3.0, help="real asyncio cap = factor x nominal (virtual clock)")
@@ -413,6 +417,9 @@ def main() -> None:
         print("warning: a virtual/scaled clock is only meaningful with --concurrency > 1")
     clock_args = {"per_call": a.vc_per_call, "per_token": a.vc_per_token, "real_factor": a.real_factor,
                   "wall_scale": a.wall_scale, "tool_seconds": not a.vc_no_tool_seconds}
+    for k, v in (("per_kuncached", a.vc_per_kuncached), ("per_compaction", a.vc_per_compaction)):
+        if v is not None:  # only when given, so old command lines produce the same kernel
+            clock_args[k] = v
     code = build_kernel(bundles, tasks, a.concurrency, a.replicates, clock, clock_args, a.seed, a.metrics_interval,
                         data_opts or None)
     a.out.mkdir(parents=True, exist_ok=True)

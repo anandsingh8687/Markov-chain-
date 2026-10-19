@@ -25,7 +25,11 @@ submission and the prompt are untouched (eval_config time_minutes stays nominal)
   * constants: by default 0.164 s/call + 0.0221 s/token, refit WITHOUT tool time on the sequential
     Kaggle logs, plus the measured tool seconds (tool_seconds=True). The older 0.95 s/call +
     0.0287 s/token was fitted on total task time and already holds the average tool time, so it is
-    used only with tool_seconds=False (then no measured tool time is added).
+    used only with tool_seconds=False (then no measured tool time is added). Opt-in (make_lab
+    --vc-per-kuncached / --vc-per-compaction, off by default): timepred's prefill term per 1k uncached prompt
+    tokens and a fixed charge per ADK compaction (prompt < 0.7 x the stream's previous prompt). For the
+    timepred-calibrated clock pass --vc-per-call 0.115 --vc-per-token 0.02855 --vc-per-kuncached 0.335
+    --vc-per-compaction 25.4.
   * tool seconds: swegemma.sandbox.subprocess.SubprocessManager.exec (subprocess.py:418)
     is wrapped (re-entrancy safe); counted only between start_agent_session and
     stop_agent_session (context.py:183-193), which are wrapped too. Rows report vc_tool_seconds
@@ -110,6 +114,10 @@ class _ClockState:
         self.v_at_submit = None
         self.local = threading.local()
         self.per_call, self.per_token, self.count_tools = PER_CALL_S, PER_TOKEN_S, True
+        # opt-in prefill / compaction terms (timepred's step model; 0 = off, the default clock is unchanged)
+        self.per_kuncached, self.per_compaction = 0.0, 0.0
+        self.prev_prompt: dict = {}  # stream (author) -> prompt tokens of its previous call
+        self.compactions = 0
         self.mode, self.real_factor, self.wall_scale = "real", 1.0, 1.0
         self.committed = 0.0  # closed epochs and serial calls (LLM part only)
         self.epoch: dict = {}  # branch -> LLM seconds in the open parallel epoch
@@ -125,10 +133,26 @@ class _ClockState:
         self.committed, self.epoch, self.last_call_wall, self.branch_calls = 0.0, {}, {}, {}
         self.text_turns, self.loads = [], []
         self.calllog = [{"k": "start", "t": round(time.time(), 3)}]
+        self.prev_prompt, self.compactions = {}, 0
         self.seen.clear()
 
-    def charge_call(self, branch: str, tokens: int) -> None:
+    def prompt_cost(self, stream: str, prompt_tokens: int) -> float:
+        """per_kuncached x uncached prompt k-tokens (growth of this stream's prompt since its previous call; the
+        first call pays its whole prompt) + per_compaction when the prompt drops below 0.7 x the previous one
+        (an ADK history compaction), as in timepred.py. 0 unless --vc-per-kuncached / --vc-per-compaction."""
+        if not (self.per_kuncached or self.per_compaction):
+            return 0.0
+        pt = max(0, int(prompt_tokens or 0))
+        prev = self.prev_prompt.get(stream, 0)
+        self.prev_prompt[stream] = pt
+        if prev and pt < 0.7 * prev:
+            self.compactions += 1
+            return self.per_compaction
+        return self.per_kuncached * max(0, pt - prev) / 1000.0
+
+    def charge_call(self, branch: str, tokens: int, prompt_tokens: int = 0, stream: str | None = None) -> None:
         cost = self.per_call + self.per_token * max(0, int(tokens))
+        cost += self.prompt_cost(branch if stream is None else stream, prompt_tokens)
         now = time.time()
         self.calls += 1
         self.tokens += max(0, int(tokens))
@@ -200,7 +224,8 @@ def _is_text_turn(event) -> bool:
 
 
 def install_clock(mode: str = "virtual", per_call: float | None = None, per_token: float | None = None,
-                  real_factor: float = 3.0, wall_scale: float = 1.0, tool_seconds: bool = True) -> _ClockState:
+                  real_factor: float = 3.0, wall_scale: float = 1.0, tool_seconds: bool = True,
+                  per_kuncached: float | None = None, per_compaction: float | None = None) -> _ClockState:
     """Patch the harness in THIS process. mode: 'virtual' | 'scaled' | 'real' (measure only).
 
     tool_seconds=True: LLM-only constants (PER_CALL_S / PER_TOKEN_S) + measured sandbox seconds.
@@ -215,6 +240,7 @@ def install_clock(mode: str = "virtual", per_call: float | None = None, per_toke
     st.count_tools = bool(tool_seconds)
     st.per_call = per_call if per_call is not None else (PER_CALL_S if tool_seconds else TOKEN_ONLY_PER_CALL_S)
     st.per_token = per_token if per_token is not None else (PER_TOKEN_S if tool_seconds else TOKEN_ONLY_PER_TOKEN_S)
+    st.per_kuncached, st.per_compaction = float(per_kuncached or 0.0), float(per_compaction or 0.0)
     C = ctxmod.SwegemmaContext
     orig_start, orig_stop, orig_handle = C.start_agent_session, C.stop_agent_session, C.handle_adk_event
     orig_elapsed = C.__dict__["agent_elapsed_seconds"]
@@ -248,8 +274,9 @@ def install_clock(mode: str = "virtual", per_call: float | None = None, per_toke
                     st.seen.add(key)
                     usage = getattr(event, "usage_metadata", None)
                     toks = int(getattr(usage, "candidates_token_count", 0) or 0) if usage is not None else 0
+                    ptoks = int(getattr(usage, "prompt_token_count", 0) or 0) if usage is not None else 0
                     branch = getattr(event, "branch", None) or ""
-                    st.charge_call(branch, toks)
+                    st.charge_call(branch, toks, ptoks, (getattr(event, "author", "") or "") + "|" + branch)
                     if _is_text_turn(event):
                         st.text_turns.append((branch, round(st.vnow(), 1), not getattr(self, "patch_submitted", False)))
             if st.v_at_submit is None and getattr(self, "patch_submitted", False):
@@ -727,7 +754,8 @@ def run_job(job: dict) -> dict:
     extra: dict = {}
     try:
         st = install_clock(job.get("clock", "real"), job.get("per_call"), job.get("per_token"),
-                           job.get("real_factor", 3.0), job.get("wall_scale", 1.0), job.get("tool_seconds", True))
+                           job.get("real_factor", 3.0), job.get("wall_scale", 1.0), job.get("tool_seconds", True),
+                           job.get("per_kuncached"), job.get("per_compaction"))
         captured = install_patch_capture(job["extra_patches"]) if job.get("extra_patches") else None
         import litellm
         import yaml
@@ -832,6 +860,8 @@ def run_job(job: dict) -> dict:
             "virtual_seconds": round(st.vnow(), 1) if ctx is not None else None,
             "virtual_at_submit": st.v_at_submit, "clock": st.mode, "real_cap_factor": st.real_factor,
             "vc_per_call": st.per_call, "vc_per_token": st.per_token, "vc_tool_seconds_counted": st.count_tools,
+            **({"vc_per_kuncached": st.per_kuncached, "vc_per_compaction": st.per_compaction,
+                "vc_compactions": st.compactions} if (st.per_kuncached or st.per_compaction) else {}),
             "vc_llm_calls": st.calls, "vc_completion_tokens": st.tokens, "vc_tool_seconds": round(st.tool_s, 1),
             "vc_llm_seconds": round(st.llm_seconds(), 1), "vc_branch_calls": st.branch_calls,
             # text-only model turns before submit_patch (inside a ParallelAgent each ends that branch's run)

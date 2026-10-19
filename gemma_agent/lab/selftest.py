@@ -105,6 +105,17 @@ def unit(work: Path) -> None:
     check("tmpdir" not in ex4, "job_extras: shared wheels -> no TMPDIR (harness default)")
     ex_off = labworker.job_extras(d, "t2", {"per_task_wheels": False, "work_root": str(root / "w")}, {})
     check("tmpdir" not in ex_off, "job_extras: --no-per-task-wheels")
+    # virtual clock: default unchanged; opt-in prefill + compaction terms follow timepred's step model
+    st0 = labworker._ClockState()
+    st0.charge_call("", 100, 5000, "lead|")
+    st1 = labworker._ClockState()
+    st1.per_kuncached, st1.per_compaction = 0.335, 25.4
+    for pt_ in (5000, 8000, 2000):  # first call pays 5k, then +3k growth, then a compaction (2k < 0.7 x 8k)
+        st1.charge_call("", 100, pt_, "lead|")
+    want = 3 * (st1.per_call + 100 * st1.per_token) + 0.335 * 8 + 25.4
+    check(abs(st0.llm_seconds() - (st0.per_call + 100 * st0.per_token)) < 1e-9
+          and abs(st1.llm_seconds() - want) < 1e-9 and st1.compactions == 1,
+          "virtual clock: prefill/compaction terms off by default, timepred-style when set")
     # patch files, stats
     pt = "diff --git a/x.py b/x.py\n--- a/x.py\n+++ b/x.py\n"
     check(labworker.patch_files(pt) == ["x.py"] and stats.timepred_patch_files("--- a/y.py\n+++ b/y.py\n") == ["y.py"],
@@ -203,7 +214,10 @@ def phase2(work: Path, data: Path, comp: Path, ids: list, py313: str, image: str
     opts = {"per_task_wheels": True, "sandbox": "docker-like", "py313": py313, "image_dir": image,
             "work_root": str(work / "p2work"), "no_graphs": True}
     env = labworker.prepare_sandbox_env(data, opts, print, comp)
-    check(env.get("sandbox_dir") == str(comp / "sandbox"), "setup.py fallback to the competition sandbox dir")
+    if (Path(data) / "sandbox" / "setup.py").is_file():  # e.g. the evalset-v1-merge layout ships sandbox/
+        check(not env.get("sandbox_dir"), "data dir's own sandbox/setup.py is used (no fallback)")
+    else:
+        check(env.get("sandbox_dir") == str(comp / "sandbox"), "setup.py fallback to the competition sandbox dir")
     jobs = []
     for tid in ids:
         for mode in ("gold", "empty"):

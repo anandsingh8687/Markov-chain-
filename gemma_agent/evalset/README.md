@@ -72,6 +72,7 @@ The pilot was a test run; the merge leaves it out. The merge output is 17 GB: sn
   - Median length 359 characters; the public median is 418.
 - **Repos created on or after 2025-01:** only 2 (`ids_new_repos.txt`: mempalace-1004, mtplx-21). The "unseen repo" subset is too small to report on its own. Most candidates are new fixes in repos that already existed.
 - **Gold-patch verify time:** median 49 s, max 584 s.
+- **`_interface` tasks (6, `v1/ids_interface.txt`; A 2, B 4):** SWE-rebench-leaderboard variants whose tests need names or behaviour given only in the dataset's `interface` field (for example the private `_get_wait_time` in stravalib-709, the `original_participant_id` column in nwb2bids-347). Our rows use the PR text and drop that field, so these 6 may be harder than the hidden tasks. Report results with and without them.
 
 **Rejects (259)**
 - **Build stage (124):** mostly the async share over 1.8%. The rest:
