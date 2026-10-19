@@ -525,3 +525,10 @@ gemma_agent/
   competition with the current accelerator"), so the docker-like sandbox gets python3.13 + image wheels
   from a CPU kit kernel (anandsingh8687/py313kit, gemma_agent/lab/py313kit/kit.py) attached as a kernel
   source; labworker.find_kit_dir() locates it. Lab 20 relaunched this way.
+- Lab 20a (eval split A, 30 tasks, unseen-style repos): v29 11/30, v30 12/30 (both 9, v29-only 2,
+  v30-only 3); v30 3% fewer tokens, predicted agent time 312 vs 323 s, 0 vs 2 timeouts. v29 solves 37%
+  here vs ~17% on the LB, so the eval set is easier than the hidden set (filter kept fixes of <= 3 .py
+  files, <= 150 lines). v29 failure breakdown (19): empty patch 6, fixed only SOME of the gold files 6,
+  all gold files touched but wrong logic 4, wrong files only 3. 16/30 tasks need 2-4 files.
+  Lab 20b (other 30 tasks) ran out of weekly GPU quota (0.23 h left at 04:50 UTC); likely lost.
+  GPU quota exhausted until 10-24 00:00 UTC.
