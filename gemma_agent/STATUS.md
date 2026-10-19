@@ -537,3 +537,10 @@ gemma_agent/
   wrong logic 10, empty patch 6, wrong files 3 (v30: 9 / 7 / 1, +1 partial). Localisation is mostly fine;
   the targets are semantic correctness once the file is found, and empty patches. v32 design workflow
   (CPU only) running on the 21 failed eval tasks.
+- v32 (bundle_v32, CPU-checked; v30 YAML): prompt from the eval-set failure analysis (21 tasks, 6 judged
+  unfixable by prompt: info not in issue / env). Targets: empty patches (edit first when the change is
+  known; reproducer misuse errors dropped fast; after a compaction summary, git diff then continue) and
+  wrong logic (check each site the case reaches, issue's example verbatim, match the issue's wording then
+  stop, judge failing tests against the issue since hidden tests replace outdated ones, feature-sibling
+  rules), with all three reviewers' required edits merged (research_v32.md). Needs the eval-set gate after
+  the 10-24 quota reset: tokens/calls <= v30, solves >= v30 on split A.
