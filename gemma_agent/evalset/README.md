@@ -45,3 +45,42 @@ Lab use:
 - For each task, set `wheels_dir = DATA_DIR/wheels_by_task/<id>` and give the task its own TMPDIR.
 - Use the docker-like sandbox manager from `official/run_official.py` with `--deps image` semantics. This is the configuration the gold checks used.
 - Tune on `ids_A.txt`. Run `ids_B.txt` only for sealed gates, and do not read its trajectories.
+
+## Results of the 10-18/19 build
+
+**Kernels (all private, CPU, internet on)**
+
+| Kernel | Candidates | Valid | Repos | Hours |
+|---|---|---|---|---|
+| `anandsingh8687/evalset-v1-build-pilot` | 10 | 4 | – | 0.3 |
+| `anandsingh8687/evalset-v1-build-part1` | 105 | 40 | 30 | 1.9 |
+| `anandsingh8687/evalset-v1-build-part2` | 105 | 37 | 27 | 2.6 |
+| `anandsingh8687/evalset-v1-build-part3` | 105 | 37 | 31 | 1.4 |
+| `anandsingh8687/evalset-v1-build-part4` | 105 | 47 | 40 | 1.9 |
+| `anandsingh8687/evalset-v1-merge` | – | **161** | **128** | – |
+
+The pilot was a test run; the merge leaves it out. The merge output is 17 GB: snapshots 5.4 GB and wheels 10.3 GB.
+
+**The merged set (161 valid tasks)**
+- **Splits:** A 89, B 72. A/B was drawn at 60/40 over candidate repos, so the share of valid tasks drifts with how many survive in each.
+- **Sources:**
+  - 85 SWE-rebench-leaderboard, 73 V2, 3 SWE-rebench.
+  - Repos: 95 have 1 task, 33 have 2.
+- **Task dates:** 2025-02-02 to 2026-05-12.
+- **`problem_statement` sources:**
+  - 87 `gh_pr`, 73 `v2_pr`, 1 `issue` (movingpandas-469, whose PR fetch failed).
+  - Median length 359 characters; the public median is 418.
+- **Repos created on or after 2025-01:** only 2 (`ids_new_repos.txt`: mempalace-1004, mtplx-21). The "unseen repo" subset is too small to report on its own. Most candidates are new fixes in repos that already existed.
+- **Gold-patch verify time:** median 49 s, max 584 s.
+
+**Rejects (259)**
+- **Build stage (124):** mostly the async share over 1.8%. The rest:
+  - deps install failures: setuptools-scm with no tags, `uv` `required-version`, monorepo subpackages, C++ backends;
+  - wheel sets over 1.5 GB (optuna, SDV).
+- **Check stage (135):** gold fails under the harness's own `pytest.ini`/env, for example:
+  - DISPLAY or GUI imports;
+  - a missing generated `_version.py`;
+  - an added `test_*` that is not collected or is skipped (exit 0 but not resolved);
+  - timeouts.
+
+Small copies in this repo: `v1/ids_{all,A,B,new_repos}.txt`, `v1/summary.json`, `v1/tasks_index.jsonl` (per-task metadata without F2P/P2P).
