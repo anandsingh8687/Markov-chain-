@@ -553,3 +553,7 @@ gemma_agent/
 - 10-20 22:17 UTC: v30 submitted (ref 57454588, user-approved).
 - Lab 21 (running, last ~2 GPU h of the week): v32 on 24 of lab20a's eval tasks, paired with lab20a
   v29/v30 for tokens, calls, predicted time and solves. Submit v32 only if time <= v29 and solves hold.
+- Lab 21 (v32 on 24 lab20a eval tasks, paired with lab20a): v32 10/24 vs v29 9, v30 9; empty patches 3
+  vs 5/6; v32 +9% completion tokens (9.7k vs 8.9k), predicted scorer time 1.02x v29 (v30 0.975x),
+  4 vs 2/0 tasks at the 8-min cap. Mechanism (fewer empty patches) confirmed; gain within noise; time
+  margin thinner than v29 (v28 failed at ~1.075x).
