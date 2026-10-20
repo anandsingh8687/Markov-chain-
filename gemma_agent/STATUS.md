@@ -547,3 +547,9 @@ gemma_agent/
 - Lab 20b: still RUNNING at 10-19 08:08 UTC (6.4 h) with an empty live log; probably hung or waiting
   for an accelerator after the quota ran out (quota shows 32.5 h used of 30). The CLI cannot cancel it;
   ask the user to stop it in the Kaggle UI (gemma-agent-lab20b). Its 30 tasks are treated as lost.
+- v29 third draw 0.15 -> v29 mean 0.16 over 3 draws (0.18, 0.15, 0.15).
+- Lab 20b completed after all: v29 10/30, v30 8/30. Pooled 60 eval tasks: v29 21, v30 20 (equal within
+  noise); v30 ~5% fewer completion tokens (8.7k vs 9.2k).
+- 10-20 22:17 UTC: v30 submitted (ref 57454588, user-approved).
+- Lab 21 (running, last ~2 GPU h of the week): v32 on 24 of lab20a's eval tasks, paired with lab20a
+  v29/v30 for tokens, calls, predicted time and solves. Submit v32 only if time <= v29 and solves hold.
