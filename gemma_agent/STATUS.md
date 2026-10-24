@@ -557,3 +557,6 @@ gemma_agent/
   vs 5/6; v32 +9% completion tokens (9.7k vs 8.9k), predicted scorer time 1.02x v29 (v30 0.975x),
   4 vs 2/0 tasks at the 8-min cap. Mechanism (fewer empty patches) confirmed; gain within noise; time
   margin thinner than v29 (v28 failed at ~1.075x).
+- v30 public 0.15 (single draw). LB draws so far for the native-tool family: v29 0.18/0.15/0.15, v30 0.15.
+- 10-24 07:55 UTC: v32 submitted (ref 57587262, user-approved). Slots 10-21..10-23 went unused (session idle).
+  GPU quota reset to 30 h on 10-24.
