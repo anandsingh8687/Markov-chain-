@@ -1,0 +1,13 @@
+name: fixer
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Fast single-agent fixer with repository tools for locating code and checking the patch.
+instruction: !include prompts/system.md
+tools:
+  - run_command
+  - read_file
+  - edit_file
+  - get_status
+  - submit_patch
+skills:
+  - skills/swe-tools
+generate_content_config: !include configs/sampling.yaml

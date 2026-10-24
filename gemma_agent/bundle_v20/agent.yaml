@@ -1,0 +1,19 @@
+name: fixer
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Single fixer that delegates code localization to a fresh-context scout, then implements, checks and submits.
+instruction: !include prompts/system.md
+tools:
+  - run_command
+  - get_status
+  - submit_patch
+  - search_similar_code
+  - get_code_neighbors
+  - get_code_subgraph
+  - read_file
+  - edit_file
+  - write_file
+  - agent_tool:
+      config_path: sub_agents/scout.yaml
+skills:
+  - skills/swe-tools
+generate_content_config: !include configs/sampling.yaml
