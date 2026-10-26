@@ -30,3 +30,7 @@ Rules:
 - Never create, edit or delete test files. Do not install packages.
 - Do not rewrite whole files. Change only the lines that need it.
 - If get_status shows less than 60 seconds left, call submit_patch.
+
+The issue, verbatim. Older messages may be summarized later, but this copy always stays here:
+
+{problem_description}
