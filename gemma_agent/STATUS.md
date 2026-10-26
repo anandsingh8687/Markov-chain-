@@ -648,3 +648,7 @@ gemma_agent/
   the upstream 0.21 array-parser guard in lab kernels and logs LABGUARD per would-be hang (0/20,000 fuzz
   hangs after the patch vs ~76 before). Lab kernels lab25a/b (v33t/v35/v36, split A), lab26, lab27 (E4B
   s3/s4) generated in the scratchpad for the 10-31 reset.
+- 10-26 21:25 lab 28s (E4B s3 smoke, 12 split-A tasks, parser guard on, last 1.4 GPU h of the week): 1/12
+  solved (tweag fawltydeps-492), 12/12 non-empty patches, 0 LABGUARD events, 2 timeouts at the 5-min cap,
+  mean ~180 virtual s/task, 3-10k completion tokens. Same 12 tasks: s1 0, s2 0, v29 2, v33t 3.
+  s3 cleared for the 10-27 leaderboard slot.
