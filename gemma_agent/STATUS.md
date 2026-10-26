@@ -595,3 +595,6 @@ gemma_agent/
 - Lab 22 failure breakdown: v29 solved 30 / wrong 37 / empty 8 / timeout 8 / turn-limit loops 4;
   v33t solved 34 / wrong 28 / empty 13 / timeout 12 / loops 0. T 1.0 mainly cuts wrong patches and loops.
   All 12 v33t timeouts were also unsolved by v29 (hard tasks, 14-17k tokens, single steps up to ~4.9k).
+- Lab 24 (paired, 68 sealed split-B tasks): v34 (thinking 2048, 32 calls) 21/68 vs v33t 20/68 (6 vs 5
+  only, p 1.0); same tokens (9.1k), more timeouts (11 vs 7), fewer empties (8 vs 12). No gain; v33t stays
+  the base. Weekly GPU quota spent (28.6/30 h, resets 10-31).
