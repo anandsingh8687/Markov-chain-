@@ -84,7 +84,7 @@ def table_mix():
         if r["task_set"] != "evalset" or r["interface_task"] == "1" or r["outcome"] == "server_hang":
             continue
         g = (r["bundle"], {"lab20a": "A", "lab20b": "A", "lab21": "A", "lab22a": "A", "lab22b": "A",
-                           "lab23": "A", "lab24": "B"}[r["lab"]], r["lab"][:5])
+                           "lab23": "A", "lab24": "B", "lab28s": "A"}[r["lab"]], r["lab"][:5])
         groups[g][r["outcome"]] += 1
         if r["completion_tokens"]:
             tok[g].append(float(r["completion_tokens"]))
@@ -226,6 +226,24 @@ def table_compaction(bundle="v33t"):
     for key in ("no compaction", "first edit before compaction", "compaction before first edit", "compaction, never edited"):
         print(f"| {key} | {c[key, 0] + c[key, 1]} | {c[key, 1]} |")
 
+
+def table_malformed():
+    """Tool calls whose parsed name/argument keys are not the tool's own (outcomes.csv, from the trajectories)."""
+    c = collections.defaultdict(lambda: [0, 0])
+    for r in R:
+        if r["traced_calls"] in ("", "0"):
+            continue
+        k = (r["model"], r["bundle"])
+        c[k][0] += int(r["malformed_calls"])
+        c[k][1] += int(r["traced_calls"])
+    print("\n## Malformed tool calls per traced call\n")
+    print("| model | bundle | malformed / traced calls | rate |")
+    print("|---|---|---|---|")
+    for k in sorted(c):
+        b, n = c[k]
+        print(f"| {k[0]} | {k[1]} | {b}/{n} | {100 * b / n:.1f}% |")
+
+
 ap = argparse.ArgumentParser()
 ap.add_argument("--meta")
 a = ap.parse_args()
@@ -236,3 +254,4 @@ table_power()
 if a.meta:
     table_profile(a.meta)
 table_compaction()
+table_malformed()

@@ -27,9 +27,9 @@ LABS = {  # lab -> (task set, clock)
     "lab18a": ("dev", "virtual"), "lab18b": ("dev", "virtual"),
     "lab20a": ("evalset", "virtual"), "lab20b": ("evalset", "virtual"), "lab21": ("evalset", "virtual"),
     "lab22a": ("evalset", "virtual"), "lab22b": ("evalset", "virtual"),
-    "lab23": ("evalset", "virtual"), "lab24": ("evalset", "virtual"),
+    "lab23": ("evalset", "virtual"), "lab24": ("evalset", "virtual"), "lab28s": ("evalset", "virtual"),
 }
-MODEL = {"s1": "e4b", "s2": "e4b"}
+MODEL = {"s1": "e4b", "s2": "e4b", "s3": "e4b", "s4": "e4b"}
 
 
 def outcome(r):
@@ -47,14 +47,38 @@ def outcome(r):
     return "wrong"
 
 
+# argument names of the harness tools (swegemma tools/execution.py, workspace.py, graph.py)
+TOOL_ARGS = {
+    "run_command": {"command"}, "read_file": {"filepath", "start_line", "end_line"},
+    "edit_file": {"filepath", "old_string", "new_string", "allow_multiple"}, "write_file": {"filepath", "content"},
+    "get_status": set(), "submit_patch": set(), "search_similar_code": {"query", "k"},
+    "get_code_neighbors": {"node", "edge_type", "max_neighbors"}, "get_code_subgraph": {"nodes"},
+}
+
+
+def malformed(call):
+    """A parsed tool call whose name or argument keys are not the tool's own (broken <|"|> delimiting)."""
+    a = call.get("arguments") or {}
+    if isinstance(a, str):
+        try:
+            a = json.loads(a)
+        except ValueError:
+            return True
+    name = call.get("function_name")
+    return name not in TOOL_ARGS or not set(a) <= TOOL_ARGS[name]
+
+
 def trace_fields(path):
     """LLM-step index of the first history compaction (prompt < 0.7 x previous) and of the first edit."""
     if not path.exists():
-        return {"llm_steps": "", "first_compaction_step": "", "first_edit_step": ""}
+        return {"llm_steps": "", "first_compaction_step": "", "first_edit_step": "", "traced_calls": "", "malformed_calls": ""}
     d = json.load(open(path))
     prev = comp = edit = None
-    k = 0
+    k = n_calls = n_bad = 0
     for st in d["steps"]:
+        for t in st.get("tool_calls") or []:
+            n_calls += 1
+            n_bad += malformed(t)
         pt = (st.get("metrics") or {}).get("prompt_tokens")
         if pt:
             k += 1
@@ -64,7 +88,8 @@ def trace_fields(path):
         for t in st.get("tool_calls") or []:
             if t.get("function_name") in ("edit_file", "write_file") and edit is None:
                 edit = k
-    return {"llm_steps": k, "first_compaction_step": comp or "", "first_edit_step": edit or ""}
+    return {"llm_steps": k, "first_compaction_step": comp or "", "first_edit_step": edit or "",
+            "traced_calls": n_calls, "malformed_calls": n_bad}
 
 
 root = Path(sys.argv[1])
