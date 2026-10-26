@@ -588,3 +588,10 @@ gemma_agent/
 - bundle_v34 = v33t + thinking_budget 2048 + max_tool_calls 32 (prompt limit text updated): spend the
   thinking-cap token savings on more calls. Lab 24 (running): v33t vs v34 paired on the 68 sealed
   split-B tasks (interface tasks excluded). Lab 23 (E4B s1 vs s2, 43 tasks) still running.
+- Lab 23 (E4B, 43 split-A tasks): s1 0/43, s2 0/43 (31B v33t: 15/43). E4B runs away on generation:
+  ~6.5 model calls/task at ~120 s each (vLLM ~150 tok/s aggregate, i.e. ~8k-token outputs per call),
+  half the tasks hit the session timeout with no edit. Needs hard caps (max_output ~1024, small thinking
+  budget) before it can score; small-model track deprioritised behind the main track.
+- Lab 22 failure breakdown: v29 solved 30 / wrong 37 / empty 8 / timeout 8 / turn-limit loops 4;
+  v33t solved 34 / wrong 28 / empty 13 / timeout 12 / loops 0. T 1.0 mainly cuts wrong patches and loops.
+  All 12 v33t timeouts were also unsolved by v29 (hard tasks, 14-17k tokens, single steps up to ~4.9k).
