@@ -584,3 +584,4 @@ gemma_agent/
   v33t-only 7, v29-only 3 (McNemar p 0.34); loops ending at the 80-turn limit 0 vs 4; 8-min timeouts
   12 vs 8; empty 18 vs 15; completion tokens 8.9k both; predicted scorer time +0.9% / +2.8% vs v29.
   Direction agrees with Idris LB (+3 tasks) and Ayush local (+3/129). Candidate for the next slot.
+- 10-26 11:50 UTC: v33t submitted (user-approved).
