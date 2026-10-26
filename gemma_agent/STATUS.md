@@ -639,3 +639,12 @@ gemma_agent/
   (outcomes, lb, 451 trajectories on licensed repos, 11 bundles, code). The evalset-v1-merge output and the
   evalset-build-inputs dataset contain competition files (sandbox/setup.py, docker shims) and must never be
   attached to the writeup or made public.
+- Context-growth finding (v33t traces): read_file is 67% of all tool-output chars (1,343 calls, ~8.7/run,
+  median 2.0k chars, p90 5.7k, cap 10k) although the prompt asks for 80-line cat|sed slices; after a
+  compaction the agent re-reads the same files (one run read the same file 6 times) and compacts again
+  within 5-10 steps. ADK token-threshold compaction folds everything but the last 5 events (incl. the
+  task message) into a rolling LLM summary. bundle_v36 = v35 without read_file and graph tools (reads only
+  via run_command, capped at 5,000 chars). bundle_s4 = s3 at T 0.3. make_lab --guard-gemma4-parser applies
+  the upstream 0.21 array-parser guard in lab kernels and logs LABGUARD per would-be hang (0/20,000 fuzz
+  hangs after the patch vs ~76 before). Lab kernels lab25a/b (v33t/v35/v36, split A), lab26, lab27 (E4B
+  s3/s4) generated in the scratchpad for the 10-31 reset.
