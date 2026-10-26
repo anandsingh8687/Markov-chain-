@@ -1,0 +1,11 @@
+name: fixer
+model: gemma-4-31b-it-qat-w4a16-ct
+description: v35 without read_file and graph tools, so every read is a bounded run_command slice and history compacts less often.
+instruction: !include prompts/system.md
+tools:
+  - run_command
+  - edit_file
+  - write_file
+  - get_status
+  - submit_patch
+generate_content_config: !include configs/sampling.yaml
