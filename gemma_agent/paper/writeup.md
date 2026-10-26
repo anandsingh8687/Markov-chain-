@@ -201,7 +201,7 @@ The parser runs in the API server's event loop, so one bad response freezes ever
   - debmalya84 releases 221 harder competition-format tasks without agent outcome tables;
   - zysbnd1, sslasme and Idris report many of the same negative results (fine-tuning, call caps, prompt rules) on other task sets, which our sealed-split results corroborate;
   - Idris first reported the sampling result on the leaderboard.
-- **Serving.** Later vLLM releases guard the array parser against this case (0.32.0 aborts with "made no progress … malformed input"), but the competition scorer pins 0.19.1, where it still applies.
+- **Serving.** Later vLLM releases guard the array parser against this case (from 0.21.0; 0.20.2 still loops), but the competition scorer pins 0.19.1, where it still applies.
 
 ## 6. Limitations
 

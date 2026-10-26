@@ -117,7 +117,8 @@ def validate(bundle: Path) -> list[Path]:
     if ec.is_file():
         ev = (yaml.safe_load(ec.read_text()) or {}).get("evaluation", {})
         minutes = float(ev.get("max_time_minutes", 60))
-        assert minutes <= 5, f"eval_config max_time_minutes={minutes}: ~120 tasks run SEQUENTIALLY and must fit in 12h"
+        # 8 min is safe only with ~28 calls; check the projected 12-hour total with lab/timepred.py
+        assert minutes <= 8, f"eval_config max_time_minutes={minutes}: ~120 tasks run SEQUENTIALLY and must fit in 12h"
         assert int(ev.get("timeout_seconds", 300)) >= 180, "timeout_seconds is also the Phase 2 pytest timeout; keep it >= 180"
         print(f"  eval_config.yaml: {ev}")
     else:

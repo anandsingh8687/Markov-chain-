@@ -619,3 +619,23 @@ gemma_agent/
   Malformed-call rates in traces: E4B s1 1.9%, s2 10.9%; 31B v29 1.0%, v33t 1.5-1.7% (31B: 0 hangs in
   ~10k calls). Explains the E4B "Notebook Threw Exception" reports. Small-model prize: public leader
   0.10, 12 teams at 0.08 (host notebook, 10-24). E4B bundle must minimise malformed calls.
+- 10-26 evening. vLLM parser loop: fixed upstream from vLLM 0.21.0 (0.20.2 still loops); the scorer pins
+  0.19.1. Public E4B evidence (research agent, scratchpad/e4bres): best public E4B configs score LB 0.05
+  (satwiksps) and 3-4/40 locally; E4B's failures are edit_file old_string mismatches (~45% of edits) and
+  quitting early, not localisation. bundle_s3 (E4B): 5 tools (no write_file, no graph tools: get_code_subgraph
+  is the only list-argument tool, i.e. the parser's array path), 378-word fixed recipe with exact command
+  templates and 1-3 line edits, T 1.0/top_k 64, thinking 2048, max_output 4096, 32 calls, 5 min. Compiles
+  with the official libraries. Planned as the 10-27 slot after v33t's draw.
+- Compaction finding (CPU, v33t's 155 eval runs): 141/155 runs compact at least once; the ADK summarizer
+  prompt keeps only "the essence", so the verbatim issue is lost. Runs whose first compaction came before
+  the first edit: 11/76 solved; first edit before compaction: 32/53 (confounded by difficulty, but half of
+  all runs edit without the verbatim issue). The harness puts the issue in session state as
+  problem_description, so bundle_v35 = v33t + `{problem_description}` appended to the system prompt
+  (issue median ~100 tokens, p90 ~500; templating verified with ADK incl. braces in the issue text).
+  Gate after the 10-31 GPU reset: v35 vs v33t paired on split A (87), predicted time <= 1.03x v33t.
+- Paper (gemma_agent/paper/): collect.py -> data/outcomes.csv (746 runs), analysis.py (all tables, stdlib),
+  writeup.md (~2,760 words). Release: private kernel anandsingh8687/sealedgate-161 (OSI-licensed snapshots,
+  de-duplicated wheels, graphs; no competition files) and private dataset anandsingh8687/sealedgate-161-runs
+  (outcomes, lb, 451 trajectories on licensed repos, 11 bundles, code). The evalset-v1-merge output and the
+  evalset-build-inputs dataset contain competition files (sandbox/setup.py, docker shims) and must never be
+  attached to the writeup or made public.
