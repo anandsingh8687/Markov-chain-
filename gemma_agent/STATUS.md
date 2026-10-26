@@ -585,3 +585,6 @@ gemma_agent/
   12 vs 8; empty 18 vs 15; completion tokens 8.9k both; predicted scorer time +0.9% / +2.8% vs v29.
   Direction agrees with Idris LB (+3 tasks) and Ayush local (+3/129). Candidate for the next slot.
 - 10-26 11:50 UTC: v33t submitted (user-approved).
+- bundle_v34 = v33t + thinking_budget 2048 + max_tool_calls 32 (prompt limit text updated): spend the
+  thinking-cap token savings on more calls. Lab 24 (running): v33t vs v34 paired on the 68 sealed
+  split-B tasks (interface tasks excluded). Lab 23 (E4B s1 vs s2, 43 tasks) still running.
