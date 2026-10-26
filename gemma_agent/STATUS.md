@@ -609,3 +609,13 @@ gemma_agent/
   (failed). Only 5 of those 30 tasks were ever solved by any other run -> forcing earlier edits is worth
   ~1-2/155. No overflow problem (1.38 compactions/task), no site-packages shadowing. 7 of 54 solves
   finished after 7 virtual minutes -> keep the 8-minute cap.
+- 10-26 E4B lab 23 re-read: the 0/43 is NOT runaway generation. vLLM hung at 12:33 (log stops, /metrics
+  times out, load1 ~1.0) and every task started after that made 0 model calls (22 of 43 per bundle).
+  On the 21 tasks that ran, E4B solved 0/42 runs (31B v29 4/22, v33t 6/22 on the same tasks), ~5-6k
+  completion tokens/task, i.e. no runaway. Cause found offline: vLLM 0.19.1 gemma4 tool parser
+  `_parse_gemma4_array` never advances on a top-level ']' in a bare value, so a malformed tool call
+  (code left outside the <|"|> string delimiters, e.g. `y = {"k": [f(a[i]) for i in r]}`) spins the API
+  server event loop forever. Repro: lab/parser_hang/repro.py (19/5000 random short inputs hang).
+  Malformed-call rates in traces: E4B s1 1.9%, s2 10.9%; 31B v29 1.0%, v33t 1.5-1.7% (31B: 0 hangs in
+  ~10k calls). Explains the E4B "Notebook Threw Exception" reports. Small-model prize: public leader
+  0.10, 12 teams at 0.08 (host notebook, 10-24). E4B bundle must minimise malformed calls.
