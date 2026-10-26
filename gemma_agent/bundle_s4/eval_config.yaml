@@ -1,0 +1,6 @@
+# E4B: ~90-150 s per task; 5 minutes keeps a worst case of 120 x 5 min inside the 12-hour run.
+evaluation:
+  timeout_seconds: 180
+  max_tool_calls: 32
+  max_time_minutes: 5
+  max_turns: 60
