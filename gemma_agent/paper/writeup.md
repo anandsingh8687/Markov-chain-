@@ -11,7 +11,7 @@ We release **SealedGate-161**:
 - a repository-disjoint tuning split (89) and sealed split (72);
 - a paired protocol with exact tests and a power table;
 - a virtual clock that predicts the scorer's sequential runtime within 1.6% on held-out real-clock runs;
-- per-task outcomes and trajectories for 746 runs of ten Gemma 4 31B and E4B bundles, calibrated against the leaderboard.
+- per-task outcomes for 746 runs of ten Gemma 4 31B and E4B bundles (451 trajectories), calibrated against the leaderboard.
 
 What the gate decided:
 - Gemma's recommended sampling (temperature 1.0, top-k 64) beat temperature 0.2 by +4 of 87 tasks (p = 0.34), with a clear mechanism: loops 4 → 0, wrong patches 37 → 28.
