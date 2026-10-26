@@ -655,6 +655,7 @@ gemma_agent/
 - 10-26 23:30 USER RULE: a new bundle (E4B or 31B) is uploaded only after it passes a lab gate. The user asked
   for s3 to reach 5/12 on the 12 smoke tasks; across ALL runs (31B v29/v30/v32/v33t, E4B s1/s2/s3) only 4 of
   those 12 tasks were ever solved (canvasapi-716, silx-4282, briefcase-2651, fawltydeps-492), so 5/12 is not
-  reachable on that set. Working gate for E4B: >= 2/12 on the smoke set AND >= 8/87 on split A (31B v33t
-  scores 34/87; the small-model public leader 0.10 corresponds to ~0.22 on our set at the 0.45 ratio). The
+  reachable on that set. Working gate for E4B: >= 2/12 on the smoke set AND >= 10/87 on split A before any
+  upload (31B v33t scores 34/87). Leader level: the small-model public leader's 0.10 corresponds to ~0.22 on
+  our set at the 31B ratio of 0.45, i.e. ~19/87 (the ratio is not yet measured for E4B). The
   00:10 and 08:00 check-ins were changed: no s3 upload; 10-27 slot = v33t second draw (already gated).
