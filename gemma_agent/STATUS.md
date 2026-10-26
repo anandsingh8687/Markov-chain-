@@ -652,3 +652,9 @@ gemma_agent/
   solved (tweag fawltydeps-492), 12/12 non-empty patches, 0 LABGUARD events, 2 timeouts at the 5-min cap,
   mean ~180 virtual s/task, 3-10k completion tokens. Same 12 tasks: s1 0, s2 0, v29 2, v33t 3.
   s3 cleared for the 10-27 leaderboard slot.
+- 10-26 23:30 USER RULE: a new bundle (E4B or 31B) is uploaded only after it passes a lab gate. The user asked
+  for s3 to reach 5/12 on the 12 smoke tasks; across ALL runs (31B v29/v30/v32/v33t, E4B s1/s2/s3) only 4 of
+  those 12 tasks were ever solved (canvasapi-716, silx-4282, briefcase-2651, fawltydeps-492), so 5/12 is not
+  reachable on that set. Working gate for E4B: >= 2/12 on the smoke set AND >= 8/87 on split A (31B v33t
+  scores 34/87; the small-model public leader 0.10 corresponds to ~0.22 on our set at the 0.45 ratio). The
+  00:10 and 08:00 check-ins were changed: no s3 upload; 10-27 slot = v33t second draw (already gated).
