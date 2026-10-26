@@ -47,6 +47,26 @@ def outcome(r):
     return "wrong"
 
 
+def trace_fields(path):
+    """LLM-step index of the first history compaction (prompt < 0.7 x previous) and of the first edit."""
+    if not path.exists():
+        return {"llm_steps": "", "first_compaction_step": "", "first_edit_step": ""}
+    d = json.load(open(path))
+    prev = comp = edit = None
+    k = 0
+    for st in d["steps"]:
+        pt = (st.get("metrics") or {}).get("prompt_tokens")
+        if pt:
+            k += 1
+            if prev and pt < 0.7 * prev and comp is None:
+                comp = k
+            prev = pt
+        for t in st.get("tool_calls") or []:
+            if t.get("function_name") in ("edit_file", "write_file") and edit is None:
+                edit = k
+    return {"llm_steps": k, "first_compaction_step": comp or "", "first_edit_step": edit or ""}
+
+
 root = Path(sys.argv[1])
 rows = []
 for lab, (taskset, clock) in LABS.items():
@@ -68,6 +88,7 @@ for lab, (taskset, clock) in LABS.items():
             "virtual_seconds": r.get("virtual_seconds", ""),
             "real_seconds": r.get("task_seconds", "") if clock == "real" else r.get("real_agent_seconds", ""),
             "patch_chars": r.get("patch_chars", 0),
+            **trace_fields(root / f"{lab}out" / "lab" / r["bundle"] / f"r{r.get('replicate', 0)}" / "traces" / f"trace_{tid}.json"),
         })
 out = HERE / "data" / "outcomes.csv"
 with out.open("w", newline="") as fh:

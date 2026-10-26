@@ -210,41 +210,24 @@ def table_profile(meta_path):
     print(f"tasks solved by at least one 31B run: {ever}/{len(solved)}; never solved: {len(solved) - ever}")
 
 
-def table_compaction(trace_root):
-    """First history compaction vs first edit in v33t runs (needs the trajectories)."""
-    import glob
-    res = {(r["lab"], r["task_id"]): r["resolved"] for r in R if r["bundle"] == "v33t"}
+def table_compaction(bundle="v33t"):
+    """First history compaction vs first edit (outcomes.csv fields from the trajectories)."""
     c = collections.Counter()
-    for lab in ("lab22a", "lab22b", "lab24"):
-        for f in glob.glob(f"{trace_root}/{lab}/v33t/*.json") + glob.glob(f"{trace_root}/{lab}out/lab/v33t/r0/traces/*.json"):
-            tid = Path(f).stem.replace("trace_", "")
-            d = json.load(open(f))
-            prev = comp = edit = None
-            k = 0
-            for st in d["steps"]:
-                pt = (st.get("metrics") or {}).get("prompt_tokens")
-                if pt:
-                    k += 1
-                    if prev and pt < 0.7 * prev and comp is None:
-                        comp = k
-                    prev = pt
-                for t in st.get("tool_calls") or []:
-                    if t.get("function_name") in ("edit_file", "write_file") and edit is None:
-                        edit = k
-            key = ("no compaction" if comp is None else "compaction, never edited" if edit is None
-                   else "compaction before first edit" if comp < edit else "first edit before compaction")
-            c[key, res.get((lab, tid), 0)] += 1
-    print("\n## v33t: first compaction vs first edit\n")
+    for r in R:
+        if r["bundle"] != bundle or r["task_set"] != "evalset" or r["llm_steps"] in ("", "0"):
+            continue
+        comp, edit = r["first_compaction_step"], r["first_edit_step"]
+        key = ("no compaction" if not comp else "compaction, never edited" if not edit
+               else "compaction before first edit" if int(comp) < int(edit) else "first edit before compaction")
+        c[key, r["resolved"]] += 1
+    print(f"\n## {bundle}: first compaction vs first edit\n")
     print("| order | runs | solved |")
     print("|---|---|---|")
     for key in ("no compaction", "first edit before compaction", "compaction before first edit", "compaction, never edited"):
-        n = c[key, 0] + c[key, 1]
-        print(f"| {key} | {n} | {c[key, 1]} |")
-
+        print(f"| {key} | {c[key, 0] + c[key, 1]} | {c[key, 1]} |")
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--meta")
-ap.add_argument("--traces", help="trajectory root (traces/<lab>/<bundle>/*.json or <lab>out/lab/...)")
 a = ap.parse_args()
 table_gates()
 table_mix()
@@ -252,5 +235,4 @@ table_calibration()
 table_power()
 if a.meta:
     table_profile(a.meta)
-if a.traces:
-    table_compaction(a.traces)
+table_compaction()
