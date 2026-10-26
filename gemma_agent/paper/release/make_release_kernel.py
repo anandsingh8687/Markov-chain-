@@ -6,7 +6,8 @@ layout. It copies only what may be redistributed:
   snapshots/<id>.tgz            only for repositories with an OSI licence (MIT, Apache-2.0, BSD, MPL, ...)
   wheels/pool/*.whl             every task's cp313 wheels, de-duplicated by filename (PyPI packages, own licences)
   wheels/by_task/<id>.txt       the wheel filenames of each task (+ <id>.requirements.txt when present)
-It never copies the merge output's sandbox/ or docker/ directories (competition data) or graphs/embeddings.
+  graphs/, embeddings/          our make_graph.py code graphs for the snapshot tasks
+It never copies the merge output's sandbox/ or docker/ directories (competition data).
 """
 import argparse
 import json
@@ -38,6 +39,15 @@ for tid in sorted(keep):
     s = SRC / 'snapshots' / f'{tid}.tgz'
     if s.exists():
         shutil.copy(s, OUT / 'snapshots' / s.name); n_snap += 1
+# code graphs + embeddings (our approximation of the hosts' graph, make_graph.py): their presence adds the
+# harness's "Code Intelligence Tools" prompt section, as on the scorer
+n_graph = 0
+for sub, ext in (('graphs', '.json'), ('embeddings', '.npz')):
+    (OUT / sub).mkdir(exist_ok=True)
+    for m in meta:
+        g = m.get('graph_key')
+        if m['instance_id'] in keep and g and (SRC / sub / f'{g}{ext}').exists() and not (OUT / sub / f'{g}{ext}').exists():
+            shutil.copy(SRC / sub / f'{g}{ext}', OUT / sub / f'{g}{ext}'); n_graph += 1
 pool = OUT / 'wheels' / 'pool'; pool.mkdir(parents=True, exist_ok=True)
 bt = OUT / 'wheels' / 'by_task'; bt.mkdir(parents=True, exist_ok=True)
 n_whl = 0
@@ -60,10 +70,11 @@ for m in meta:
   when the repository declares an OSI licence (tasks_meta.jsonl: license, snapshot_included). Each snapshot keeps
   its repository's licence file and remains under that licence.
 - wheels/pool holds unmodified Python wheels downloaded from PyPI, each under its own package licence.
+- graphs/ and embeddings/ are derived from the included snapshots by make_graph.py (same licences).
 - Tasks with snapshot_included = false are released as metadata plus repo_url and base_commit only.
 - Nothing from the competition's own data (harness, sandbox setup, docker shims) is included.
 """)
-print('tasks', len(meta), 'snapshots', n_snap, 'unique wheels', n_whl, flush=True)
+print('tasks', len(meta), 'snapshots', n_snap, 'graph files', n_graph, 'unique wheels', n_whl, flush=True)
 subprocess.run(['bash', '-c', f'du -sh {OUT} {OUT}/snapshots {OUT}/wheels; ls {OUT}'])
 '''
 

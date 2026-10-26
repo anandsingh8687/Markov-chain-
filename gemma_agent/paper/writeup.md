@@ -4,20 +4,20 @@
 
 ## Abstract
 
-In the Gemma 4 Developer Agent competition a change to an agent is judged by one leaderboard draw per day. Each draw takes about 11 hours and scores 58 tasks, and identical bundles score anywhere from 0.15 to 0.18. Most teams therefore tune on 24–48 local tasks. We show this cannot work: with the 13% per-task discordance we measured between agent variants, a paired comparison on 48 tasks never reaches 80% power, whatever the true gain.
+In the Gemma 4 Developer Agent competition, a change to an agent is judged by one leaderboard draw per day. A draw takes about 11 hours, scores 58 tasks, and repeats of an identical bundle range from 0.15 to 0.18. Most teams therefore tune on 24–48 local tasks. At the 13% per-task discordance we measured between agent variants, a paired comparison on 48 tasks never reaches 80% power.
 
-We release **SealedGate-161**, a resource built to make these decisions:
-- 161 tasks from 128 Python repositories that do not appear in the public set, created between 2025-02 and 2026-05. They are rebuilt in the competition's exact py3.13 sandbox format. A task is kept only if the official verifier passes the gold patch twice and fails the empty patch twice; 45% of buildable candidates failed that check.
-- A repository-disjoint tuning split (89 tasks) and a sealed split (72 tasks).
-- A paired-run protocol with exact McNemar tests, bootstrap intervals and a power table.
-- A virtual clock that lets a lab run six tasks at once yet predicts the scorer's sequential runtime within 1.6% on held-out real-clock runs.
-- Per-task outcomes for 746 runs of ten agent bundles (Gemma 4 31B and E4B), calibrated against the leaderboard draws of the same bundles.
+We release **SealedGate-161**:
+- 161 tasks from 128 Python repositories outside the public set (2025-02 to 2026-05), rebuilt in the competition's py3.13 sandbox format and kept only if the official verifier passes the gold patch and fails the empty patch twice each (45% of buildable candidates did not);
+- a repository-disjoint tuning split (89) and sealed split (72);
+- a paired protocol with exact tests and a power table;
+- a virtual clock that predicts the scorer's sequential runtime within 1.6% on held-out real-clock runs;
+- per-task outcomes and trajectories for 746 runs of ten Gemma 4 31B and E4B bundles, calibrated against the leaderboard.
 
-The gate's decisions:
-- **Temperature.** Gemma's recommended sampling (temperature 1.0, top-k 64) beat temperature 0.2 by +4 of 87 tasks (p = 0.34). The mechanism was consistent: loops fell from 4 to 0 and wrong patches from 37 to 28.
-- **Rejected changes.** Trading thinking tokens for tool calls, prompt rules derived from failure analysis, and a sub-agent architecture were all rejected; the last failed the timing check.
-- **E4B.** E4B solved 0 of 42 runs on tasks where 31B solved 4–6 of 22.
-- **A serving bug.** The gate also caught a defect: vLLM 0.19.1, which the scorer uses, has a Gemma 4 tool-call argument parser that loops forever on some malformed tool calls and freezes the whole server. E4B emits malformed calls on 2–11% of tool calls, against 1–1.7% for 31B. Later vLLM releases guard against it; we give a reproducer and show how often each model triggers it.
+What the gate decided:
+- Gemma's recommended sampling (temperature 1.0, top-k 64) beat temperature 0.2 by +4 of 87 tasks (p = 0.34), with a clear mechanism: loops 4 → 0, wrong patches 37 → 28.
+- Trading thinking for tool calls, failure-derived prompt rules and a sub-agent design were rejected.
+- E4B solved 0 of 42 runs on tasks where 31B solved 4–6 of 22.
+- vLLM 0.19.1, which the scorer pins, has a Gemma 4 tool-argument parser that loops forever on some malformed tool calls and freezes the server. E4B emits malformed calls at 2–11% of tool calls, 31B at 1–1.7%.
 
 ## 1. Introduction
 
@@ -29,43 +29,21 @@ Three properties of this setup make most agent changes untestable on the leaderb
 2. **Noisy.** Three draws of the same zip scored 0.18, 0.15 and 0.15, a spread of about 2 tasks. An independent beta-binomial analysis puts the minimum detectable difference at n = 58 at 0.12–0.19 (jaikwang, *Measuring the Measuring Stick*).
 3. **Unforgiving on time.** A bundle that uses 7% more time than a passing one can exceed the 12-hour limit and score nothing. That happened to our v28.
 
-Local evaluation is the obvious answer, but the usual local sets (the public example repositories, or SWE-bench-style tasks on famous libraries) are small, partly memorised, and run on a different clock.
+The usual local sets (public example repositories, famous libraries) are small, partly memorised, and run on a different clock. We wanted a gate: a fixed procedure that says, before a slot is spent, whether a change is better, whether we could even tell, and whether it fits in 12 hours.
 
-We wanted a gate: a fixed procedure that says, before a submission slot is spent, whether a change is better, whether we could even tell, and whether it fits in 12 hours.
-
-**Contributions.**
-1. **SealedGate-161** (§2): the task set, build pipeline, and sealed split.
-2. **A paired protocol** (§3.1) with a measured power table, showing how many tasks a decision needs.
-3. **A scorer-time model** (§3.2) that turns concurrent lab runs into sequential scorer time.
-4. **Calibration** of the gate against the leaderboard (§3.3).
-5. **Six gate decisions** with per-task data and mechanisms (§4), including a serving bug that matters to anyone running small Gemma 4 models behind vLLM's tool parser.
+**Contributions:** the task set and pipeline (§2); a paired protocol with a power table (§3.1); a scorer-time model (§3.2); calibration against the leaderboard (§3.3); and six gate decisions with per-task data and mechanisms, including a serving failure that matters to anyone running small Gemma 4 models behind vLLM's tool parser (§4).
 
 ## 2. The resource
 
 ### 2.1 Construction
 
-**Candidates.** We started from 420 candidates from 302 repositories in the SWE-rebench family: the SWE-rebench leaderboard set, SWE-rebench-V2 and SWE-rebench, all CC BY 4.0. Filters:
-- task created after 2025-02;
-- at most two tasks per repository;
-- the gold fix touches at most 3 Python source files and at most 150 lines;
-- at most 1.8% of the repository's functions are `async def`, because the sandbox's test runner is unreliable with async-heavy suites;
-- no famous or public-example repositories.
+**Candidates.** 420 candidates from 302 repositories in the SWE-rebench family (leaderboard set, V2, original; CC BY 4.0), filtered to: created after 2025-02; at most two tasks per repository; gold fix within 3 Python source files and 150 lines; at most 1.8% `async def` functions (the sandbox's test runner is unreliable on async-heavy suites); no famous or public-example repositories.
 
-**Build.** Each candidate is rebuilt for the competition sandbox by four parallel CPU Kaggle kernels:
-- a bare mirror is snapshotted at the base commit;
-- a uv-managed Python 3.13 environment is created and frozen;
-- cp313 wheels are downloaded for offline installation;
-- the official verifier then runs four times: gold patch, empty patch, gold, empty.
-
-A task is kept only when the gold patch passes 2 of 2 and the empty patch fails 2 of 2.
+**Build.** Four parallel CPU Kaggle kernels snapshot each repository at its base commit, create and freeze a uv-managed Python 3.13 environment, download cp313 wheels for offline installation, and run the official verifier four times (gold, empty, gold, empty). A task is kept only when gold passes 2 of 2 and empty fails 2 of 2.
 
 **Where candidates were lost.** 124 failed to build: dependency resolution under py3.13, async share above the limit, or wheels over 1.5 GB. Another 133 of the 296 buildable candidates (45%) had a gold patch that did **not** pass in the competition's environment, and 2 failed the check for other reasons. Anyone reusing SWE-rebench rows with this harness without verification is therefore scoring against a large share of unsolvable tasks.
 
-**Task text.** Problem statements are PR-style, mirroring the competition's format:
-- for 160 of 161 tasks, the PR title and body (87 from the GitHub API, 73 from SWE-rebench-V2);
-- 1 falls back to the issue text.
-
-Hints are blank, and the fail-to-pass and pass-to-pass test lists are withheld from the agent, as on the scorer.
+**Task text.** As in the competition, problem statements are PR-style: the PR title and body for 160 tasks (87 from the GitHub API, 73 from SWE-rebench-V2), the issue text for one. Hints are blank and the fail-to-pass and pass-to-pass lists are withheld from the agent.
 
 ### 2.2 Profile
 
@@ -91,9 +69,7 @@ The set is easier than the hidden one (§3.3).
 
 ### 2.3 Lab harness
 
-A Kaggle 4×L4 kernel serves the competition model with the competition's vLLM settings, compaction configuration and tool set. It runs six tasks at once, each in its own docker-like sandbox built from the task snapshot and its wheel set, and grades with the official verifier.
-
-Because six concurrent tasks slow each other, the lab does not use wall time for the 8-minute limit. It uses a **virtual clock**: each LLM step is charged
+A Kaggle 4×L4 kernel serves the competition model with the competition's vLLM settings, compaction configuration and tools, runs six tasks at once in docker-like sandboxes built from each snapshot and wheel set, and grades with the official verifier. Because concurrent tasks slow each other, the 8-minute limit is enforced on a **virtual clock**: each LLM step is charged
 
 0.115 s + 28.55 ms × completion tokens + 0.335 s per 1k uncached prompt tokens,
 
@@ -106,9 +82,8 @@ plus 25.4 s after each history compaction, plus measured tool time. The agent is
   - split files;
   - repository snapshots and wheel sets for the 136 tasks with an open-source licence;
   - for the 25 tasks with unclear licences, the repository URL and base commit, with the build script to recreate them.
-- **Code:** the build pipeline, lab kernel generator, virtual-clock predictor (`timepred.py`), paired statistics (`stats.py`) and the analysis behind every table here (`paper/analysis.py`, standard library only).
-- **Outcomes:** `outcomes.csv`, one row for each of the 746 runs (lab, bundle, model, task, outcome, calls, tokens, predicted scorer seconds), plus the leaderboard draws.
-- **Bundles:** the ten agent bundles that were compared.
+- **Code:** build pipeline, lab kernel generator, virtual-clock predictor, paired statistics, and the standard-library analysis behind every table here.
+- **Runs:** `outcomes.csv` (746 runs: bundle, model, task, outcome, calls, tokens, predicted scorer seconds), leaderboard draws, 451 trajectories, and the ten bundles.
 
 We do not redistribute competition data (harness files, docker shims); the lab mounts them from the competition's own input.
 
@@ -116,12 +91,7 @@ We do not redistribute competition data (harness files, docker shims); the lab m
 
 ### 3.1 Paired comparison and its power
 
-Every comparison runs both bundles on the same tasks in the same kernel. We report:
-- the number of tasks only the base solved and only the candidate solved;
-- an exact McNemar test;
-- a 95% paired bootstrap interval of the difference.
-
-Across our four 31B comparisons, 13% of tasks were discordant: one arm solved the task and the other did not. Simulating exact McNemar tests at that discordance (α = 0.05 two-sided, power 0.8):
+Both bundles run on the same tasks in the same kernel; we report the tasks only one arm solved, an exact McNemar test and a 95% paired bootstrap interval. Across our four 31B comparisons, 13% of tasks were discordant. Simulating exact McNemar tests at that discordance (α = 0.05 two-sided, power 0.8):
 
 | Paired tasks | Smallest gain detectable (solve-rate points) |
 |---|---|
@@ -133,7 +103,7 @@ Across our four 31B comparisons, 13% of tasks were discordant: one arm solved th
 
 Since the leaderboard scores about 0.45× our eval-set rate (§3.3), a 9-point gate gain is about 4 leaderboard points, or 2.4 of 58 tasks. That is roughly what separates the 0.18 and 0.22 clusters.
 
-**Rule.** The gate never accepts a change on solves alone below this resolution. It accepts small or null solve effects only when they come with a clear mechanism (fewer loops, fewer empty patches) and no time cost. It rejects changes that cost time.
+**Rule.** Below this resolution the gate never accepts a change on solves alone: it needs a visible mechanism (fewer loops, fewer empty patches) and no time cost.
 
 ### 3.2 Scorer time
 
@@ -141,11 +111,7 @@ Since the leaderboard scores about 0.45× our eval-set rate (§3.3), a 9-point g
 
 **Accuracy.** Predicted mean task time was within −0.6% to +0.4% of measured in-sample. On a later held-out real-clock kernel with a different architecture (v31a, a sub-agent solver), it was +1.6%.
 
-**What we learned from the fit:**
-- Prompt length is almost free thanks to prefix caching.
-- Completion tokens and history compactions are what cost time.
-- v28's projected 11.5 h for 120 tasks was enough to fail the real scorer, while v29's 10.2–11.4 h passed three times. We therefore treat a projected 11.0 h as the safety line.
-- v29 with 36 calls projects to 12.2 h, so the gate rejected it before it could waste a slot.
+Prompt length is almost free under prefix caching; completion tokens and history compactions cost time. v28's projected 11.5 h for 120 tasks failed the real scorer while v29's 10.2–11.4 h passed three times, so a projected 11.0 h is our safety line. v29 with 36 calls projected 12.2 h and was rejected without spending a slot.
 
 ### 3.3 Calibration against the leaderboard
 
@@ -156,11 +122,7 @@ Since the leaderboard scores about 0.45× our eval-set rate (§3.3), a 9-point g
 | v32 (failure-derived prompt) | 10/24 | 0.42 | 0.13 | 0.31 |
 | v33t (temperature 1.0) | 54/155 | 0.35 | *(pending)* | |
 
-The eval set is easier than the hidden set: the leaderboard scores about 0.45× our rate. This is consistent with toasterson's and sslasme's reports of about 2× inflation for local sets.
-
-The gate ranks v29 and v30 as equal, and so do their draws. v32's high gate rate rests on only 24 tasks and was not confirmed by its single draw, which shows why we now require ≥ 87 paired tasks.
-
-Five draws of three bundles cannot establish rank correlation, and we make no claim about it. What the calibration does give is an exchange rate, and a demonstration that a 24-task gate overstates.
+The leaderboard scores about 0.45× our rate, consistent with the ~2× local inflation reported by toasterson and sslasme. The gate ranks v29 and v30 equal, as do their draws; v32's high rate rests on 24 tasks and its draw did not confirm it. Five draws of three bundles give an exchange rate, not a rank correlation.
 
 ## 4. What the gate decided
 
@@ -187,14 +149,7 @@ On split A, Gemma's recommended sampling (temperature 1.0, top-p 0.95, top-k 64,
 | 8-minute timeout | 8 | 12 |
 | 80-turn loop | 4 | 0 |
 
-The higher temperature broke all four repetition loops and turned nine wrong patches into other outcomes. Some of those became solves; others ran out of budget. Every timeout under temperature 1.0 was on a task temperature 0.2 also failed.
-
-On its own the gain is not significant at n = 87, and §3.1 says it could not be. We adopted it because:
-- the mechanism is visible;
-- time stays inside the safety line;
-- it agrees in direction with the only other paired evidence: a public team's leaderboard jump from 0.18 to 0.24 when changing sampling alone, and +3 of 129 tasks in a public local replay.
-
-A second split-B arm is running to pool 155 tasks.
+Temperature 1.0 broke all four loops and moved nine wrong patches to other outcomes, some to solves, some to the budget limits; every one of its timeouts was on a task temperature 0.2 also failed. The gain is not significant at n = 87, and §3.1 says it could not be. We adopted it for the visible mechanism, the unchanged time, and agreement with the other evidence: a public team's leaderboard jump from 0.18 to 0.24 changing sampling alone, and +3 of 129 tasks in a public local replay. A v29 arm on split B is scheduled to pool 155 paired tasks.
 
 ### 4.2 Budgets: thinking tokens cannot be traded for calls
 
@@ -204,11 +159,7 @@ Raising the call cap to 36 instead projected to 12.2 h on the real-clock kernel 
 
 ### 4.3 Prompts and architecture: below resolution, or too slow
 
-**Prompt rules.** Two prompt revisions came from the gate's own failure analysis:
-- v30: terse thoughts and batched searches;
-- v32: edit as soon as the change is known, and check every call site.
-
-They moved solves by −1 and +1, which is all the power table can resolve at n = 60 and n = 24. v32 did achieve its mechanism (3 empty patches against 5–6) but cost 9% more tokens. We submitted it anyway, against the gate's time warning, and its draw (0.13) was the lowest of the family.
+**Prompt rules.** Two revisions came from the gate's own failure analysis (v30: terse thoughts, batched searches; v32: edit as soon as the change is known, check every call site). They moved solves by −1 and +1, which is all the power table can resolve at n = 60 and n = 24. v32 did achieve its mechanism (3 empty patches against 5–6) but cost 9% more tokens. We submitted it anyway, against the gate's time warning, and its draw (0.13) was the lowest of the family.
 
 **Sub-agent solver.** v31a puts a solver inside an `AgentTool`, which avoids history compaction. It failed the timing check: 353 s per task against 319 s on the same 12 real-clock tasks. The uncompacted context made every step slower and longer, which outweighed the compaction savings.
 
@@ -220,18 +171,13 @@ E4B patches were mostly wrong (37 of 45 runs), not empty. Its failures were basi
 
 ### 4.5 A serving bug the gate found by accident
 
-Half of the E4B runs made no model call at all and timed out. The kernel's metrics show what happened:
-- at 12:33 UTC, vLLM stopped logging and `/metrics` stopped answering;
-- the machine sat at a load average of 1.0 for three hours;
-- every task started after that point waited for a response that never came.
+Half of the E4B runs made no model call at all. The kernel's metrics show why: at 12:33 UTC vLLM stopped logging and `/metrics` stopped answering, the machine sat at a load average of 1.0 for three hours, and every task started after that waited for a response that never came.
 
 **Cause.** vLLM 0.19.1's Gemma 4 tool parser (`vllm/tool_parsers/gemma4_tool_parser.py`) parses arguments of the form `key:<|"|>value<|"|>` with hand-written loops. In `_parse_gemma4_array`, a bare value that starts at an unmatched `]` is read as empty without advancing the index, so the loop never ends.
 
 **How it is reached.** The array branch is entered when an argument value starts with `[`. That happens when a model leaves code outside the string delimiters, for example by writing plain quotes, which E4B often does. Real code is enough: `new_string:<|"|>x<|"|> y = {"k": [f(a[i]) for i in r]}` hangs the parser.
 
-**Why it freezes everything.** The parser runs inside the API server's event loop, so one bad response freezes every request.
-
-**How often it can happen.** Our reproducer (released) hangs on 19 of 5,000 random short argument strings. We also counted tool calls whose parsed arguments are malformed (unknown keys, or keys with quotes in them):
+The parser runs in the API server's event loop, so one bad response freezes every request. **How often it can happen.** Our reproducer (released) hangs on 19 of 5,000 random short argument strings. We also counted tool calls whose parsed arguments are malformed (unknown keys, or keys with quotes in them):
 
 | Run | Malformed calls |
 |---|---|
@@ -247,7 +193,7 @@ Half of the E4B runs made no model call at all and timed out. The kernel's metri
 
 ## 5. Related work
 
-- **Benchmarks.** SWE-bench and SWE-bench Verified established repository-level issue resolution. SWE-rebench (Badertdinov et al., 2025) supplies continuously mined, decontaminated tasks; our candidates come from it. We add re-verification in the target sandbox (45% attrition) and calibration against a hidden board.
+- **Benchmarks.** SWE-bench and SWE-bench Verified established repository-level issue resolution; SWE-rebench (Badertdinov et al., 2025) mines fresh, decontaminated tasks and is our source. We add re-verification in the target sandbox (45% attrition) and calibration against a hidden board.
 - **Statistics.** Miller (2024, *Adding Error Bars to Evals*) argues for paired tests and power analysis in LLM evaluation; we apply them to agent bundles under a time limit.
 - **Within the competition:**
   - jaikwang models leaderboard noise;
