@@ -560,3 +560,7 @@ gemma_agent/
 - v30 public 0.15 (single draw). LB draws so far for the native-tool family: v29 0.18/0.15/0.15, v30 0.15.
 - 10-24 07:55 UTC: v32 submitted (ref 57587262, user-approved). Slots 10-21..10-23 went unused (session idle).
   GPU quota reset to 30 h on 10-24.
+- 10-26: the session container was recreated from an old checkout: the scratchpad (lab traces, eval
+  task copies, harness venv) and the Kaggle token file are gone. Branch fast-forwarded from origin; all
+  committed work is intact. Kaggle access needs the token as env var KAGGLE_API_TOKEN in the
+  environment settings. v32 (submitted 10-24 07:55 UTC) score not yet read.
