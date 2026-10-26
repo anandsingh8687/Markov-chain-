@@ -349,6 +349,10 @@ def main() -> None:
     ap.add_argument("--wall-scale", type=float, default=1.0,
                     help="fallback without --virtual-clock: real cap and agent elapsed scaled by this slowdown")
     ap.add_argument("--seed", type=int, default=0, help="bundle-order shuffle seed")
+    ap.add_argument("--model", default="gemma-4-31b-it-qat-w4a16-ct",
+                    choices=["gemma-4-31b-it-qat-w4a16-ct", "gemma-4-12b-it-qat-w4a16-ct",
+                             "gemma-4-e4b-it-qat-w4a16-ct", "gemma-4-e2b-it-qat-w4a16-ct"],
+                    help="served model (the bundles must declare the same model)")
     ap.add_argument("--metrics-interval", type=float, default=30.0, help="seconds between vLLM /metrics scrapes")
     g = ap.add_argument_group("data dir / eval set (any of these switches the kernel to labworker processes, "
                               "N=--concurrency, 1 = one task at a time like the scorer)")
@@ -422,6 +426,8 @@ def main() -> None:
             clock_args[k] = v
     code = build_kernel(bundles, tasks, a.concurrency, a.replicates, clock, clock_args, a.seed, a.metrics_interval,
                         data_opts or None)
+    if a.model != "gemma-4-31b-it-qat-w4a16-ct":  # default kernels stay byte-identical
+        code = code.replace("gemma-4-31b-it-qat-w4a16-ct", a.model)
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / "lab.py").write_text(code)
     meta = {
@@ -430,7 +436,7 @@ def main() -> None:
         "enable_tpu": False, "enable_internet": False, "keywords": [],
         "dataset_sources": ["metric/gemma-4-developer-agent-wheelhouse"], "kernel_sources": [],
         "competition_sources": ["gemma-4-developer-agent"],
-        "model_sources": ["google/gemma-4/Other/gemma-4-31b-it-qat-w4a16-ct/2"],
+        "model_sources": [f"google/gemma-4/Other/{a.model}/2"],
         "machine_shape": "NvidiaL4",
         # Pin the same image as the hosts' Getting Started notebook: the wheelhouse ships cp312 wheels and
         # Kaggle's default image moved to Python 3.13 on 10-03 (unpinned kernels failed at pip install).

@@ -574,3 +574,9 @@ gemma_agent/
   both reach the vLLM request (top_k via extra_body, merged).
 - bundle_v33t = v29 with temperature 1.0 / top_k 64 (sampling only). Lab 22 (running): v29 vs v33t
   paired on the 87 non-interface split-A eval tasks (ev22a/ev22b), corrected virtual clock.
+- Rules pages (kaggle competitions pages): Small Model Prize $10,000 for the best submission using
+  Gemma E2B or E4B (12B not eligible); must be one of the team's two final picks; small-model LB leader
+  0.06 on 10-20 (host notebook ryanholbrook/gemma-4-developer-agent-small-model-leaderboard). Paper track
+  $35,000 (deadline 11-12). Main track: $37k/$18k/$10k. Final submission deadline 12-02.
+- make_lab.py --model (default output unchanged). bundle_s1/bundle_s2: E4B, v29 prompt, T 1.0/top_k 64,
+  thinking 4096; s1 28 calls, s2 40 calls. To be lab-tested after lab 22 (2 GPU sessions max).
