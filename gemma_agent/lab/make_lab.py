@@ -292,6 +292,27 @@ log('done', len(summary), 'rows')
 PHASE2_SPLIT = "import litellm, torch, yaml\n"
 
 
+GEMMA4_GUARD = r'''
+# vLLM 0.19.1's _parse_gemma4_array never advances on a bare value starting at ']' (infinite loop in the API
+# server). Apply the upstream (0.21) guard, logging each would-be hang, so one malformed call cannot stall the lab.
+import vllm as _vllm
+_gp = Path(_vllm.__file__).parent / 'tool_parsers' / 'gemma4_tool_parser.py'
+_gs = _gp.read_text()
+_old = ('            val_start = i\n'
+        '            while i < n and arr_str[i] not in (",", "]"):\n'
+        '                i += 1\n'
+        '            if partial and i >= n:\n'
+        '                break\n')
+if _gs.count(_old) == 1:
+    _gp.write_text(_gs.replace(_old, _old + '            if i == val_start:\n'
+                               '                logger.warning("LABGUARD gemma4 array parser made no progress at %d", i)\n'
+                               '                break\n'))
+    log('gemma4 parser guard applied')
+else:
+    log('gemma4 parser guard NOT applied (source changed)')
+'''
+
+
 def build_kernel(bundles: dict, tasks: list[str], concurrency: int = 1, replicates: int = 1, clock: str = "real",
                  clock_args: dict | None = None, seed: int = 0, metrics_interval: float = 30.0,
                  data_opts: dict | None = None) -> str:
@@ -354,6 +375,9 @@ def main() -> None:
                              "gemma-4-e4b-it-qat-w4a16-ct", "gemma-4-e2b-it-qat-w4a16-ct"],
                     help="served model (the bundles must declare the same model)")
     ap.add_argument("--metrics-interval", type=float, default=30.0, help="seconds between vLLM /metrics scrapes")
+    ap.add_argument("--guard-gemma4-parser", action="store_true",
+                    help="patch vLLM 0.19.1's gemma4 _parse_gemma4_array (as fixed upstream in 0.21) so a malformed "
+                         "tool call cannot hang the server; each would-be hang logs LABGUARD in vllm_server.log")
     g = ap.add_argument_group("data dir / eval set (any of these switches the kernel to labworker processes, "
                               "N=--concurrency, 1 = one task at a time like the scorer)")
     g.add_argument("--data-dir", default=None,
@@ -428,6 +452,9 @@ def main() -> None:
                         data_opts or None)
     if a.model != "gemma-4-31b-it-qat-w4a16-ct":  # default kernels stay byte-identical
         code = code.replace("gemma-4-31b-it-qat-w4a16-ct", a.model)
+    if a.guard_gemma4_parser:
+        assert code.count("\nserver = VllmServer(") == 1
+        code = code.replace("\nserver = VllmServer(", "\n" + GEMMA4_GUARD + "server = VllmServer(")
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / "lab.py").write_text(code)
     meta = {
