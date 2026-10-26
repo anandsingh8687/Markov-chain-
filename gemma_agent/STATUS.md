@@ -580,3 +580,7 @@ gemma_agent/
   $35,000 (deadline 11-12). Main track: $37k/$18k/$10k. Final submission deadline 12-02.
 - make_lab.py --model (default output unchanged). bundle_s1/bundle_s2: E4B, v29 prompt, T 1.0/top_k 64,
   thinking 4096; s1 28 calls, s2 40 calls. To be lab-tested after lab 22 (2 GPU sessions max).
+- Lab 22 (paired, 87 split-A eval tasks): v33t (T 1.0, top_k 64) 34/87 vs v29 (T 0.2) 30/87;
+  v33t-only 7, v29-only 3 (McNemar p 0.34); loops ending at the 80-turn limit 0 vs 4; 8-min timeouts
+  12 vs 8; empty 18 vs 15; completion tokens 8.9k both; predicted scorer time +0.9% / +2.8% vs v29.
+  Direction agrees with Idris LB (+3 tasks) and Ayush local (+3/129). Candidate for the next slot.
