@@ -163,13 +163,26 @@ Raising the call cap to 36 instead projected to 12.2 h on the real-clock kernel 
 
 **Sub-agent solver.** v31a puts a solver inside an `AgentTool`, which avoids history compaction. It failed the timing check: 353 s per task against 319 s on the same 12 real-clock tasks. The uncompacted context made every step slower and longer, which outweighed the compaction savings.
 
-### 4.4 Model size: E4B does not reach the board
+### 4.4 Context: the issue does not survive compaction
+
+The harness compacts history once a prompt reaches 14,336 tokens, using ADK's default summarizer, which asks for "the essence of the interaction". 141 of v33t's 155 runs compacted at least once, so most runs lose the issue's exact wording mid-task.
+
+| First compaction vs first edit (v33t) | Runs | Solved |
+|---|---|---|
+| No compaction | 14 | 11 |
+| First edit before compaction | 53 | 32 |
+| Compaction before first edit | 76 | 11 |
+| Compaction, never edited | 12 | 0 |
+
+Difficulty confounds this (hard tasks explore longer), but half of all runs edit without the verbatim issue. The harness exposes the issue as session state (`problem_description`), so a bundle can template it into its instruction, which is never compacted. v35 does exactly this; its gate (*pending*) is the paper's sealed test.
+
+### 4.5 Model size: E4B does not reach the board
 
 The bonus prize for E2B/E4B made the small model tempting: it decodes about twice as fast per sequence (65 against about 35 tokens/s). With the same bundle and sampling, E4B solved 0 of 22 tasks with 28 calls and 0 of 22 with 40, on tasks where 31B solved 4 (temperature 0.2) and 6 (temperature 1.0).
 
 E4B patches were mostly wrong (37 of 45 runs), not empty. Its failures were basic: shell syntax such as `head - 5`, `grep` on a directory without `-r`, and edits whose old text did not match.
 
-### 4.5 A serving bug the gate found by accident
+### 4.6 A serving bug the gate found by accident
 
 Half of the E4B runs made no model call at all. The kernel's metrics show why: at 12:33 UTC vLLM stopped logging and `/metrics` stopped answering, the machine sat at a load average of 1.0 for three hours, and every task started after that waited for a response that never came.
 
