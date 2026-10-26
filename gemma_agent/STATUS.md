@@ -564,3 +564,13 @@ gemma_agent/
   task copies, harness venv) and the Kaggle token file are gone. Branch fast-forwarded from origin; all
   committed work is intact. Kaggle access needs the token as env var KAGGLE_API_TOKEN in the
   environment settings. v32 (submitted 10-24 07:55 UTC) score not yet read.
+- v32 public 0.13 (single draw). Draws so far: v29 0.18/0.15/0.15, v30 0.15, v32 0.13 -> ~9-10/58,
+  differences within noise (SD ~1.4 tasks per draw).
+- 10-26 research: public "0.24 package" claims audited by others did not reproduce (budget-aware lineage
+  ~0.13 per draw); 4 teams at 0.24, 37 at 0.22. MUHAMMED IDRIS (0.24) published his bundles and ledger
+  (Kaggle dataset muhammedidris28/gemma4-agent-runs, Apache-2.0): v19 (T 0.2) 0.18 -> v24 0.24 with ONLY
+  sampling changed to temperature 1.0, top_p 0.95, top_k 64 (Google's recommended Gemma sampling).
+  Single draws; untested by us. Verified offline that top_k and thinking (enable_thinking, budget 4096)
+  both reach the vLLM request (top_k via extra_body, merged).
+- bundle_v33t = v29 with temperature 1.0 / top_k 64 (sampling only). Lab 22 (running): v29 vs v33t
+  paired on the 87 non-interface split-A eval tasks (ev22a/ev22b), corrected virtual clock.
