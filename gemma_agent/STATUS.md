@@ -598,3 +598,14 @@ gemma_agent/
 - Lab 24 (paired, 68 sealed split-B tasks): v34 (thinking 2048, 32 calls) 21/68 vs v33t 20/68 (6 vs 5
   only, p 1.0); same tokens (9.1k), more timeouts (11 vs 7), fewer empties (8 vs 12). No gain; v33t stays
   the base. Weekly GPU quota spent (28.6/30 h, resets 10-31).
+- 10-26 public paper-track companions (research_1026_paper_landscape.md): writeups themselves are private
+  until the deadline (API 403), but ~40 companion notebooks/10 datasets are public. Independent evidence:
+  LoRA fine-tunes lost or tied in all measured attempts (Idris, sslasme, earlco, shivashankar); oracle
+  localisation does not raise solves; prompt-rule effects are below noise; best-of-2 ceiling ~+4 points;
+  timeouts are worth 0; call cap 40 no gain. Paper prizes: Overall $15k, Best New Resource $10k, Best New
+  Application $10k. Closest resource rival: debmalya84 RepoGraph-Verified (221 tasks, competition format).
+- CPU check on v33t's 155 eval runs: 35 empty patches, 30 of them with no edit before the 28-call budget
+  ran out (20 tried to edit at call 29-31 and were refused); first edit median call 11 (solved) vs 19
+  (failed). Only 5 of those 30 tasks were ever solved by any other run -> forcing earlier edits is worth
+  ~1-2/155. No overflow problem (1.38 compactions/task), no site-packages shadowing. 7 of 54 solves
+  finished after 7 virtual minutes -> keep the 8-minute cap.
