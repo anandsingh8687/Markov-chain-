@@ -90,7 +90,7 @@ Both bundles run on the same tasks in the same kernel; we report the tasks only 
 
 The table depends only on the discordance d, so it holds for any paired agent comparison: a gain Δ needs about 8d/Δ² tasks (within 5% of exact), and at d = 0.13 nothing is detectable below 60 tasks, the size of many comparisons published here (earlco 16, AfterFix 24, sslasme 41, Idris 46). Two runs of the unchanged v29 on 60 tasks disagreed on 5 (8%).
 
-At the leaderboard's 0.43–0.46× exchange rate (§3.3), a 9-point gain is about 4 leaderboard points (2.3 of 58 tasks), roughly the gap between our best draw (0.18) and the many teams at 0.22.
+At the leaderboard's ~0.44× exchange rate (§3.3), a 9-point gain is about 4 leaderboard points (2.3 of 58 tasks), roughly the gap between our best draw (0.18) and the many teams at 0.22.
 
 **Rule.** Below this resolution the gate never accepts a change on solves alone: it needs a visible mechanism (fewer loops or empty patches, new failures only on tasks the base also failed), outside evidence pointing the same way, and no time failure (§3.2).
 
@@ -109,9 +109,9 @@ As kazuhiro, Idris and toasterson also found, prompt length is almost free under
 | v29 (temperature 0.2) | 51/147 | 0.35 | 0.18, 0.15, 0.15 | 0.46 |
 | v30 (thinking 2048) | 20/60 | 0.33 | 0.15 | 0.45 |
 | v32 (failure-derived prompt) | 10/24 | 0.42 | 0.13 | 0.31 |
-| v33t (temperature 1.0) | 54/155 | 0.35 | *(pending)* | |
+| v33t (temperature 1.0) | 54/155 | 0.35 | 0.17 | 0.49 |
 
-The leaderboard scores 0.43× our rate over all five draws (0.45–0.46 for v29 and v30), the ~2× local inflation toasterson and sslasme also report. The gate ranks v29 and v30 equal, as do their draws; v32's high rate rests on 24 tasks and its draw did not confirm it. Five draws of three bundles give an exchange rate, not a rank correlation.
+The leaderboard scores 0.44× our rate over all six draws (0.45–0.49 for v29, v30 and v33t), the ~2× local inflation toasterson and sslasme also report. The gate ranks v29 and v30 equal, as do their draws; v32's high rate rests on 24 tasks and its draw did not confirm it. Six draws of four bundles give an exchange rate, not a rank correlation.
 
 **External check.** On 27 tasks shared with zysbnd1's dev pool (8 Gemma 31B runs each, independent harness), per-task solve rates agree at r = 0.95 (bootstrap CI 0.89–0.99), at similar levels (0.43 there, 0.39 here).
 
@@ -139,7 +139,7 @@ On split A, Gemma's recommended sampling (temperature 1.0, top-p 0.95, top-k 64,
 | 8-minute timeout | 8 | 12 |
 | 80-turn loop | 4 | 0 |
 
-Temperature 1.0 prevented all four loops (toasterson found it cannot break one already in context) and cut wrong patches by nine; every one of its timeouts was on a task temperature 0.2 also failed. The gain is not significant at n = 87, and §3.1 says it could not be. We adopted it for the mechanism, a time cost inside the 3% line (its pending draw tests that risk), and outside evidence: Idris's leaderboard jump from 0.18 to 0.24 changing sampling alone, and +3 of 129 tasks in Ayush's replay (discussion 746250); sslasme's single 41-task run, below that 60-task floor, saw no change (19 against 19). A v29 arm on split B is scheduled to pool 155 paired tasks.
+Temperature 1.0 prevented all four loops (toasterson found it cannot break one already in context) and cut wrong patches by nine; every one of its timeouts was on a task temperature 0.2 also failed. The gain is not significant at n = 87, and §3.1 says it could not be. We adopted it for the mechanism, a time cost inside the 3% line (its first draw, 0.17, finished inside the 12-hour limit), and outside evidence: Idris's leaderboard jump from 0.18 to 0.24 changing sampling alone, and +3 of 129 tasks in Ayush's replay (discussion 746250); sslasme's single 41-task run, below that 60-task floor, saw no change (19 against 19). A v29 arm on split B is scheduled to pool 155 paired tasks.
 
 ### 4.2 Budgets: thinking tokens cannot be traded for calls
 

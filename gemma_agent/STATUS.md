@@ -683,3 +683,7 @@ gemma_agent/
   of RUNNING were queue/mount): "ALL TABLES MATCH THE PAPER", 461 trajectories found, zysbnd1 r = 0.95 on 27
   tasks, parser hang reproduced on the vLLM 0.19.1 wheel. Paper §6 overlap corrected (62 toasterson candidates,
   52 kept by both). Paper release is complete apart from the pending v33t draw and the v35 gate.
+- 10-27 12:50 v33t (ref 57665127) public 0.17 (10/58), finished inside the 12-hour limit (~25 h from
+  submission to score). Native-tool family draws: v29 0.18/0.15/0.15, v30 0.15, v32 0.13, v33t 0.17.
+  LB/eval ratio over six draws 0.44 (v33t 0.49). Submitted v33t second draw (identical zip, ref 57701574) as
+  the 10-27 slot. Public board 10-27: 3,916 teams, five at 0.24, our best 0.18 at rank 546 (547 teams at 0.18).
