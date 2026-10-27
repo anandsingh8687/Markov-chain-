@@ -679,3 +679,7 @@ gemma_agent/
   licences), 272 graph/embedding files, 1,273 de-duplicated cp313 wheels (wheels_pool + wheels_manifest),
   8.1 GB, README + LICENSES. Companion notebook anandsingh8687/sealedgate-161-companion v1 pushed (private;
   attaches sealedgate-161-runs + sealedgate-161; diffs analysis output against expected_tables.md).
+- 10-27 06:20 companion notebook anandsingh8687/sealedgate-161-companion v2 COMPLETE (47 s runtime; the hours
+  of RUNNING were queue/mount): "ALL TABLES MATCH THE PAPER", 461 trajectories found, zysbnd1 r = 0.95 on 27
+  tasks, parser hang reproduced on the vLLM 0.19.1 wheel. Paper §6 overlap corrected (62 toasterson candidates,
+  52 kept by both). Paper release is complete apart from the pending v33t draw and the v35 gate.

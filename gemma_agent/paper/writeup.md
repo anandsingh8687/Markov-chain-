@@ -191,7 +191,7 @@ E4B patches were mostly wrong (37 of 45 runs), not empty. A redesigned bundle (s
 
 - **Few repeats, one model family.** Only v29 was run twice (8% of tasks flipped at temperature 0.2). The §4 decisions hold for Gemma 4 under ADK on 4×L4; the procedure transfers, the decisions may not.
 - **Narrow, easier tasks.** Python only, at most 3 files and 150 lines; convert rates with the §3.3 ratio.
-- **Overlap.** 52 tasks are in toasterson's held-out set, 27 in zysbnd1's dev pool and 26 in sslasme's lists (`crosswalk.csv`); results on them are not independent.
+- **Overlap.** 62 tasks are in toasterson's held-out candidates (52 kept by both pipelines), 27 in zysbnd1's dev pool and 26 in sslasme's lists (`crosswalk.csv`); results on them are not independent.
 - **Verifier.** We cannot redistribute the competition's verifier; elsewhere, grade from the released F2P/P2P lists (not yet re-validated).
 
 ## 7. Reproducibility
