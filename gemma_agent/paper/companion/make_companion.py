@@ -32,8 +32,9 @@ print('snapshots included', sum(m['snapshot_included'] for m in meta))
 print('licences', collections.Counter(m['license'] for m in meta).most_common())
 print(open(REL / 'LICENSES.md').read())"""),
     ("markdown", "## Paper tables (gates, outcome mix, calibration, power, profile, compaction, malformed calls)"),
-    ("code", """with tarfile.open(RUNS / 'traces.tar.gz') as tf:
-    tf.extractall('/kaggle/working')
+    ("code", """# trajectories: Kaggle unpacks traces.tar.gz in the dataset; the tables only need outcomes.csv
+traces = [p for p in RUNS.rglob('*.json') if '/traces' in str(p) or 'traces.tar.gz' in str(p)]
+print('released trajectories found:', len(traces))
 r = subprocess.run([sys.executable, str(RUNS / 'code/paper/analysis.py'), '--meta', str(REL / 'tasks_meta.jsonl'),
                     '--data', str(RUNS)], capture_output=True, text=True)
 print(r.stdout); print(r.stderr[-2000:])
