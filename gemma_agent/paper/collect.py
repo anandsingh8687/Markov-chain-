@@ -1,6 +1,9 @@
 """Collect per-task lab outcomes into paper/data/outcomes.csv (stdlib only).
 
-Usage: python collect.py <dir with labNN{a,b}out/lab/results.jsonl subdirs>
+Usage: python collect.py <dir with labNN{a,b}out/lab/results.jsonl subdirs> [timepred.jsonl]
+
+The optional timepred.jsonl (python lab/timepred.py --json OUT <labNNout ...>) adds predicted_seconds: the
+scorer-time model's sequential task seconds (31B constants; not calibrated for E4B rows).
 
 One row per (lab, bundle, task). Labs 17-19 ran on the older public-repo dev tasks; labs 20-24 ran on
 eval set v1 (split from evalset/v1/ids_A.txt, ids_B.txt). In lab 23 the vLLM server hung at 12:33 UTC
@@ -93,6 +96,11 @@ def trace_fields(path):
 
 
 root = Path(sys.argv[1])
+pred = {}
+if len(sys.argv) > 2:
+    for line in open(sys.argv[2]):
+        p = json.loads(line)
+        pred[(p["run"].removesuffix("out"), p["bundle"], p["id"], p.get("replicate", 0))] = p.get("pred_task_s", "")
 rows = []
 for lab, (taskset, clock) in LABS.items():
     f = root / f"{lab}out" / "lab" / "results.jsonl"
@@ -113,6 +121,7 @@ for lab, (taskset, clock) in LABS.items():
             "virtual_seconds": r.get("virtual_seconds", ""),
             "real_seconds": r.get("task_seconds", "") if clock == "real" else r.get("real_agent_seconds", ""),
             "patch_chars": r.get("patch_chars", 0),
+            "predicted_seconds": pred.get((lab, r["bundle"], tid, r.get("replicate", 0)), ""),
             **trace_fields(root / f"{lab}out" / "lab" / r["bundle"] / f"r{r.get('replicate', 0)}" / "traces" / f"trace_{tid}.json"),
         })
 out = HERE / "data" / "outcomes.csv"

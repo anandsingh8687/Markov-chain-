@@ -31,12 +31,25 @@ print('splits', collections.Counter(m['split'] for m in meta))
 print('snapshots included', sum(m['snapshot_included'] for m in meta))
 print('licences', collections.Counter(m['license'] for m in meta).most_common())
 print(open(REL / 'LICENSES.md').read())"""),
-    ("markdown", "## Paper tables (gates, outcome mix, calibration, power, profile, compaction)"),
+    ("markdown", "## Paper tables (gates, outcome mix, calibration, power, profile, compaction, malformed calls)"),
     ("code", """with tarfile.open(RUNS / 'traces.tar.gz') as tf:
     tf.extractall('/kaggle/working')
 r = subprocess.run([sys.executable, str(RUNS / 'code/paper/analysis.py'), '--meta', str(REL / 'tasks_meta.jsonl'),
-                    '--traces', '/kaggle/working/traces'], capture_output=True, text=True)
-print(r.stdout); print(r.stderr[-2000:])"""),
+                    '--data', str(RUNS)], capture_output=True, text=True)
+print(r.stdout); print(r.stderr[-2000:])
+exp = (RUNS / 'expected_tables.md').read_text()
+print('ALL TABLES MATCH THE PAPER' if r.stdout.strip() == exp.strip() else 'TABLES DIFFER FROM expected_tables.md')"""),
+    ("markdown", "## Overlap with other competition task sets"),
+    ("code", """import csv
+cw = list(csv.DictReader(open(RUNS / 'crosswalk.csv')))
+z = [r for r in cw if r['zysbnd1_runs'] not in ('', '0') and r['sg_31b_runs'] not in ('', '0')]
+import statistics
+x = [int(r['sg_31b_solved']) / int(r['sg_31b_runs']) for r in z]; y = [int(r['zysbnd1_solved']) / int(r['zysbnd1_runs']) for r in z]
+mx, my = statistics.mean(x), statistics.mean(y)
+r_ = sum((a - mx) * (b - my) for a, b in zip(x, y)) / (sum((a - mx) ** 2 for a in x) * sum((b - my) ** 2 for b in y)) ** 0.5
+print('tasks shared with zysbnd1:', len(z), 'per-task solve-rate correlation r =', round(r_, 2))
+print('tasks in toasterson held-out list:', sum(1 for r in cw if r['toasterson_id']))
+print('tasks in sslasme lists:', sum(1 for r in cw if r['sslasme_lists']))"""),
     ("markdown", """## Scorer-time model
 
 `code/lab/timepred.py` fits the per-step cost model on real-clock runs and predicts the scorer's sequential time

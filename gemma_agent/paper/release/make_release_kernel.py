@@ -4,8 +4,9 @@ Private CPU kernel (no internet, no GPU) that turns the evalset-v1-merge output 
 layout. It copies only what may be redistributed:
   tasks.jsonl, tasks_meta.jsonl (+ snapshot_included), split/id files, summary.json, rejects.jsonl
   snapshots/<id>.tgz            only for repositories with an OSI licence (MIT, Apache-2.0, BSD, MPL, ...)
-  wheels/pool/*.whl             every task's cp313 wheels, de-duplicated by filename (PyPI packages, own licences)
-  wheels/by_task/<id>.txt       the wheel filenames of each task (+ <id>.requirements.txt when present)
+  wheels_pool/*.whl             every task's cp313 wheels, de-duplicated by filename (PyPI packages, own licences)
+  wheels_manifest/<id>.txt      the wheel filenames of each task, one per line (the layout lab/labworker.py reads)
+  requirements/<id>.txt         the task's frozen requirements, when present
   graphs/, embeddings/          our make_graph.py code graphs for the snapshot tasks
 It never copies the merge output's sandbox/ or docker/ directories (competition data).
 """
@@ -48,8 +49,9 @@ for sub, ext in (('graphs', '.json'), ('embeddings', '.npz')):
         g = m.get('graph_key')
         if m['instance_id'] in keep and g and (SRC / sub / f'{g}{ext}').exists() and not (OUT / sub / f'{g}{ext}').exists():
             shutil.copy(SRC / sub / f'{g}{ext}', OUT / sub / f'{g}{ext}'); n_graph += 1
-pool = OUT / 'wheels' / 'pool'; pool.mkdir(parents=True, exist_ok=True)
-bt = OUT / 'wheels' / 'by_task'; bt.mkdir(parents=True, exist_ok=True)
+pool = OUT / 'wheels_pool'; pool.mkdir(parents=True, exist_ok=True)
+bt = OUT / 'wheels_manifest'; bt.mkdir(parents=True, exist_ok=True)
+rq = OUT / 'requirements'; rq.mkdir(parents=True, exist_ok=True)
 n_whl = 0
 for m in meta:
     tid = m['instance_id']; d = SRC / 'wheels_by_task' / tid
@@ -62,20 +64,33 @@ for m in meta:
             if not (pool / w.name).exists():
                 shutil.copy(w, pool / w.name); n_whl += 1
         elif w.name == 'requirements.txt':
-            shutil.copy(w, bt / f'{tid}.requirements.txt')
+            shutil.copy(w, rq / f'{tid}.txt')
     (bt / f'{tid}.txt').write_text('\n'.join(names) + '\n')
 (OUT / 'LICENSES.md').write_text("""# Licences
 - Task metadata and problem statements derive from the SWE-rebench datasets (nebius), CC BY 4.0.
 - snapshots/<id>.tgz are source snapshots of public GitHub repositories at the task's base commit, included only
   when the repository declares an OSI licence (tasks_meta.jsonl: license, snapshot_included). Each snapshot keeps
   its repository's licence file and remains under that licence.
-- wheels/pool holds unmodified Python wheels downloaded from PyPI, each under its own package licence.
+- wheels_pool/ holds unmodified Python wheels downloaded from PyPI, each under its own package licence.
 - graphs/ and embeddings/ are derived from the included snapshots by make_graph.py (same licences).
 - Tasks with snapshot_included = false are released as metadata plus repo_url and base_commit only.
 - Nothing from the competition's own data (harness, sandbox setup, docker shims) is included.
 """)
 print('tasks', len(meta), 'snapshots', n_snap, 'graph files', n_graph, 'unique wheels', n_whl, flush=True)
-subprocess.run(['bash', '-c', f'du -sh {OUT} {OUT}/snapshots {OUT}/wheels; ls {OUT}'])
+(OUT / 'README.md').write_text("""# SealedGate-161
+
+161 verified issue-fixing tasks from 128 Python repositories, in the Gemma 4 Developer Agent competition format.
+- tasks.jsonl: competition schema (SWE-bench field names); tasks_meta.jsonl: source dataset, dates, licence,
+  FAIL_TO_PASS / PASS_TO_PASS, verification log, snapshot_included, repo_url.
+- ids_A.txt (tuning, 89) / ids_B.txt (sealed, 72): repository-disjoint split (split_manifest.json, seed 20261018).
+- snapshots/<id>.tgz, graphs/, embeddings/: repository at base_commit and our code graph, for the 136 tasks
+  with an OSI licence; the other 25 have repo_url + base_commit only.
+- wheels_pool/ + wheels_manifest/<id>.txt: offline cp313 wheels per task; requirements/<id>.txt.
+- rejects.jsonl: the 259 rejected candidates and why.
+Running a lab also needs python3.13 and the sandbox image wheels (attach anandsingh8687/py313kit) and the
+competition's own input (verifier, sandbox setup), which is not redistributed here. See LICENSES.md.
+""")
+subprocess.run(['bash', '-c', f'du -sh {OUT} {OUT}/snapshots {OUT}/wheels_pool; ls {OUT}'])
 '''
 
 

@@ -16,7 +16,7 @@ cuts the agent at max_time_minutes (from the bundle's eval_config.yaml, kept by 
 seconds + the row's measured non-agent time (sandbox setup + Phase 2 grading = task_seconds - real agent
 seconds, e.g. rich_3772's hidden tests always run into their 300 s timeout).
 
-Constants were fitted on the sequential REAL-clock runs lab17a (v28, v29) and lab17b (v29, v29c36), 1,433 LLM
+Constants were fitted on the sequential REAL-clock runs lab17a (v28, v29) and lab17b (v29, v29c36), 1,441 LLM
 steps: `python timepred.py --fit lab17aout lab17bout` refits and validates (in-sample and leave-one-kernel-
 out). Virtual-clock runs (concurrent labs 15/16/18) are predicted with the same constants from their token
 counts; their measured tool/grading seconds come from a loaded machine (6 tasks at once), so they are a bit

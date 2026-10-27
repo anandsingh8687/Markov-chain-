@@ -12,7 +12,12 @@ import statistics
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-R = list(csv.DictReader(open(HERE / "data" / "outcomes.csv")))
+_ap = argparse.ArgumentParser()
+_ap.add_argument("--meta", help="tasks_meta.jsonl of the release (tasks.jsonl must sit next to it)")
+_ap.add_argument("--data", default=str(HERE / "data"), help="directory holding outcomes.csv and lb.csv")
+ARGS = _ap.parse_args()
+DATA = Path(ARGS.data)
+R = list(csv.DictReader(open(DATA / "outcomes.csv")))
 for r in R:
     r["resolved"] = int(r["resolved"])
 
@@ -61,7 +66,8 @@ GATES = [  # (question, baseline arm, candidate arm)
     ("thinking 2048 + 32 calls (v34) vs v33t, sealed split B", {("lab24", "v33t")}, {("lab24", "v34")}),
     ("E4B (s1) vs 31B v29, split A (pre-hang tasks)", {("lab22a", "v29"), ("lab22b", "v29")}, {("lab23", "s1")}),
     ("E4B 40 calls (s2) vs 28 calls (s1)", {("lab23", "s1")}, {("lab23", "s2")}),
-    ("v30 vs v29, older public-repo dev set (lab 18)", {("lab18a", "v29"), ("lab18b", "v29")}, {("lab18a", "v30"), ("lab18b", "v30")}),
+    ("v30 vs v29, older public-repo dev set (lab 18, earlier 0.164 s + 22.1 ms/token clock)", {("lab18a", "v29"), ("lab18b", "v29")}, {("lab18a", "v30"), ("lab18b", "v30")}),
+    ("A/A: v29 run twice on the same tasks (lab 20 -> lab 22)", {("lab20a", "v29"), ("lab20b", "v29")}, {("lab22a", "v29"), ("lab22b", "v29")}),
 ]
 
 
@@ -98,7 +104,7 @@ def table_mix():
 
 
 def table_calibration():
-    lb = list(csv.DictReader(open(HERE / "data" / "lb.csv")))
+    lb = list(csv.DictReader(open(DATA / "lb.csv")))
     draws = collections.defaultdict(list)
     for x in lb:
         if x["public_score"]:
@@ -120,44 +126,48 @@ def table_calibration():
               f"{lbm:.3f} | {lbm / rate:.2f} |" if d else f"| {b} | {s}/{n} | {rate:.2f} | - | - | - |")
 
 
+def _binpmf(n, p):
+    return [math.exp(math.lgamma(n + 1) - math.lgamma(k + 1) - math.lgamma(n - k + 1)
+                     + k * math.log(p) + (n - k) * math.log(1 - p)) for k in range(n + 1)]
+
+
+def mcnemar_power(n, d, g, alpha=0.05):
+    """Exact power of a two-sided exact McNemar test on n paired tasks: each task is discordant with
+    probability d, and a discordant task favours the candidate with probability (d + g) / (2d)."""
+    q = (d + g) / (2 * d)
+    if q > 1:
+        return None
+    power = 0.0
+    for m, pm in enumerate(_binpmf(n, d)):
+        if pm < 1e-12:
+            continue
+        crit = next((c for c in range(m // 2 + 1, m + 1) if mcnemar(m - c, c) < alpha), None)
+        if crit is not None:
+            power += pm * sum(_binpmf(m, q)[crit:]) if 0 < q < 1 else pm * (q == 1)
+    return power
+
+
 def table_power():
-    """Minimum detectable difference for a paired gate: exact McNemar, alpha 0.05, power 0.8,
-    discordance rate from the measured gates."""
-    print("\n## Power of a paired gate (alpha 0.05 two-sided, power 0.8)\n")
+    """Smallest solve-rate gain detectable with 80% power, at the discordance measured between 31B variants."""
+    print("\n## Power of a paired gate (exact McNemar, alpha 0.05 two-sided, power 0.8)\n")
     disc = []
     for _, A, B in GATES[:4]:
         s = paired(arm(A), arm(B), n_boot=1)
         disc.append((s["only_a"] + s["only_b"]) / s["n"])
-    q = statistics.mean(disc)
-    print(f"mean discordance per task across 31B gates: {q:.3f}")
-    rnd = random.Random(1)
+    d = statistics.mean(disc)
+    print(f"mean discordance per task across the four 31B gates: {d:.3f}; rule of thumb n ~ 8d/gain^2")
     print("| tasks n | detectable gain (points, 80% power) |")
     print("|---|---|")
-    for n in [24, 48, 87, 155, 300, 600]:
-        found = False
-        for gain in [x / 100 for x in range(1, 41)]:
-            # P(cand-only) = (q + gain)/2, P(base-only) = (q - gain)/2
-            pb, pa = (q + gain) / 2, (q - gain) / 2
-            if pa < 0:
+    for n in [24, 48, 60, 87, 155, 300, 600]:
+        found = None
+        for gi in range(1, 41):
+            pw = mcnemar_power(n, d, gi / 100)
+            if pw is None:
                 break
-            hits = 0
-            sims = 400
-            for _ in range(sims):
-                b = c = 0
-                for _ in range(n):
-                    u = rnd.random()
-                    if u < pb:
-                        c += 1
-                    elif u < pb + pa:
-                        b += 1
-                hits += mcnemar(b, c) < 0.05 and c > b
-            if hits / sims >= 0.8:
-                print(f"| {n} | {100 * gain:.0f} |")
-                found = True
+            if pw >= 0.8:
+                found = gi
                 break
-        if not found:
-            print(f"| {n} | none: 80% power not reached even when every discordant task favours the candidate |")
-
+        print(f"| {n} | {found if found else 'none: too few discordant tasks even if all favour the candidate'} |")
 
 def patch_lines(patch):
     """Changed lines (+/-) in non-test files of a unified diff."""
@@ -188,7 +198,7 @@ def table_profile(meta_path):
     print(f"FAIL_TO_PASS tests per task median {statistics.median(f2p):.0f}")
     print("sources", dict(collections.Counter(m["dataset"] for m in M)))
     print("problem statement sources", dict(collections.Counter(m["ps_source"] for m in M)))
-    print("licenses", dict(collections.Counter(m["license"] for m in M).most_common(8)))
+    print("licenses", dict(collections.Counter(m["license"] for m in M).most_common()))
     stars = num("repo_stars")
     print(f"repo stars median {statistics.median(stars):.0f}, p90 {statistics.quantiles(stars, n=10)[8]:.0f}")
     print(f"snapshot MB total {sum(num('snapshot_mb')):.0f}, wheels MB total {sum(num('wheels_mb')):.0f}")
@@ -244,14 +254,11 @@ def table_malformed():
         print(f"| {k[0]} | {k[1]} | {b}/{n} | {100 * b / n:.1f}% |")
 
 
-ap = argparse.ArgumentParser()
-ap.add_argument("--meta")
-a = ap.parse_args()
 table_gates()
 table_mix()
 table_calibration()
 table_power()
-if a.meta:
-    table_profile(a.meta)
+if ARGS.meta:
+    table_profile(ARGS.meta)
 table_compaction()
 table_malformed()
