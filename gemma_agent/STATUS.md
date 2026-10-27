@@ -675,3 +675,7 @@ gemma_agent/
   wins in ~12 LoRA/SFT attempts in this competition; no E4B adapter has ever scored; usable data 195
   trajectories on 74 tasks, 46% fastapi/rich). Allowed only: a 0.3-0.5 quota-h serving canary and a <=5 quota-h
   pilot with written stop rules. Decision: deferred entirely; base-E4B work (lab27) takes the quota first.
+- 10-27 02:00 release kernel anandsingh8687/sealedgate-161 v3 COMPLETE: 161 tasks, 136 snapshots (OSI
+  licences), 272 graph/embedding files, 1,273 de-duplicated cp313 wheels (wheels_pool + wheels_manifest),
+  8.1 GB, README + LICENSES. Companion notebook anandsingh8687/sealedgate-161-companion v1 pushed (private;
+  attaches sealedgate-161-runs + sealedgate-161; diffs analysis output against expected_tables.md).
