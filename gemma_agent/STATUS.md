@@ -670,3 +670,8 @@ gemma_agent/
   pushed (v2 stuck >5 h). E4B lab clock: E4B decodes 90.5 tok/s single-stream vs 31B 37.2 -> make_lab
   --vc-preset e4b (11.7 ms/token, 0.138 s/1k uncached, 10.4 s/compaction); lab27 regenerated with it. The s3
   smoke lab ran on 31B constants, so its 5-minute cap was ~2.4x too strict.
+- 10-27 E4B LoRA feasibility workflow (research_1027_e4b_lora.md): full distillation is a no-go (P(prize via
+  LoRA) ~1%: beating 0.10 needs E4B to recover ~60% of the 31B teacher vs 25-35% in published 7B SFT; 0 paired
+  wins in ~12 LoRA/SFT attempts in this competition; no E4B adapter has ever scored; usable data 195
+  trajectories on 74 tasks, 46% fastapi/rich). Allowed only: a 0.3-0.5 quota-h serving canary and a <=5 quota-h
+  pilot with written stop rules. Decision: deferred entirely; base-E4B work (lab27) takes the quota first.
