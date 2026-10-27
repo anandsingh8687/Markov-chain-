@@ -375,6 +375,10 @@ def main() -> None:
                              "gemma-4-e4b-it-qat-w4a16-ct", "gemma-4-e2b-it-qat-w4a16-ct"],
                     help="served model (the bundles must declare the same model)")
     ap.add_argument("--metrics-interval", type=float, default=30.0, help="seconds between vLLM /metrics scrapes")
+    ap.add_argument("--vc-preset", choices=["31b", "e4b"], default=None,
+                    help="virtual-clock constants: 31b = fitted on real-clock lab 17 (0.115 s/call, 28.55 ms/token, "
+                         "0.335 s/1k uncached, 25.4 s/compaction); e4b = the same scaled by single-stream decode speed "
+                         "(90.5 vs 37.2 tok/s, x0.41: 11.7 ms/token, 0.138 s/1k, 10.4 s/compaction). Explicit --vc-* win.")
     ap.add_argument("--guard-gemma4-parser", action="store_true",
                     help="patch vLLM 0.19.1's gemma4 _parse_gemma4_array (as fixed upstream in 0.21) so a malformed "
                          "tool call cannot hang the server; each would-be hang logs LABGUARD in vllm_server.log")
@@ -443,6 +447,11 @@ def main() -> None:
               "agents' calls. Add --labworker for call logs (timepred/stats read them).")
     if clock != "real" and a.concurrency <= 1:
         print("warning: a virtual/scaled clock is only meaningful with --concurrency > 1")
+    presets = {"31b": dict(vc_per_call=0.115, vc_per_token=0.02855, vc_per_kuncached=0.335, vc_per_compaction=25.4),
+               "e4b": dict(vc_per_call=0.115, vc_per_token=0.0117, vc_per_kuncached=0.138, vc_per_compaction=10.4)}
+    for k, v in presets.get(a.vc_preset, {}).items():
+        if getattr(a, k) is None:
+            setattr(a, k, v)
     clock_args = {"per_call": a.vc_per_call, "per_token": a.vc_per_token, "real_factor": a.real_factor,
                   "wall_scale": a.wall_scale, "tool_seconds": not a.vc_no_tool_seconds}
     for k, v in (("per_kuncached", a.vc_per_kuncached), ("per_compaction", a.vc_per_compaction)):

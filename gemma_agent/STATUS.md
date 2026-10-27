@@ -659,3 +659,14 @@ gemma_agent/
   upload (31B v33t scores 34/87). Leader level: the small-model public leader's 0.10 corresponds to ~0.22 on
   our set at the 31B ratio of 0.45, i.e. ~19/87 (the ratio is not yet measured for E4B). The
   00:10 and 08:00 check-ins were changed: no s3 upload; 10-27 slot = v33t second draw (already gated).
+- 10-27 ~01:00 levers/paper workflow (36 agents): all 10 lever candidates refuted by both adversarial
+  verifiers (best corrected gain ~0.45 tasks/87; v29 run twice disagrees on 8% of tasks, SE of a paired
+  difference ~3.2-3.6 tasks/87). Lab 25 stays v33t/v35/v36; no new arm. Paper: fact-check found 20 errors,
+  all fixed with the merged reviewer plan (writeup ~2,956 words): corrected malformed-call rates (31B 1.0-1.7%,
+  E4B s1 0.4%, s2 5.1%, s3 0%), E4B 1 solve in 57 runs, exact McNemar power (87 -> 11 points), A/A gate,
+  zysbnd1 per-task agreement r = 0.95 on 27 shared tasks, toasterson verdict disagreement 18/105.
+  Release fixes: analysis.py --data, exact power, predicted_seconds column (timepred), wheels_pool +
+  wheels_manifest layout (matches labworker), companion diff against expected_tables.md; release kernel v3
+  pushed (v2 stuck >5 h). E4B lab clock: E4B decodes 90.5 tok/s single-stream vs 31B 37.2 -> make_lab
+  --vc-preset e4b (11.7 ms/token, 0.138 s/1k uncached, 10.4 s/compaction); lab27 regenerated with it. The s3
+  smoke lab ran on 31B constants, so its 5-minute cap was ~2.4x too strict.
