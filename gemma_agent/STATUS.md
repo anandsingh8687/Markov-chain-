@@ -687,3 +687,8 @@ gemma_agent/
   submission to score). Native-tool family draws: v29 0.18/0.15/0.15, v30 0.15, v32 0.13, v33t 0.17.
   LB/eval ratio over six draws 0.44 (v33t 0.49). Submitted v33t second draw (identical zip, ref 57701574) as
   the 10-27 slot. Public board 10-27: 3,916 teams, five at 0.24, our best 0.18 at rank 546 (547 teams at 0.18).
+- 10-28 16:12 v33t second draw (ref 57701574, identical zip) public 0.13. v33t draws 0.17, 0.13 (mean 0.15)
+  vs v29 0.18, 0.15, 0.15 (mean 0.16): the board does not show the lab's +4/87 for temperature 1.0 (both
+  within draw noise, SD ~1.5 tasks). LB/eval ratio over seven draws 0.43. Submitted v33t third draw (ref
+  57742428) as the 10-28 slot for a better estimate of the likely final pick. Paper §3.3/§4.1 updated
+  (2,982 words; reserve cuts listed in the edit plan if the v35 result needs room).
