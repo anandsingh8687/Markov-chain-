@@ -692,3 +692,9 @@ gemma_agent/
   within draw noise, SD ~1.5 tasks). LB/eval ratio over seven draws 0.43. Submitted v33t third draw (ref
   57742428) as the 10-28 slot for a better estimate of the likely final pick. Paper §3.3/§4.1 updated
   (2,982 words; reserve cuts listed in the edit plan if the v35 result needs room).
+- 10-29 19:00 v33t third draw (ref 57742428) public 0.15. v33t 0.17/0.13/0.15 (mean 0.150) vs v29
+  0.18/0.15/0.15 (mean 0.160): on the board the two are indistinguishable; LB/eval ratio over 8 draws 0.43.
+  No more identical re-uploads (user rule). 10-29 design study (research_1029_best_in_class.md): no new 31B
+  architecture beats v33t detectably (parallel attempts at equal time: branches keep 0.65-0.76 of v33t;
+  perfect-picker k=2 ceiling +6 eval points; 48/87 tasks never solved). Next: lab25 (v33t/v35/v36) and lab27
+  (E4B s3/s4) at the 10-31 reset; upload only through the pre-registered gate.
