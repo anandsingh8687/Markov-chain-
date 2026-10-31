@@ -10,7 +10,7 @@ from pathlib import Path
 CELLS = [
     ("markdown", """# SealedGate-161: reproduce the paper's tables
 
-Companion to *Sealed and Calibrated: a Fresh-Repository Gate for Changing a 12-Hour Gemma 4 Coding Agent*.
+Companion to *SealedGate-161: a Calibrated Fresh-Repository Gate for Changing a Gemma 4 Coding Agent*.
 
 Inputs:
 - `sealedgate-161-runs` (dataset): per-run outcomes, leaderboard draws, trajectories, bundles and code;

@@ -3,7 +3,7 @@
 The Kaggle API cannot create writeups, so these steps are manual (about 10 minutes).
 
 1. Open https://www.kaggle.com/competitions/gemma-4-developer-agent-paper and go to **Writeups → New Writeup**.
-2. **Title:** `Sealed and Calibrated: a Fresh-Repository Gate for Changing a 12-Hour Gemma 4 Coding Agent`
+2. **Title:** `SealedGate-161: a Calibrated Fresh-Repository Gate for Changing a Gemma 4 Coding Agent` (the first line of `writeup.md`, without the `#`)
    **Subtitle:** the line after "Subtitle:" in `writeup.md`.
 3. **Body:** paste everything in `writeup.md` from `## Abstract` to the end. Markdown tables render in Kaggle writeups.
 4. **Project links / attached resources.** Attach exactly these three. Private ones become public automatically after the deadline, which is intended:
@@ -18,4 +18,4 @@ The Kaggle API cannot create writeups, so these steps are manual (about 10 minut
    - any `gemma-agent-lab*` kernel
 6. Save, then press **Submit** (top right). A saved draft that is not submitted is not judged.
 
-Before submitting, check that the *pending* entries in `writeup.md` have been filled in: v33t's leaderboard draw (§3.3) and the v35 gate (§4.4). Claude updates them as results arrive.
+All results are in (labs 17–28s, last update 10-31). If the editor's word counter shows more than 3,000 words, tell Claude before submitting; the file is kept at or under 3,000 words counted as tokens containing a letter or digit.
