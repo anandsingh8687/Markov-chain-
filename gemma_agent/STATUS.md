@@ -702,3 +702,12 @@ gemma_agent/
   split A (ev22a/ev22b), parser guard on, 31B clock preset values, seed 25 (QUEUED at 00:07). Pre-registered
   gate in research_1029_best_in_class.md §4 (76 scoreable tasks; solves >= pooled v33t - 1; predicted time
   <= 1.02x; empties+timeouts <= v33t + 3; 0 LABGUARD; v36 read/cap-hit checks). Next: lab27 (E4B s3/s4).
+- 10-31 05:20 lab25a/b COMPLETE (261 runs, 0 LABGUARD, no harness errors beyond 8-min timeouts). Pre-registered
+  gate (research_1029_best_in_class.md §4), 76 scoreable tasks (the 11 excluded were never solved by anyone):
+  v33t lab22 34 / lab25 29 (A/A swing 5, discordant 8 vs 3) -> pooled 31.5. v35 28 (FAIL: < 30.5; agent time
+  1.03x v33t: FAIL). v36 34 (pass), time 1.00x (pass), empties+timeouts 19 vs 20 (pass), read calls 1.07x
+  (pass), 28-call cap hits 36 vs 31 on 76 (42 vs 32 on 87) > v33t+3 (FAIL criterion 5). Verdict: no candidate
+  passes; v33t stays the upload/final pick; nothing uploaded (user rule). v36 vs v33t same kernel +5 (p 0.27)
+  is inside the A/A swing. lab27 (E4B s3/s4, e4b clock, guard) pushed at 05:17. Paper §4.4/§3.1/§6 updated
+  with the result (2,992 words); analysis.py gates include lab 25; calibration/compaction tables pinned to the
+  pre-lab-25 analysis set. Release dataset re-versioned (1,019 runs, 668 trajectories).

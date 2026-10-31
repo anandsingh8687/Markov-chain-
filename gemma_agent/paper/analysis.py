@@ -68,6 +68,9 @@ GATES = [  # (question, baseline arm, candidate arm)
     ("E4B 40 calls (s2) vs 28 calls (s1)", {("lab23", "s1")}, {("lab23", "s2")}),
     ("v30 vs v29, older public-repo dev set (lab 18, earlier 0.164 s + 22.1 ms/token clock)", {("lab18a", "v29"), ("lab18b", "v29")}, {("lab18a", "v30"), ("lab18b", "v30")}),
     ("A/A: v29 run twice on the same tasks (lab 20 -> lab 22)", {("lab20a", "v29"), ("lab20b", "v29")}, {("lab22a", "v29"), ("lab22b", "v29")}),
+    ("A/A: v33t run twice on the same tasks (lab 22 -> lab 25)", {("lab22a", "v33t"), ("lab22b", "v33t")}, {("lab25a", "v33t"), ("lab25b", "v33t")}),
+    ("issue kept in the instruction (v35) vs v33t, same kernel (lab 25)", {("lab25a", "v33t"), ("lab25b", "v33t")}, {("lab25a", "v35"), ("lab25b", "v35")}),
+    ("v35 without read_file / graph tools (v36) vs v33t, same kernel (lab 25)", {("lab25a", "v33t"), ("lab25b", "v33t")}, {("lab25a", "v36"), ("lab25b", "v36")}),
 ]
 
 
@@ -90,7 +93,7 @@ def table_mix():
         if r["task_set"] != "evalset" or r["interface_task"] == "1" or r["outcome"] == "server_hang":
             continue
         g = (r["bundle"], {"lab20a": "A", "lab20b": "A", "lab21": "A", "lab22a": "A", "lab22b": "A",
-                           "lab23": "A", "lab24": "B", "lab28s": "A"}[r["lab"]], r["lab"][:5])
+                           "lab23": "A", "lab24": "B", "lab28s": "A", "lab25a": "A", "lab25b": "A"}[r["lab"]], r["lab"][:5])
         groups[g][r["outcome"]] += 1
         if r["completion_tokens"]:
             tok[g].append(float(r["completion_tokens"]))
@@ -103,6 +106,9 @@ def table_mix():
               + f" | {statistics.mean(tok[g]):.0f} |" if tok[g] else " | |")
 
 
+PRE25 = {"lab17a", "lab17b", "lab18a", "lab18b", "lab19", "lab20a", "lab20b", "lab21", "lab22a", "lab22b", "lab23", "lab24", "lab28s"}
+
+
 def table_calibration():
     lb = list(csv.DictReader(open(DATA / "lb.csv")))
     draws = collections.defaultdict(list)
@@ -110,8 +116,8 @@ def table_calibration():
         if x["public_score"]:
             draws[x["bundle"]].append(float(x["public_score"]))
     pooled = collections.defaultdict(lambda: [0, 0])
-    for r in R:
-        if r["task_set"] == "evalset" and r["interface_task"] != "1" and r["outcome"] != "server_hang":
+    for r in R:  # analysis set fixed before lab 25 (the v35/v36 gate)
+        if r["task_set"] == "evalset" and r["interface_task"] != "1" and r["outcome"] != "server_hang" and r["lab"] in PRE25:
             pooled[r["bundle"]][0] += r["resolved"]
             pooled[r["bundle"]][1] += 1
     print("\n## Eval set vs public leaderboard (58 tasks)\n")
@@ -224,7 +230,7 @@ def table_compaction(bundle="v33t"):
     """First history compaction vs first edit (outcomes.csv fields from the trajectories)."""
     c = collections.Counter()
     for r in R:
-        if r["bundle"] != bundle or r["task_set"] != "evalset" or r["llm_steps"] in ("", "0"):
+        if r["bundle"] != bundle or r["task_set"] != "evalset" or r["llm_steps"] in ("", "0") or r["lab"] not in PRE25:
             continue
         comp, edit = r["first_compaction_step"], r["first_edit_step"]
         key = ("no compaction" if not comp else "compaction, never edited" if not edit

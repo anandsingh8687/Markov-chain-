@@ -1,6 +1,6 @@
 # SealedGate-161: a Calibrated Fresh-Repository Gate for Changing a Gemma 4 Coding Agent
 
-**Subtitle:** 161 verified tasks from 128 unseen repositories, per-task outcomes for eleven Gemma 4 agent bundles, a sequential-runtime model accurate to 2%, and a vLLM tool-parser hang that silently zeroes small-model runs.
+**Subtitle:** 161 verified tasks from 128 unseen repositories, per-task outcomes for thirteen Gemma 4 agent bundles, a sequential-runtime model accurate to 2%, and a vLLM tool-parser hang that silently zeroes small-model runs.
 
 ## Abstract
 
@@ -10,7 +10,7 @@ We release **SealedGate-161**:
 - 161 tasks from 128 Python repositories outside the public set, each verified twice in the competition's py3.13 sandbox (45% of buildable candidates' gold patches failed there), split by repository into tuning (89) and sealed (72) halves;
 - a paired protocol sized by a power table;
 - a virtual clock that predicts sequential real-clock runtime within 1.6% on a held-out kernel;
-- per-task outcomes for 758 runs of eleven Gemma 4 31B and E4B bundles, calibrated against the leaderboard; per-task solve rates match an independent lab's (r = 0.95).
+- per-task outcomes for 1,019 runs of thirteen Gemma 4 31B and E4B bundles, calibrated against the leaderboard; per-task solve rates match an independent lab's (r = 0.95).
 
 What the gate found:
 - vLLM's Gemma 4 tool parser up to 0.20.2 (the scorer pins 0.19.1) loops forever on some tool-call strings, freezing every request; it ended 41 of our 86 E4B runs.
@@ -70,7 +70,7 @@ plus 25.4 s after each history compaction, plus measured tool time. The agent is
   - `tasks.jsonl` (competition schema, SWE-bench field names), `tasks_meta.jsonl` (source, dates, licence, F2P/P2P lists, verification log), `rejects.jsonl` and split files;
   - repository snapshots and code graphs for the 136 openly licensed tasks, rebuild recipes for the other 25, and cp313 wheels for all 161.
 - **Code:** build pipeline, lab generator, clock predictor, paired statistics and the analysis behind every table.
-- **Runs:** `outcomes.csv` (758 runs: outcome, calls, tokens, virtual and predicted seconds, malformed calls), leaderboard draws, 461 graded trajectories, `crosswalk.csv` (overlap with other sets) and the eleven run bundles plus three awaiting a lab (v35, v36, s4).
+- **Runs:** `outcomes.csv` (1,019 runs: outcome, calls, tokens, virtual and predicted seconds, malformed calls), leaderboard draws, 668 graded trajectories, `crosswalk.csv` (overlap with other sets) and all fourteen bundles (s4 awaiting its lab).
 
 We do not redistribute competition data (harness files, docker shims); the lab mounts them from the competition's own input. RepoGraph-Verified (debmalya84; 221 tasks) is larger and harder and also ships snapshots and wheels, but no agent outcomes or calibration; toasterson's set ships ids and rebuild scripts, sslasme's ids only.
 
@@ -88,7 +88,7 @@ Both bundles run on the same tasks in the same kernel; we report the tasks only 
 | 300 | 7 |
 | 600 | 5 |
 
-The table depends only on the discordance d, so it holds for any paired agent comparison: a gain Δ needs about 8d/Δ² tasks (within 5% of exact), and at d = 0.13 nothing is detectable below 60 tasks, the size of many comparisons published here (earlco 16, AfterFix 24, sslasme 41, Idris 46). Two runs of the unchanged v29 on 60 tasks disagreed on 5 (8%).
+The table depends only on the discordance d, so it holds for any paired agent comparison: a gain Δ needs about 8d/Δ² tasks (within 5% of exact), and at d = 0.13 nothing is detectable below 60 tasks, the size of many comparisons published here (earlco 16, AfterFix 24, sslasme 41, Idris 46). Unchanged bundles run twice disagreed on 5 of 60 tasks (v29) and 11 of 76 (v33t: 34 against 29 solves).
 
 At the leaderboard's ~0.43× exchange rate (§3.3), a 9-point gain is about 4 leaderboard points (2.3 of 58 tasks), roughly the gap between our best draw (0.18) and the many teams at 0.22.
 
@@ -162,7 +162,7 @@ sslasme showed that ADK compaction erases the problem statement in 71% of runs (
 | Compaction before first edit | 76 | 11 |
 | Compaction, never edited | 12 | 0 |
 
-Difficulty confounds this (hard tasks explore longer), but half of all runs edit without the verbatim issue. The harness exposes the issue as session state (`problem_description`), so a bundle can template it into its instruction, which is never compacted. sslasme's single run of this fix (`v3_anchor`) solved 16 against 19 of 41 and drew 0.10. v35 repeats it on v33t over 87 paired split-A tasks under a rule fixed in advance (solves not lower, fewer empty patches, time within 3%); its gate (*pending*) is the first paired test.
+Difficulty confounds this (hard tasks explore longer), but half of all runs edit without the verbatim issue. The harness exposes the issue as session state (`problem_description`), so a bundle can template it into its instruction, which is never compacted. sslasme's single run of this fix (`v3_anchor`) solved 16 against 19 of 41 and drew 0.10. v35 repeats it on v33t over 87 paired split-A tasks under a rule fixed in advance, and fails: 28 solves against 34 and 29 in two v33t runs, at 1.03× time. v36, which also routes every read through capped shell slices, solved 34 at equal time but hit the call cap more often (42 against 32 runs) and failed the rule too.
 
 ### 4.5 Model size: E4B does not reach the board
 
@@ -189,8 +189,7 @@ E4B patches were mostly wrong (37 of 45 runs), not empty. A redesigned bundle (s
 
 ## 6. Limitations
 
-- **Few repeats, one model family.** Only v29 was run twice (8% of tasks flipped at temperature 0.2). The §4 decisions hold for Gemma 4 under ADK on 4×L4; the procedure transfers, the decisions may not.
-- **Narrow, easier tasks.** Python only, at most 3 files and 150 lines; convert rates with the §3.3 ratio.
+- **Few repeats, one model family.** Only v29 and v33t were run twice (8% and 14% of tasks flipped). The §4 decisions hold for Gemma 4 under ADK on 4×L4; the procedure transfers, the decisions may not.
 - **Overlap.** 62 tasks are in toasterson's held-out candidates (52 kept by both pipelines), 27 in zysbnd1's dev pool and 26 in sslasme's lists (`crosswalk.csv`); results on them are not independent.
 - **Verifier.** We cannot redistribute the competition's verifier; elsewhere, grade from the released F2P/P2P lists (not yet re-validated).
 
