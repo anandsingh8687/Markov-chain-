@@ -269,7 +269,7 @@ Any lab difference under about 6 tasks is noise. Passing the gate means "no harm
 - Final pick 1: the gate winner with at least 1 completed draw, else v33t.
 - Final pick 2: the E4B bundle only if the user's E4B gate passes (≥ 2/12 on the smoke set AND ≥ 10/87 on split A AND 0 LABGUARD events); otherwise a second main-family bundle.
 
-### 4.1 Addendum, 10-31 09:40 UTC, written before any lab 26 data exist
+### 4.1 Addendum, 10-31 09:10 UTC, written before any lab 26 data exist
 
 The lab 25 gate failed both candidates, so P3 as written above does not run. With about 19 quota-h left
 this week (lab25a 4.24 h, lab25b 4.45 h, lab27 2.42 h), lab 26 is regenerated for two questions. This
