@@ -698,3 +698,7 @@ gemma_agent/
   architecture beats v33t detectably (parallel attempts at equal time: branches keep 0.65-0.76 of v33t;
   perfect-picker k=2 ceiling +6 eval points; 48/87 tasks never solved). Next: lab25 (v33t/v35/v36) and lab27
   (E4B s3/s4) at the 10-31 reset; upload only through the pre-registered gate.
+- 10-31 00:06 UTC GPU quota reset: pushed lab25a (43 tasks) and lab25b (44 tasks), arms v33t / v35 / v36 on
+  split A (ev22a/ev22b), parser guard on, 31B clock preset values, seed 25 (QUEUED at 00:07). Pre-registered
+  gate in research_1029_best_in_class.md §4 (76 scoreable tasks; solves >= pooled v33t - 1; predicted time
+  <= 1.02x; empties+timeouts <= v33t + 3; 0 LABGUARD; v36 read/cap-hit checks). Next: lab27 (E4B s3/s4).
