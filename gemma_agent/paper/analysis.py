@@ -71,6 +71,8 @@ GATES = [  # (question, baseline arm, candidate arm)
     ("A/A: v33t run twice on the same tasks (lab 22 -> lab 25)", {("lab22a", "v33t"), ("lab22b", "v33t")}, {("lab25a", "v33t"), ("lab25b", "v33t")}),
     ("issue kept in the instruction (v35) vs v33t, same kernel (lab 25)", {("lab25a", "v33t"), ("lab25b", "v33t")}, {("lab25a", "v35"), ("lab25b", "v35")}),
     ("v35 without read_file / graph tools (v36) vs v33t, same kernel (lab 25)", {("lab25a", "v33t"), ("lab25b", "v33t")}, {("lab25a", "v36"), ("lab25b", "v36")}),
+    ("31B -> E4B as deployed: v33t (lab 25) vs s3 (lab 27, E4B clock), split A", {("lab25a", "v33t"), ("lab25b", "v33t")}, {("lab27", "s3")}),
+    ("E4B temperature 0.3 (s4) vs 1.0 (s3), same kernel (lab 27)", {("lab27", "s3")}, {("lab27", "s4")}),
 ]
 
 
@@ -93,7 +95,7 @@ def table_mix():
         if r["task_set"] != "evalset" or r["interface_task"] == "1" or r["outcome"] == "server_hang":
             continue
         g = (r["bundle"], {"lab20a": "A", "lab20b": "A", "lab21": "A", "lab22a": "A", "lab22b": "A",
-                           "lab23": "A", "lab24": "B", "lab28s": "A", "lab25a": "A", "lab25b": "A"}[r["lab"]], r["lab"][:5])
+                           "lab23": "A", "lab24": "B", "lab28s": "A", "lab25a": "A", "lab25b": "A", "lab27": "A"}[r["lab"]], r["lab"][:5])
         groups[g][r["outcome"]] += 1
         if r["completion_tokens"]:
             tok[g].append(float(r["completion_tokens"]))

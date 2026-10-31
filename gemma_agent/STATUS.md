@@ -711,3 +711,18 @@ gemma_agent/
   is inside the A/A swing. lab27 (E4B s3/s4, e4b clock, guard) pushed at 05:17. Paper §4.4/§3.1/§6 updated
   with the result (2,992 words); analysis.py gates include lab 25; calibration/compaction tables pinned to the
   pre-lab-25 analysis set. Release dataset re-versioned (1,019 runs, 668 trajectories).
+- 10-31 09:10 lab27 COMPLETE (E4B s3 vs s4, 87 split-A tasks, E4B clock, parser guard; 2.42 quota-h).
+  s3 6/87 (smoke 0/12), s4 5/87 (smoke 1/12); 0 LABGUARD in 174 runs (1,931 traced calls); 81/87 runs
+  patched for each arm, so the gap is fix quality, not time (mean 267 virtual s/task, ~9.0 h at 120).
+  v33t (lab 25) vs s3 on the same 87 tasks: 29 vs 6 (25 / 2 discordant, -23, CI -32..-14). USER E4B GATE
+  FAILS (needs >= 2/12 smoke AND >= 10/87): no E4B upload; final pick 2 is a main-family bundle. Small-model
+  prize: E4B at 6/87 x 0.43 ~ 0.03 on the board vs the small-model leader's 0.10 -> not reachable.
+  outcomes.csv now 1,193 runs / 14 bundles (lab27 added; analysis gate rows for v33t->s3 and s3->s4).
+  Paper: §4 table row 5 = v33t -> s3 on 87 tasks; §4.5/§4.6/abstract updated; 31B malformed range
+  corrected to 0-1.7% over 22,926 traced calls (v36 has 0/2202); 2,999 words. Release re-version waits for
+  lab 26 so the dataset changes once.
+- 10-31 09:45 lab26a/lab26b pushed (QUEUED): v29 / v33t / v36 on the 68 scoreable split-B tasks (34 + 34,
+  seed 26), same harness as lab 25. Pre-registered in research_1029_best_in_class.md §4.1 before any data:
+  Q1 pooled 155-task v29 -> v33t sampling test (paper §4.1, no decision); Q2 v36 replication gate (pooled
+  lab25+lab26 v36 >= v33t + 6, time <= 1.02x, empties+timeouts <= v33t + 3, 0 LABGUARD). Quota this week:
+  11.1 h used before lab 26; lab 26 ~6.5 h.

@@ -269,6 +269,39 @@ Any lab difference under about 6 tasks is noise. Passing the gate means "no harm
 - Final pick 1: the gate winner with at least 1 completed draw, else v33t.
 - Final pick 2: the E4B bundle only if the user's E4B gate passes (≥ 2/12 on the smoke set AND ≥ 10/87 on split A AND 0 LABGUARD events); otherwise a second main-family bundle.
 
+### 4.1 Addendum, 10-31 09:40 UTC, written before any lab 26 data exist
+
+The lab 25 gate failed both candidates, so P3 as written above does not run. With about 19 quota-h left
+this week (lab25a 4.24 h, lab25b 4.45 h, lab27 2.42 h), lab 26 is regenerated for two questions. This
+is a follow-up chosen after seeing split A, so it is declared here before split B is run.
+
+**Kernels.** lab26a / lab26b: arms v29, v33t, v36 on the 68 scoreable split-B tasks
+(`evalset/v1/evB_nointerface.txt`, shuffled with seed 26 into `ev26a.txt` / `ev26b.txt`, 34 each),
+same harness as lab 25 (docker-like sandbox, concurrency 6, 31B clock preset, parser guard on, seed 26).
+204 runs, about 6.5 quota-h.
+
+**Q1, sampling (paper §4.1, no decision attached).** v29 -> v33t pooled over lab 22 (split A, 87 tasks,
+same kernel) and lab 26 (split B, 68 tasks, same kernel): 155 paired tasks; report solves, discordant
+counts, exact McNemar p and the paired bootstrap interval, whatever the result. v33t lab 24 vs lab 26 on
+split B gives a second A/A measurement.
+
+**Q2, v36 replication (upload gate).** On split A, v36 solved 34 against v33t's 29 in the same kernel
+(+5, inside the A/A swing) and failed only criterion 5 (28-call cap hits 42 vs 32). v36 becomes an
+upload candidate only if ALL hold:
+
+1. pooled same-kernel pairs, lab 25 (87) + lab 26 (68): v36 solves >= v33t solves + 6 (that is, split B
+   must not lose any of split A's +5);
+2. predicted scorer time (timepred, 31B constants) <= 1.02x the lab 26 v33t arm;
+3. on split B, empties plus 8-minute timeouts <= the v33t arm + 3;
+4. 0 LABGUARD events, 0 harness errors other than the session timeout, at most 1 turn-limit loop per arm.
+
+Cap hits and read calls are reported, not gated: on split A the extra cap hits did not cost solves and
+time was equal, so criterion 5 is replaced by the direct time criterion (2). This change is made now,
+before split B is seen.
+
+If Q2 passes: v36 gets one leaderboard draw (a new bundle, so no identical re-upload); final pick 2 = v36
+if that draw finishes inside 12 h, else v29. If Q2 fails: final picks v33t and v29.
+
 ## 5. E4B variant: not supported (why not)
 
 Parallel E4B (k=4-6 with an agreement vote) does not plausibly reach the small-model leader's level.

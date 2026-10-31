@@ -1,6 +1,6 @@
 # SealedGate-161: a Calibrated Fresh-Repository Gate for Changing a Gemma 4 Coding Agent
 
-**Subtitle:** 161 verified tasks from 128 unseen repositories, per-task outcomes for thirteen Gemma 4 agent bundles, a sequential-runtime model accurate to 2%, and a vLLM tool-parser hang that silently zeroes small-model runs.
+**Subtitle:** 161 verified tasks from 128 unseen repositories, per-task outcomes for fourteen Gemma 4 agent bundles, a sequential-runtime model accurate to 2%, and a vLLM tool-parser hang that silently zeroes small-model runs.
 
 ## Abstract
 
@@ -10,13 +10,13 @@ We release **SealedGate-161**:
 - 161 tasks from 128 Python repositories outside the public set, each verified twice in the competition's py3.13 sandbox (45% of buildable candidates' gold patches failed there), split by repository into tuning (89) and sealed (72) halves;
 - a paired protocol sized by a power table;
 - a virtual clock that predicts sequential real-clock runtime within 1.6% on a held-out kernel;
-- per-task outcomes for 1,019 runs of thirteen Gemma 4 31B and E4B bundles, calibrated against the leaderboard; per-task solve rates match an independent lab's (r = 0.95).
+- per-task outcomes for 1,193 runs of fourteen Gemma 4 31B and E4B bundles, calibrated against the leaderboard; per-task solve rates match an independent lab's (r = 0.95).
 
 What the gate found:
-- vLLM's Gemma 4 tool parser up to 0.20.2 (the scorer pins 0.19.1) loops forever on some tool-call strings, freezing every request; it ended 41 of our 86 E4B runs.
+- vLLM's Gemma 4 tool parser up to 0.20.2 (the scorer pins 0.19.1) loops forever on some tool-call strings, freezing every request; it ended 41 of 86 runs in one E4B lab.
 - Gemma's recommended sampling (temperature 1.0, top-k 64) beat temperature 0.2 by +4 of 87 tasks (p = 0.34), with a clear mechanism: loops 4 → 0, wrong patches 37 → 28.
 - ADK's default compaction drops the verbatim issue: runs that compacted before any edit solved 11 of 88, the others 43 of 67.
-- More calls for less thinking, failure-derived prompt rules, a sub-agent and E4B (1 solve in 57 runs) were rejected.
+- More calls for less thinking, failure-derived prompt rules, a sub-agent and E4B (12 solves in 231 runs) were rejected.
 
 ## 1. Introduction
 
@@ -70,7 +70,7 @@ plus 25.4 s after each history compaction, plus measured tool time. The agent is
   - `tasks.jsonl` (competition schema, SWE-bench field names), `tasks_meta.jsonl` (source, dates, licence, F2P/P2P lists, verification log), `rejects.jsonl` and split files;
   - repository snapshots and code graphs for the 136 openly licensed tasks, rebuild recipes for the other 25, and cp313 wheels for all 161.
 - **Code:** build pipeline, lab generator, clock predictor, paired statistics and the analysis behind every table.
-- **Runs:** `outcomes.csv` (1,019 runs: outcome, calls, tokens, virtual and predicted seconds, malformed calls), leaderboard draws, 668 graded trajectories, `crosswalk.csv` (overlap with other sets) and all fourteen bundles (s4 awaiting its lab).
+- **Runs:** `outcomes.csv` (1,193 runs: outcome, calls, tokens, virtual and predicted seconds, malformed calls), leaderboard draws, 668 graded trajectories, `crosswalk.csv` (overlap with other sets) and all fourteen bundles.
 
 We do not redistribute competition data (harness files, docker shims); the lab mounts them from the competition's own input. RepoGraph-Verified (debmalya84; 221 tasks) is larger and harder and also ships snapshots and wheels, but no agent outcomes or calibration; toasterson's set ships ids and rebuild scripts, sslasme's ids only.
 
@@ -125,7 +125,7 @@ Each row gives counts of the n paired tasks solved by each arm.
 | Failure-derived prompt + thinking 2048 (v29 → v32) | 24 | 9 | 10 | 1 / 2 | +1 (−2..+4) | 1.00 |
 | Temperature 0.2 → 1.0, top-k 64 (v29 → v33t) | 87 | 30 | 34 | 3 / 7 | +4 (−2..+10) | 0.34 |
 | Thinking 2048 + 32 calls (v33t → v34), sealed split B | 68 | 20 | 21 | 5 / 6 | +1 (−5..+8) | 1.00 |
-| 31B → E4B (v29 → s1), tasks before the server hang (§4.6) | 22 | 4 | 0 | 4 / 0 | −4 (−8..−1) | 0.12 |
+| 31B → E4B as deployed (v33t → s3), split A | 87 | 29 | 6 | 25 / 2 | −23 (−32..−14) | <0.001 |
 
 ### 4.1 Sampling: temperature 1.0, the one change adopted
 
@@ -149,7 +149,7 @@ v34 halves the thinking budget and spends the time saved on 4 more tool calls. O
 
 **Prompt rules.** v30 (terse thoughts, batched searches) came from failure analysis of public-repo runs; v32 (edit as soon as the change is known, check every call site, thinking 2048) from the gate's own split-A failures. They moved solves by −1 and +1, far below the power table's resolution. v32 reached its mechanism (3 zero-length patches against 5–6) at 9% more tokens. We submitted it anyway, against the gate (no outside support); its draw (0.13) was the family's lowest.
 
-**Sub-agent solver.** v31a puts a solver inside an `AgentTool`, which avoids history compaction. It failed the timing check: 353 s per task against v29's 301 and 337 s in two kernels on the same 12 real-clock tasks. The uncompacted context made every step longer (more completion tokens per call).
+**Sub-agent solver.** v31a puts a solver inside an `AgentTool`, which avoids history compaction. It failed the timing check: 353 s per task against v29's 301 and 337 s in two kernels on the same 12 real-clock tasks. The uncompacted context made every step longer.
 
 ### 4.4 Context: the issue does not survive compaction
 
@@ -168,17 +168,17 @@ Difficulty confounds this (hard tasks explore longer), but half of all runs edit
 
 A bonus prize made E4B tempting: it decodes about 2.5× faster per sequence (about 90 against 36 tokens/s single-stream). With the same bundle and sampling, E4B solved 0 of 22 tasks with 28 calls and 0 of 23 with 40, on tasks where 31B solved 4 (temperature 0.2) and 6 (temperature 1.0).
 
-E4B patches were mostly wrong (37 of 45 runs), not empty. A redesigned bundle (s3: no list-argument tools, a fixed command recipe, 5 minutes) with §4.6's parser guard solved 1 of 12 smoke tasks, where 31B solved 2–3.
+E4B patches were mostly wrong (37 of 45 runs), not empty. A redesigned bundle (s3: no list-argument tools, a fixed command recipe, 5 minutes on E4B's clock) solved 6 of 87 split-A tasks to v33t's 29, patching 81; temperature 0.3 (s4) solved 5.
 
 ### 4.6 A vLLM parser hang that freezes the scorer
 
-41 of the 86 E4B runs made no model call: at 12:33 UTC vLLM stopped logging and `/metrics` stopped answering.
+41 of the first E4B lab's 86 runs made no model call: at 12:33 UTC vLLM stopped logging and `/metrics` stopped answering.
 
 **Cause.** vLLM 0.19.1's Gemma 4 tool parser (`vllm/tool_parsers/gemma4_tool_parser.py`) parses arguments of the form `key:<|"|>value<|"|>` with hand-written loops. In `_parse_gemma4_array`, a bare value that starts at an unmatched `]` is read as empty without advancing the index, so the loop never ends. The parser runs in the API server's event loop, so one bad response freezes every request. Others measured this parser corrupting arguments (sslasme, toasterson); corruption costs a call, a hang ends every remaining task.
 
 **How it is reached.** The array branch is entered when a value starts with `[`, as when a model leaves code outside the string delimiters: `new_string:<|"|>x<|"|> y = {"k": [f(a[i]) for i in r]}` hangs the parser. So does a well-formed nested list whose string contains `]` (`k:[[<|"|>a]b<|"|>]]`), which exposes list-typed tools such as `get_code_subgraph`.
 
-**How often.** Our reproducer hangs on 19 of 5,000 random short argument strings. Malformed calls (keys outside the tool's schema) do not predict it: every 31B bundle had 1.0–1.7% and never hung in 16,263 traced calls; E4B had 0.4% and 5.1% at 28 and 40 calls and froze after 516. The freezing response was never logged; the attribution rests on the reproducer.
+**How often.** Our reproducer hangs on 19 of 5,000 random short argument strings. Malformed calls (keys outside the tool's schema) do not predict it: 31B bundles had 0–1.7% and never hung in 22,926 traced calls; E4B had 0.4% and 5.1% at 28 and 40 calls and froze after 516. s3 and s4 never triggered the guard in 174 runs. The freezing response was never logged; the attribution rests on the reproducer.
 
 **Fix.** Advancing the index when a bare value is empty fixes it; vLLM does so from 0.21.0 (0.20.2 still loops). Our lab generator applies that guard (`--guard-gemma4-parser`; 0 of 20,000 fuzz inputs hang) and logs would-be hangs. The scorer cannot be patched, so small-model bundles should avoid list-argument tools and long code-bearing arguments.
 
