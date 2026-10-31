@@ -736,3 +736,15 @@ gemma_agent/
   FAIL; empties+timeouts 21 vs 20 PASS; guard/hangs/turn limits PASS. VERDICT: v36 FAILS; no upload.
   FINAL PICKS (12-02): v33t and v29 (tied in the lab over 155 tasks; both finished every board draw inside
   12 h). Quota this week ~17.2 h used. outcomes.csv 1,397 runs; analysis.py gate rows for lab 26 added.
+- 10-31 ~15:00 paper revised for lab 26 via a 10-agent workflow (3 drafts: minimal / lesson / rigor; 2
+  judges; synthesis; numbers / consistency / overclaim verifiers; fixer; all 13 issues applied). Winner: the
+  "lesson" framing. Abstract: "Our one adopted change did not replicate" (+4 of 87 tuning, -4 of 68 sealed,
+  51 vs 51 over 155, CI -8..+8; empties 16 -> 27). §3.1 Rule now says split-A evidence only earns a
+  pre-registered sealed-split run. §4 table: sampling split A / B / pooled rows + v36 pooled row. §4.1
+  three-column outcome table. §4.4 v36 replication (+1 on B, pooled +6, p 0.29, 1.049x time, not uploaded).
+  §6: v33t rerun on each split (13% / 13% flipped); split B now decided three questions in two labs.
+  Counts: 1,397 runs, 989 trajectories, 31B malformed 0.6-1.6% over 28,459 calls. All §4 rows checked
+  against analysis.py output. 3,000 words (alnum tokens). Runs dataset re-versioned; companion notebook v3
+  COMPLETE: "ALL TABLES MATCH THE PAPER", 989 trajectories, zysbnd1 r = 0.95, parser hang 19/5000.
+  Submit instructions and companion use the current title. Paper is ready for the user to paste (deadline
+  11-12 23:59 UTC). Remaining GPU quota this week ~12.8 h (resets 11-07); no further lab is pre-registered.
