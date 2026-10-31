@@ -1,0 +1,12 @@
+name: solver
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Investigates and fixes the issue in /workspace, then reports what it changed.
+instruction: !include ../prompts/solver.md
+output_key: solver_report
+tools:
+  - run_command
+  - read_file
+  - edit_file
+  - write_file
+  - get_status
+generate_content_config: !include ../configs/sampling.yaml

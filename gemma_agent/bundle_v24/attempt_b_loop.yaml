@@ -1,0 +1,7 @@
+# See attempt_a_loop.yaml: re-enters attempt B after a text-only reply (at most 3 runs).
+name: attempt_b_loop
+agent_class: LoopAgent
+description: Re-enters attempt B after a text-only reply (at most 3 runs).
+max_iterations: 3
+sub_agents:
+  - config_path: attempt_b.yaml

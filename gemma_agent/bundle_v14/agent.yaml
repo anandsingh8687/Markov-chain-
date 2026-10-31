@@ -1,0 +1,17 @@
+name: fixer
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Low-temperature fixer with native file tools, a read-only scout sub-agent, and swe-tools checks.
+instruction: !include prompts/system.md
+tools:
+  - run_command
+  - read_file
+  - edit_file
+  - write_file
+  - get_status
+  - submit_patch
+  - agent_tool:
+      config_path: sub_agents/scout.yaml
+      skip_summarization: false
+skills:
+  - skills/swe-tools
+generate_content_config: !include configs/sampling.yaml

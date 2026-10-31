@@ -1,0 +1,7 @@
+# Native tools, thinking on (0.2.12 enforces the budget). The call cap keeps the
+# 8-minute cap inside the 12-hour run; timeout_seconds also bounds the grader's pytest.
+evaluation:
+  timeout_seconds: 240
+  max_tool_calls: 28
+  max_time_minutes: 8
+  max_turns: 80

@@ -1,0 +1,46 @@
+REQUESTS ARCHITECTURE MAP (verified at commit 6f205ff4; notes on older checkouts at the end)
+
+1. PACKAGE LAYOUT (src/requests/, imported as requests)
+- api.py: module functions request, get, options, head, post, put, patch, delete. Each opens a sessions.Session() in a with block and calls session.request(method, url, **kwargs).
+- sessions.py: merge_setting, merge_hooks, SessionRedirectMixin (get_redirect_target, should_strip_auth, resolve_redirects, rebuild_auth, rebuild_proxies, rebuild_method), Session (headers, auth, proxies, hooks, params, stream, verify, cert, max_redirects, trust_env, cookies, adapters; prepare_request, request, send, merge_environment_settings, get_adapter, mount, close), session().
+- models.py: RequestEncodingMixin (path_url, _encode_params, _encode_files), RequestHooksMixin, Request (user-level description, prepare()), PreparedRequest (prepare, prepare_method, prepare_url, prepare_headers, prepare_cookies, prepare_body, prepare_content_length, prepare_auth, prepare_hooks, copy), Response (content, text, json, iter_content, iter_lines, links, ok, is_redirect, is_permanent_redirect, next, apparent_encoding, raise_for_status, close). Constants REDIRECT_STATI, DEFAULT_REDIRECT_LIMIT, CONTENT_CHUNK_SIZE, ITER_CHUNK_SIZE.
+- adapters.py: BaseAdapter, HTTPAdapter (init_poolmanager, proxy_manager_for, cert_verify, build_response, build_connection_pool_key_attributes, get_connection_with_tls_context, request_url, add_headers, proxy_headers, send). Talks to urllib3.
+- utils.py: helpers: super_len, get_netrc_auth, guess_filename, to_key_val_list, parse_list_header, parse_dict_header, unquote_header_value, get_encoding_from_headers, _parse_content_type_header, stream_decode_response_unicode, iter_slices, requote_uri, unquote_unreserved, should_bypass_proxies, get_environ_proxies, select_proxy, resolve_proxies, default_user_agent, default_headers, parse_header_links, guess_json_utf, prepend_scheme_if_needed, get_auth_from_url, check_header_validity, urldefragauth, rewind_body.
+- auth.py: _basic_auth_str, AuthBase, HTTPBasicAuth, HTTPProxyAuth, HTTPDigestAuth (build_digest_header, handle_401, handle_redirect, per-thread state).
+- cookies.py: MockRequest/MockResponse adapters for http.cookiejar, extract_cookies_to_jar, get_cookie_header, RequestsCookieJar, create_cookie, morsel_to_cookie, cookiejar_from_dict, merge_cookies.
+- structures.py: CaseInsensitiveDict (used for all headers), LookupDict. status_codes.py: _codes table turned into codes = LookupDict(...) (codes.ok, codes.temporary_redirect ...).
+- exceptions.py: RequestException(IOError) with request/response kwargs; HTTPError, ConnectionError, ProxyError, SSLError, Timeout, ConnectTimeout, ReadTimeout, URLRequired, TooManyRedirects, MissingSchema, InvalidSchema, InvalidURL, InvalidHeader, InvalidProxyURL, ChunkedEncodingError, ContentDecodingError, StreamConsumedError, RetryError, UnrewindableBodyError, InvalidJSONError, JSONDecodeError; warnings RequestsWarning, FileModeWarning, RequestsDependencyWarning.
+- compat.py: urllib/http.cookiejar re-exports, chardet resolution, is_urllib3_1, builtin_str, basestring, JSON library selection. _internal_utils.py: to_native_string, unicode_is_ascii. hooks.py: default_hooks, dispatch_hook (only the "response" event). _types.py: typing helpers (is_prepared, HookType). help.py, certs.py, packages.py.
+
+2. DATA FLOWS
+Request: requests.get -> api.request -> Session.request builds Request(method.upper(), url, headers, files, data, json, params, auth, cookies, hooks) -> Session.prepare_request merges session and request settings (cookies via merge_cookies, headers via merge_setting with CaseInsensitiveDict, params, auth, hooks; netrc auth via get_netrc_auth when trust_env) -> PreparedRequest.prepare calls in order prepare_method, prepare_url, prepare_headers, prepare_cookies, prepare_body, prepare_auth, prepare_hooks -> Session.merge_environment_settings (env proxies, REQUESTS_CA_BUNDLE/CURL_CA_BUNDLE, verify, stream, cert) -> Session.send.
+prepare_url: decodes bytes, leaves non-http schemes untouched, parse_url from urllib3 (LocationParseError -> InvalidURL), MissingSchema if no scheme, InvalidURL if no host, IDNA-encode non-ASCII hosts (_get_idna_encoded_host), merge params via _encode_params, then requote_uri(urlunparse(...)).
+prepare_headers: CaseInsensitiveDict, each header checked by check_header_validity (InvalidHeader), name via to_native_string. prepare_body: json -> complexjson dumps and application/json; files -> _encode_files multipart; data dict -> form urlencoded; streams/generators -> chunked or Content-Length via super_len; prepare_content_length. prepare_auth: tuple -> HTTPBasicAuth, then calls auth(self).
+Session.send: get_adapter(url) by longest mounted prefix -> HTTPAdapter.send: get_connection_with_tls_context, cert_verify, request_url, add_headers, timeout to urllib3 Timeout (TimeoutSauce), conn.urlopen; urllib3 errors mapped to requests exceptions (ProtocolError/OSError -> ConnectionError, MaxRetryError -> ConnectTimeout/RetryError/ProxyError/SSLError/ConnectionError, ReadTimeoutError -> ReadTimeout) -> build_response creates Response (status, headers as CaseInsensitiveDict, encoding from get_encoding_from_headers, cookies, url, raw). Back in Session.send: elapsed, dispatch_hook("response"), extract_cookies_to_jar, resolve_redirects when allow_redirects, history, optional content read when not stream.
+Redirects: SessionRedirectMixin.resolve_redirects loops while get_redirect_target(resp): enforces max_redirects (TooManyRedirects), handles relative and scheme-less Location, copies the request, rebuild_method (303 and 302 become GET unless HEAD; 301 turns POST into GET), drops body headers except for 307/308, updates cookies, rebuild_proxies, rebuild_auth (strips Authorization when should_strip_auth says host/scheme changed), rewind_body, then send again.
+Response reading: iter_content -> raw.stream / generator with decoding errors mapped to ChunkedEncodingError/ContentDecodingError; text uses encoding or apparent_encoding (chardet/charset_normalizer); json falls back via guess_json_utf and raises requests JSONDecodeError; raise_for_status builds "4xx Client Error"/"5xx Server Error" HTTPError.
+
+3. WHERE CHANGES GO
+- URL or param handling: PreparedRequest.prepare_url, RequestEncodingMixin._encode_params, utils.requote_uri/prepend_scheme_if_needed/urldefragauth.
+- Header handling: prepare_headers, utils.check_header_validity, structures.CaseInsensitiveDict, utils.default_headers.
+- Body/encoding: prepare_body, _encode_files, super_len, Response.text/json, utils.get_encoding_from_headers.
+- Redirect/auth behavior: sessions.SessionRedirectMixin, auth.py.
+- Proxy/env: utils.should_bypass_proxies, get_environ_proxies, resolve_proxies, Session.merge_environment_settings, adapters.proxy_manager_for.
+- Transport and error mapping: adapters.HTTPAdapter.send / build_response.
+- New exception: exceptions.py, subclassing the closest existing class (often also ValueError or the matching builtin) so old except clauses still catch it.
+- User-visible changes get a line under dev in HISTORY.md.
+
+4. CONVENTIONS
+- Raise requests exceptions with request=/response= kwargs when available; plain ValueError/TypeError for programmer misuse; assert only for internal invariants.
+- Defaults are None and resolved with merge_setting (request value wins, None in request removes a session key).
+- Headers are native str; bytes header values are allowed; use to_native_string.
+- Tests: tests/test_requests.py (class TestRequests etc.) uses the httpbin fixture from pytest-httpbin (conftest.py wraps it as httpbin("path")); tests/test_utils.py for pure helpers with pytest.mark.parametrize; tests/test_lowlevel.py uses tests/testserver/server.Server for raw socket responses; tests/test_structures.py, test_hooks.py, test_adapters.py. conftest clears proxy env vars. Many tests just call requests.Request(...).prepare() and inspect url/headers/body without network.
+
+5. PITFALLS
+- Both Request and PreparedRequest exist; Session.prepare_request vs Request.prepare differ in session merging (cookies, auth, headers).
+- CaseInsensitiveDict preserves the last-set key casing; merging uses lower_items.
+- Bytes vs str for URLs, headers, and bodies (to_native_string, builtin_str); URL already percent-encoded must not be double-encoded (requote_uri).
+- Redirect handling mutates a copy of the request; body and auth need rewinding/stripping; 307/308 keep method and body.
+- urllib3 1.x vs 2.x behavior (compat.is_urllib3_1) and chardet vs charset_normalizer.
+- Environment variables (proxies, NETRC, CA bundle) only apply when trust_env is True.
+- Older checkouts (late 2023) also use src/requests but without type annotations or _types.py, and support older Python versions; do not add annotations there.

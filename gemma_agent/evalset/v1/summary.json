@@ -1,0 +1,112 @@
+{
+ "n_valid": 161,
+ "n_repos": 128,
+ "n_rejected": 259,
+ "by_split": {
+  "A": 89,
+  "B": 72
+ },
+ "by_part": {
+  "2": 37,
+  "3": 37,
+  "4": 47,
+  "1": 40
+ },
+ "by_src": {
+  "lb": 85,
+  "v2": 73,
+  "rb": 3
+ },
+ "by_ps_source": {
+  "gh_pr": 87,
+  "v2_pr": 73,
+  "issue": 1
+ },
+ "repo_created_after_2025_01": 2,
+ "task_created_range": [
+  "2025-02-02T14:18:27Z",
+  "2026-05-12T11:45:06Z"
+ ],
+ "by_month": {
+  "2025-02": 11,
+  "2025-03": 24,
+  "2025-04": 14,
+  "2025-05": 19,
+  "2025-06": 17,
+  "2025-07": 8,
+  "2025-08": 10,
+  "2025-09": 6,
+  "2025-10": 5,
+  "2025-11": 4,
+  "2025-12": 2,
+  "2026-01": 9,
+  "2026-02": 6,
+  "2026-03": 9,
+  "2026-04": 10,
+  "2026-05": 7
+ },
+ "reject_stages": {
+  "build": 124,
+  "check": 135
+ },
+ "snapshots_gb": 5.41,
+ "wheels_gb": 10.34,
+ "builds": {
+  "/kaggle/input/notebooks/anandsingh8687/evalset-v1-build-part1/evalset": {
+   "valid": 40,
+   "rows": 40,
+   "summary": {
+    "fail_build": 30,
+    "invalid": 35,
+    "valid": 40,
+    "elapsed_h": 1.85,
+    "out_gb": 4.02,
+    "stop": null,
+    "gh_calls": 56,
+    "gh_blocked": null
+   }
+  },
+  "/kaggle/input/notebooks/anandsingh8687/evalset-v1-build-part2/evalset": {
+   "valid": 37,
+   "rows": 37,
+   "summary": {
+    "fail_build": 29,
+    "invalid": 39,
+    "valid": 37,
+    "elapsed_h": 2.59,
+    "out_gb": 4.01,
+    "stop": null,
+    "gh_calls": 41,
+    "gh_blocked": null
+   }
+  },
+  "/kaggle/input/notebooks/anandsingh8687/evalset-v1-build-part3/evalset": {
+   "valid": 37,
+   "rows": 37,
+   "summary": {
+    "fail_build": 36,
+    "valid": 37,
+    "invalid": 32,
+    "elapsed_h": 1.39,
+    "out_gb": 3.87,
+    "stop": null,
+    "gh_calls": 51,
+    "gh_blocked": null
+   }
+  },
+  "/kaggle/input/notebooks/anandsingh8687/evalset-v1-build-part4/evalset": {
+   "valid": 47,
+   "rows": 47,
+   "summary": {
+    "fail_build": 29,
+    "invalid": 29,
+    "valid": 47,
+    "elapsed_h": 1.9,
+    "out_gb": 5.28,
+    "stop": null,
+    "gh_calls": 68,
+    "gh_blocked": null
+   }
+  }
+ }
+}

@@ -1,0 +1,502 @@
+[
+ {
+  "area": "Oracle ceiling and runtime selector (split A, 31B, labs 20-22: 318 runs, 87 tasks, 2-5 runs per task; bundles v29/v30/v32 at T0.2 and v33t at T1.0). Scripts and data are in /tmp/claude-0/-home-user-Markov-chain-/420c290f-859c-5dc9-bf7e-f5ca9ed3f238/scratchpad/bic/oracle/: features.py -> runs.jsonl (runtime-visible features per run), timing.py -> timing.jsonl (timeline per run from timepred constants), analysis.py (pass@k), selectors.py and extra.py (selector simulation; exact expectation over all k-subsets, bootstrap over tasks, B=2000-4000), pairs.py (agreement and hard-pair analysis), parallel_sim.py, parallel_matched.py and restart_sim.py (cost-matched estimates).",
+  "headline": "Best-of-k has a low ceiling, and a selector can only capture about half of it. Measured on our eval: pass@1 35.5%, oracle pass@2 41.5% (+6.0 pts [3.3, 8.9]), pass@3 +8.2, pass@4 +9.9 (on the 60 tasks with 4+ runs). Tasks are almost deterministic: 48/87 were never solved in 2-5 runs, 23 were always solved, only 16 were mixed, and about 82% of outcome variance is between tasks. The one selector that works is a free filter: drop empty and timed-out patches. It gets +2.9 pts [1.1, 5.1] at k=2, which is 49% of the oracle gap. Majority vote, test-pass signals, issue-file match, patch size and fewest calls add nothing statistically detectable on top of it (all paired CIs include 0). Once the 12 h budget is applied (same mean wall time per task, about 313 s), waiting for all k=2 branches and then selecting gives -0.7 to +2.0 pts, which is not significant (estimate). A race where the first branch to finish with a non-empty patch wins is the best parallel variant: +0.2 to +2.9 pts at k=2 and +1.6 to +5.1 at k=3/4. That is roughly +1 to +2 board points at best (estimate). Best-of-k cannot reach 0.50 on the board: even oracle pass@5 is 50% on our eval, about 0.21 board.",
+  "numbers": [
+   {
+    "what": "pass@1, all runs (87 tasks)",
+    "value": "35.5% [26.3,44.7]",
+    "how": "measured: mean over tasks of c/n, resolved_kaggle_env"
+   },
+   {
+    "what": "oracle pass@2 (87 tasks) / gain over pass@1",
+    "value": "41.5% [31.5,51.3] / +6.0 pts [3.3,8.9]",
+    "how": "measured: unbiased 1-C(n-c,k)/C(n,k), task bootstrap"
+   },
+   {
+    "what": "oracle pass@3 / pass@4 (60 tasks with >=4 runs; pass@1 there 36.4%)",
+    "value": "44.6% (+8.2 [4.0,12.7]) / 46.3% (+9.9 [4.7,15.8])",
+    "how": "measured, unbiased estimator"
+   },
+   {
+    "what": "oracle pass@5 (24 tasks with 5 runs; pass@1 40.0%)",
+    "value": "50.0% (+10.0 [2.5,19.2])",
+    "how": "measured"
+   },
+   {
+    "what": "T0.2-only pool: pass@1 / pass@2 / pass@3 (60 tasks)",
+    "value": "35.3% / 40.6% (+5.3) / 42.9% (+7.6)",
+    "how": "measured; v29/v30/v32 runs only"
+   },
+   {
+    "what": "T1.0 pass@1 (v33t, 1 run/task, 87 tasks) vs T0.2 pass@1",
+    "value": "39.1% vs 33.5%",
+    "how": "measured; T1.0 pass@k cannot be computed (only one T1.0 run per task)"
+   },
+   {
+    "what": "pair gain, same bundle (lab20 v29 + lab22 v29) vs cross temperature (lab20 v29 + lab22 v33t), same 60 tasks",
+    "value": "+4.2 pts (35.8 -> 40.0) vs +4.2 pts (37.5 -> 41.7)",
+    "how": "measured exact pairs; no evidence that T1.0 adds diversity beyond T0.2"
+   },
+   {
+    "what": "task outcome structure",
+    "value": "never 48 / mixed 16 / always 23 of 87; between-task share of variance ~0.82",
+    "how": "measured; var(p_task)/(pbar(1-pbar)) on 60 tasks"
+   },
+   {
+    "what": "P(fresh sample solves | this run failed)",
+    "value": "8.7% overall; 13.1% if this run was empty; 8.0% if valid-wrong; 6.0% if timeout",
+    "how": "measured over ordered run pairs within task (matches the public ~10%)"
+   },
+   {
+    "what": "k=2 oracle gap decomposition (10.4 split tasks out of 87)",
+    "value": "wrong run empty 4.9, valid-wrong 5.4, timeout-with-patch 0.2",
+    "how": "measured, task-weighted split pairs"
+   },
+   {
+    "what": "k=2 selector: valid filter (non-empty and no timeout/turn limit)",
+    "value": "38.4% [29.0,48.1], +2.9 pts [1.1,5.1] vs random (49% of oracle gap)",
+    "how": "measured, exact over subsets, paired bootstrap"
+   },
+   {
+    "what": "k=2 selectors on top of the valid filter (paired diff)",
+    "value": "prefer T1.0 +1.4 [-0.1,+3.3]; fewest tool calls +0.9 [-0.4,+2.5]; last pytest passed +0.6 [-0.7,+2.1]; smallest patch +0.2; verified after edit 0.0; issue-file/ident hits -0.4; fastest -0.6; majority vote of any kind 0.0 (no information at k=2)",
+    "how": "measured"
+   },
+   {
+    "what": "k=3 selectors (60 tasks): random / valid / best / oracle",
+    "value": "36.4% / 39.8% / 41.1% (fastest-valid; +1.3 [-0.9,+3.9] over valid) / 44.6%",
+    "how": "measured; majority exact +0.4 [0,+1.25], soft token vote +0.8 [-0.3,+2.3] over valid"
+   },
+   {
+    "what": "k=4 selectors (60 tasks): random / valid / best / oracle",
+    "value": "36.4% / 40.1% / 42.7% (fastest-valid; +2.6 [-1.4,+6.9] over valid) / 46.3%",
+    "how": "measured"
+   },
+   {
+    "what": "hard pairs (both runs valid, exactly one correct)",
+    "value": "only 27 raw pairs across 10 of 87 tasks; best single-signal pairwise accuracy: T1.0 0.73, fewer calls 0.64, ran pytest 0.61; most others 0.40-0.59",
+    "how": "measured; too few to train or validate a learned picker"
+   },
+   {
+    "what": "right answer in majority cluster (k=3, subsets with >=1 correct)",
+    "value": "exact-match majority exists 52%; when it exists it always contains a correct run (100%) and is all-correct 100%. tokJ>=0.5 majority exists 87%, contains correct 100%, all-correct 82%, but a false majority also forms in 41% of no-correct subsets (exact: 5%)",
+    "how": "measured over all 3-subsets, clustering only valid runs"
+   },
+   {
+    "what": "pairwise agreement as confidence signal (valid run pairs)",
+    "value": "exact same patch: 92% correct (72/78 pairs both correct, 0 mixed); token-Jaccard>=0.5: 55%; differ: 20%",
+    "how": "measured; correct-correct pairs are exact matches 47% of the time, correct-wrong pairs 0%"
+   },
+   {
+    "what": "wall-time-matched parallel, k=2, wait for all branches then select valid-random / fewest-calls / oracle",
+    "value": "-0.7/-0.5/+0.2 (per-stream speed 0.77); +0.5/+1.6/+2.7 (0.85); +0.9/+2.0/+3.2 (0.90) pts vs single; CIs about +-3 pts",
+    "how": "ESTIMATE: processor-sharing replay of observed runs, cut at a cap chosen so mean wall = single's 313 s; patch counted only if the last source edit happened before the cut"
+   },
+   {
+    "what": "wall-time-matched race (first branch to finish with a valid patch wins, others cut)",
+    "value": "k=2: +0.2 [-2.7,+3.3] / +1.1 / +2.0 [-0.7,+4.9]; on the 60 tasks k=3: +2.2 / +3.2 / +3.8 [+0.5,+7.7], k=4: +1.6 / +4.3 / +5.1 [+0.6,+10.5] pts (speed pessimistic / middle / optimistic)",
+    "how": "ESTIMATE, same model; the race wins because valid-correct runs end sooner (median 250 s vs 297 s) and stopping early frees time for a higher cap"
+   },
+   {
+    "what": "per-stream decode speed relative to a single stream, from vLLM logs",
+    "value": "k=2: 0.77-0.92, k=3: 0.70-0.83, k=4: 0.66-0.77 (lab22a/lab20a/lab22b, all windows vs prompt<=200 tok/s windows)",
+    "how": "measured: medians of 'Avg generation throughput' by Running reqs"
+   },
+   {
+    "what": "restart fresh if no source edit by T (sequential)",
+    "value": "-1.2 pts (T=120 s) to -3.4 pts (T=240 s), and mean wall rises to ~370-380 s",
+    "how": "ESTIMATE; harmful because only 41% of resolved runs make their first source edit by 120 s (57% by 180 s)"
+   },
+   {
+    "what": "never-solved tasks: where the run failed",
+    "value": "37/48 had a run editing a gold file; 88/102 valid runs touched a gold file; 50/172 runs were empty",
+    "how": "measured with the gold patch (offline diagnostic, not visible at runtime)"
+   },
+   {
+    "what": "board translation",
+    "value": "pass@1 35.5% ~ 0.15; oracle@2 ~ 0.18; valid-filter@2 ~ 0.165; oracle@4 ~ 0.20; oracle@5 ~ 0.21",
+    "how": "ESTIMATE: board ~0.43 x our eval rate"
+   }
+  ],
+  "design_implications": "1) Sampling plus selection is capped at about +6 pts on our eval at k=2 and about +10 at k=4 (+2.6 to +4.3 board pts), and that is with a perfect picker. 48/87 tasks were never solved in up to 5 runs, and in 37 of those 48 the runs did edit a gold file, so the failure is in fix quality rather than localization. Getting toward 0.30-0.50 on the board needs higher per-run capability on those never-solved tasks, not more samples.\n2) If parallel attempts are built, the selector should be simple: (a) discard empty patches and branches that hit the cap or turn limit; (b) prefer the branch that finished first, or with the fewest tool calls; (c) at k>=3, an exact patch match between two branches can win (92% precision, never wrong when it forms with a correct run present). Do not spend effort on token-Jaccard voting, issue-file matching, patch size, or parsing reproducer/pytest output: none beats the valid filter by a detectable amount. Only 10 tasks contain a valid-correct versus valid-wrong choice, so no learned picker can be validated on this data.\n3) Prefer a race over wait-for-all. Under the 12 h budget, waiting for all k=2 branches is roughly break-even (-0.7 to +2.0 pts). First-valid-finisher-wins is the only variant that is positive under every speed model: +0.2 to +2.9 at k=2, +2.2 to +3.8 at k=3 (estimate; the CIs are wide).\n4) Harness facts that constrain any parallel bundle (read from the swegemma source):\n   - What gets graded is context.submitted_patch: the whole-/workspace diff at the LAST submit_patch call. The working tree is used only if submit_patch was never called (agent_runner.py:1050-1056; tools/execution.py:111). Branches must therefore never submit their own patches. The orchestrator applies the chosen diff to /workspace and submits once.\n   - read_file, edit_file and write_file are confined to /workspace (tools/workspace.py:22-53). Per-branch copies have to live inside /workspace (for example git worktrees) and be excluded through .git/info/exclude, or be edited only through run_command in /tmp.\n   - max_tool_calls is a per-task total across all agents (budget.py: 'Max total tool invocations'), so it must be raised to about k x 28.\n   - The runner ends the session on the first final text after patch_submitted (agent_runner.py:854-864). That would give a natural race only for a top-level ParallelAgent, which crashes with compaction. Inside an AgentTool there is no early termination, so a race needs cooperative cancellation (for example a marker file the branches check).\n5) Cheaper single-run lever with the same expected value as the k=2 valid filter: empty runs are 20% of runs and a fresh sample rescues 13% of them (+2.7 pts if every empty were replaced). However, restart-if-no-edit-by-T is harmful (-1.2 to -3.4 pts), because correct runs often make their first edit late. Fixing empties has to happen within the run (for example, commit to an edit before the budget runs out), not through restarts.\n6) T1.0 v33t has the best pass@1 (39.1% vs 33.5%) and wins 73% of hard pairs, but the gain from pairing across temperatures equals the gain from pairing same-bundle T0.2 runs (+4.2 vs +4.2). If parallel branches are built, run all of them at T1.0. Do not count on mixing temperatures for extra diversity.",
+  "blockers": "- There is no T1.0-vs-T1.0 replicate data: only one v33t run per split-A task (lab24 split B is sealed), so pass@k for the T1.0 family cannot be measured. The ALL pool mixes v29/v30/v32/v33t on the assumption that bundles are exchangeable, which the 36-agent study supports.\n- k=3/4 numbers come from only 60 tasks (k=5 from 24), and hard pairs exist in only 10 tasks. Every selector-beyond-valid difference has a CI spanning 0.\n- The parallel and restart numbers are model estimates:\n  - Per-stream speed 0.77-0.92 at k=2, depending on the log and window filter.\n  - Trajectories are replayed unchanged under a cut; real branches would react to their own budgets.\n  - A patch is counted only if its last source edit happened before the cut.\n  - Tool serialization is ignored (tools are about 5% of time).\n  - The time constants are timepred's (fitted on real-clock lab17); the labs themselves used a virtual clock.\n- The trajectory parsing of 'verification passed' uses a heuristic (python/pytest commands after the last source edit: exit code plus 'N passed'/'failed' text).\n- The gold patch was used only for the offline localization diagnostic, never in any selector."
+ },
+ {
+  "area": "Time budget for k concurrent attempts (k=1..4) on one vLLM. Architecture: an LlmAgent lead calls an AgentTool, and the AgentTool wraps a ParallelAgent of k attempts. Model: gemma-4-31b w4a16 on 4xL4. Target: v33t parity, about 320 s of agent time per task plus about 10 s outside the agent, which is about 330 s per task and about 11.1 h for 120 tasks plus startup.",
+  "headline": "Running k independent attempts side by side costs more per task than it saves. On the GPU, k streams finish an attempt in x1.31 / x1.52 / x1.64 the time of one stream for k=2/3/4. Add the time the lead needs before and after, and the context limit of a branch that never compacts, and the most that fits in about 320 s is roughly 19-20 calls per attempt at k=2, 17-20 at k=3 and 15-18 at k=4 (v33t uses 28). On v33t's own trajectories, a truncated attempt keeps only 0.65-0.76 (k=2), 0.53-0.76 (k=3) or 0.53-0.68 (k=4) of v33t's solves. So even with a perfect picker, best-of-k comes to 27.4-29.2 (k=2), 25.1-30.9 (k=3) or 23.5-29.9 (k=4) of 87 tasks, against 30.8 for one full attempt. The best shape the timing allows is different: one shared exploration, then concurrent fix branches. Solves spend a median of 12 calls before their first source edit, but the fix itself takes a median of 2 calls (90th percentile 7). Of v33t's 53 failures, 30 edited the right file with a wrong fix. A fork with 2-3 fixers of 6 calls each fits at about 302-316 s, but only if the lead's pick step takes 20 s or less.",
+  "numbers": [
+   {
+    "what": "Tools run synchronously on the event loop (verified in source)",
+    "value": "Yes. A sandbox command blocks every branch, but requests already sent to vLLM keep decoding",
+    "how": "google/adk/tools/function_tool.py:231-237 calls a non-coroutine tool directly. swegemma/tools/__init__.py:35-47 and execution.py:148-161 define the tools as plain functions, and run_command goes through ctx.docker.exec to subprocess (sandbox/subprocess.py:375,418). ParallelAgent runs branches with an asyncio TaskGroup (parallel_agent.py _merge_agent_run). The tool and step budgets are shared counters on one context, and the low-budget warning fires when 10 or fewer calls remain in the shared pool (tools/base.py:47-69)."
+   },
+   {
+    "what": "Does an AgentTool-wrapped ParallelAgent compact? (verified in source)",
+    "value": "Never: 0 compactions in every branch, and each branch sees only its own history",
+    "how": "agent_tool.py:241-249 builds Runner(app_name, agent) without an App, so runners.py:177 sets self.app to None and the compaction config is empty. The pre-call processor returns at once (flows/llm_flows/compaction.py:39-41), and the end-of-run compaction is skipped (runners.py:601). Branch isolation: contents.py:748-762."
+   },
+   {
+    "what": "What a branch context overflow does (verified in source)",
+    "value": "Each branch needs prompt + max_output_tokens <= 32,768. Otherwise vLLM returns HTTP 400 and all branches are cancelled",
+    "how": "vllm entrypoints/openai/engine/serving.py:760 rejects token_num + max_tokens > max_model_len. The adk_eval_core retry plugin does not retry it. The TaskGroup then cancels the sibling branches, and the harness turns the AgentTool exception into an error dict for the lead (swegemma/harness/agent_runner.py:261-281). Files already on disk survive."
+   },
+   {
+    "what": "Per-stream decode rate at 1/2/3/4 running requests (31B)",
+    "value": "34.7 / 29.6 / 26.8 / 25.2 tok/s, a slowdown of x1.18 / x1.31 / x1.39 (central). The brief's rates anchored to the 35.0 tok/s clock give x1.22 / 1.35 / 1.43; raw ratios to 37.2 give x1.30 / 1.44 / 1.52",
+    "how": "vllm_rates.py over the lab22a and lab22b vLLM logs, using 10-second windows where the running count was stable (n = 33 / 107 / 151 / 373). E4B from lab28s: 88.7 tok/s at 1 running and 79.5 at 2."
+   },
+   {
+    "what": "Where v33t's agent time goes (87 split-A runs)",
+    "value": "318.5 s per task: decode 254.7 s, compaction 33.3 s (1.31 per run), prefill plus per-call cost 10.6 s, tools 20.0 s (median 2.7 s per run)",
+    "how": "common.annotate applies the timepred step model to the ATIF traces. Its mean equals the rows' virtual_seconds (318.4). Tool time comes from the observation timestamp minus the call timestamp; it was measured under 6 concurrent tasks (load about 6.5)."
+   },
+   {
+    "what": "Cost of tools blocking each other across branches",
+    "value": "3.1 / 4.3 / 6.8 s per task at k=2/3/4 (3.8 / 5.5 / 7.7 s with tool time x3)",
+    "how": "sim.py discrete-event model: blocking event loop versus a counterfactual where each tool runs in its own thread, on the same draws."
+   },
+   {
+    "what": "Parallel phase relative to one branch running alone at the same budget",
+    "value": "x1.31 (k=2), x1.52 (k=3), x1.64 (k=4). Decode slowdown alone is 1.18 / 1.31 / 1.39; the rest is waiting for the slowest branch plus blocking",
+    "how": "sim.py with k branches drawn per task from that task's v33t and v29 runs. The model was checked against the serial step model at k=1: mean difference -0.15 s, worst 0.35 s."
+   },
+   {
+    "what": "Branch context growth without compaction",
+    "value": "First prompt about 3.4k tokens. Each step adds 448 + 0.88 x the previous step's completion tokens, so thoughts stay in the history. Uncompacted prompt at call 16 / 20 / 24 / 28: median 15.4k / 18.2k / 20.0k / 21.3k, 95th percentile 23.9k / 27.3k / 30.4k / 33.4k",
+    "how": "ctxgrowth.py on v33t traces; compaction drops are replaced by the run's median growth (estimate). Real-clock lab19 (v31a, no compaction) reached a maximum of 12.7k-24.3k tokens within 28 calls."
+   },
+   {
+    "what": "Share of branches that overflow (prompt + max_output > 32k)",
+    "value": "Thinking 4096 / max output 6144: 1.6% at N=16, 8.3% at 20, 16.5% at 24. Thinking 2048 / 4096: 1.7% at 20, 8.3% at 24, 15% at 28. Thinking 1024 / 3072: 0.4% at 20, 5% at 24",
+    "how": "sim.branch_plan: the thinking cap shortens history by 0.88 x the removed thought tokens."
+   },
+   {
+    "what": "Decode speed as the context grows",
+    "value": "27.7 ms/token below an 8k prompt, 30.0 ms at 14-20k, 31.0 ms above 20k (about +0.64% per 1k tokens)",
+    "how": "ctxcost.py: least-squares fit on real-clock sequential runs, lab19 (322 steps, no compaction) and lab17 (1,329 steps)."
+   },
+   {
+    "what": "Tokens removed by a thinking cap",
+    "value": "Static estimate: cap 2048 keeps 92.8% of tokens, 1024 keeps 81.9%, 512 keeps 69.0%. Measured: v30 (2048) used 8.7k tokens against 9.15k for v29, only -5%",
+    "how": "Cap the thought part of each step (step tokens minus an answer estimate from the tool-call argument length); outcomes.csv for lab20a/b."
+   },
+   {
+    "what": "Share of v33t's solves whose final source patch is on disk by counted call N",
+    "value": "N = 12/14/16/18/20/22/24: last edit 0.32 / 0.41 / 0.53 / 0.56 / 0.65 / 0.76 / 0.91. First edit (optimistic bound): 0.47 / 0.56 / 0.62 / 0.68 / 0.76 / 0.88 / 1.00. Across the 31B pool (115 solves): 0.40 / 0.49 / 0.56 / 0.63 / 0.74 / 0.79 / 0.90",
+    "how": "solve_timing.py: edit_file, write_file and modifying run_command calls (sed -i, redirects, generated scripts) that touch non-test files of the final patch. Calls after the 28-call cap are ignored. All 34 v33t solves have a detected edit."
+   },
+   {
+    "what": "Share of v33t's solves whose final patch is on disk by serial time T",
+    "value": "T = 150/180/200/240/270/300 s: 0.35 / 0.53 / 0.59 / 0.68 / 0.85 / 0.85 (first edit: 0.56 / 0.65 / 0.65 / 0.74 / 0.88 / 0.88)",
+    "how": "Same detection, timed with the cumulative step-model clock."
+   },
+   {
+    "what": "Exploration versus fix phase in solved runs",
+    "value": "Calls before the first source edit: median 12, p75 19, p90 22 (about 102 s serial). Fix phase from first to last source edit: median 2 calls, p90 7. 74% / 85% / 91% of fix phases take 4 / 6 / 8 calls or fewer (pool: 83% / 90% / 92%)",
+    "how": "solve_timing-style script over the 34 v33t solves and the 115 pool solves."
+   },
+   {
+    "what": "How v33t fails (53 unsolved of 87)",
+    "value": "30 right file with a wrong fix, 18 empty patch, 5 wrong file. Pool of 203 unsolved: 120 / 65 / 18",
+    "how": "The agent's non-test patch files compared with the gold patch files in tasks.jsonl."
+   },
+   {
+    "what": "Mean wall time per task (central scenario; lead 6 s before + 40 s after; 480 s cap)",
+    "value": "Calls / thinking / max output -> seconds. k=1: 28 / 2048 / 4096 -> 294. k=2: 20 / 2048 / 4096 -> 309 (given 314, pessimistic 323, optimistic 301); 22 / 1024 / 3072 -> 294; 24 / 1024 / 3072 -> 310. k=3: 16 / 2048 -> 296; 18 / 1024 -> 292; 20 / 1024 -> 315. k=4: 14 / 2048 -> 281; 16 / 1024 -> 283; 18 / 1024 -> 307",
+    "how": "sweep.py over 60 draws x 87 split-A tasks (sweep_out.txt). Each 20 s change in the lead's after-phase moves the mean by about 19-20 s; a worktree setup step adds 2-4 s."
+   },
+   {
+    "what": "Largest per-attempt call budget that fits <= 320 s with branch overflow <= 1%",
+    "value": "k=2: 19 (thinking 2048 / max output 4096) or 20 (1024 / 3072); the context limit binds, not the clock. k=3: 17-18 (2048) or 19-20 (1024). k=4: 15-17 (2048); about 18 (1024) from the sweep table",
+    "how": "refine.py search, central and given scenarios, lead after-phase 20 and 40 s, setup step on (refine_out.txt)."
+   },
+   {
+    "what": "Expected solves of 87 for best-of-k with a perfect picker, against 30.8 for one full attempt",
+    "value": "k=2 at N=20: 27.4-29.2; N=22: 28.2-31.5; N=24: 30.3-32.9 (needs picker accuracy >= 0.72 even in the optimistic case, and costs 310-337 s). k=3 at N=16: 22.2-26.5; N=18: 25.1-28.8; N=20: 29.6-30.9. k=4 at N=14: 21.5-25.2; N=16: 23.5-27.7; N=18: 26.2-29.9. Asymmetric k=2 (A 24 calls, B 12): 27.6-30.0",
+    "how": "oracle2.py: per-task probabilities from the 318 pool runs (v29, v30, v32, v33t), attempts independent given the task. Ranges run from the last-edit to the first-edit truncation bound."
+   },
+   {
+    "what": "Same comparison with a realistic picker",
+    "value": "k=2 at N=20: 23.1-25.7 with a random pick and 24.8-27.1 at 70% accuracy. With 20-22 calls, no picker accuracy reaches 30.8 in the conservative bound",
+    "how": "oracle2.py: picker accuracy applies only when some but not all candidates are correct."
+   },
+   {
+    "what": "Fork: shared exploration, then k fix branches of 6 calls (2 re-reads + 4 fix)",
+    "value": "Mean 322 / 331 / 336 s per task for k=2/3/4 with a 40 s lead after-phase, about 20 s less with 20 s. 17-18% of tasks hit the 480 s cap (v33t: 16%)",
+    "how": "refine.py and fork_only.py: the lead runs the recorded trajectory up to its first source edit (compaction kept), writes a 500-token hand-off, then the k branches run (fork_out.txt). This is an estimate."
+   },
+   {
+    "what": "E4B (small-model track)",
+    "value": "Per-stream slowdown only x1.22 / 1.24 / 1.27 at k=2/3/4. Runs average about 5.7k tokens, so 4 full attempts take roughly 150-200 s (estimate)",
+    "how": "Brief's E4B rates and lab28s log, 11.7 ms/token preset, lab23/lab28s token counts (s1/s2/s3 at about 5.6-5.8k)."
+   }
+  ],
+  "design_implications": "1. Don't spend the 31B time budget on k independent attempts. At v33t's time, each attempt is cut to about 20 calls or fewer. v33t's solves land evenly between calls 10 and 24 (median final edit at call 16), so the attempts are too weak. A perfect picker still falls about 1.6-3.4 tasks short of one full run at k=2, and further short at k=3 and k=4. No per-attempt setting of calls, thinking or max output closes that gap within about 320 s.\n\n2. If a parallel agent is built anyway (task #5), these are the only shapes that fit the time:\n\n(a) k=2 independent attempts:\n- 20 calls per attempt, thinking budget 2048, max_output_tokens 4096 (or thinking 1024 / max output 3072 for 22 calls; the quality cost of 1024 is untested).\n- eval_config: max_tool_calls = 2x20 + 4 reserved for the lead, max_turns about 70, max_time_minutes 8.\n- Lead: thinking 512 or less, after-phase 20-30 s at most (read the reports, apply with one command, call submit_patch).\n- Attempt A works in /workspace so a timeout still yields its patch; B uses a worktree (+1 call, +2-4 s).\n- Predicted 290-310 s per task; each attempt is 0.65-0.76 as strong as v33t.\n\n(b) Fork, which looks better from the timing side:\n- The lead (root LlmAgent, compaction on) explores until the first edit. Instead of editing, it writes a hand-off of about 500 tokens: files, lines and the cause it suspects.\n- 2-3 fixers of 6 calls each, thinking 2048 / max output 4096.\n- Predicted 302-316 s per task with a 20 s lead after-phase. It keeps v33t's full exploration and gives 2-3 fix samples, which target the 30/53 right-file-wrong-fix failures. 85% of solved fix phases take 6 calls or fewer.\n\n3. Branches never compact, and v33t keeps thoughts in the history, so the context limit binds before time does at k=2. Keep calls x completion tokens under the limit: no more than 20 calls at max output 4096, or trim tool output harder. One overflowing branch cancels all of its siblings.\n\n4. Tool serialization is not a design driver: 3-8 s per task. The real costs are waiting for the slowest branch (x1.11-1.25 on top of the decode slowdown) and the lead's after-phase (every 10 s there costs 10 s on every task).\n\n5. Thinking caps save little time: 2048 removes 7% of tokens statically and 5% in measured runs. Call count is the only strong time lever, at about 364 tokens (about 10.4 s) per call.\n\n6. For the E4B prize, time is not the binding constraint. Four full attempts fit (slowdown x1.27), so parallelism is cheap there, and the picker and E4B quality are the limits.",
+  "blockers": "- **No GPU measurement of k>=2 branch timing.** The simulator is assembled from measured parts: per-stream rates from the vLLM logs, the step model, tool seconds from traces, and the context-length slope. It was validated only at k=1 (within 0.35 s).\n- **Per-attempt call caps can only be set in the prompt.** max_tool_calls, max_turns, time and the low-budget warning are all shared across branches. Whether branches stop at their own cap is unmeasured; a runaway branch makes the lead wait.\n- **The attempt-strength estimate assumes truncation.** It treats an attempt as a v33t trajectory cut at N calls, so the model does not shorten its exploration when told a smaller cap. The only evidence is weak: in lab17, v29 at 28 calls and v29c36 at 36 calls made their first edit at about the same call (18.5 vs 19, 12 tasks).\n- **Untested choices:**\n  - the quality effect of thinking 1024;\n  - the lead after-phase cost, which depends on the picker design.\n- **Measurement limits:**\n  - tool times were measured under 6 concurrent tasks, and the scorer's docker exec overhead is unknown;\n  - uncompacted context growth is reconstructed: compaction steps are replaced by the run's median growth;\n  - the overflow-to-cancel path is read from source but not exercised offline.\n\nAll scripts and outputs are in /tmp/claude-0/-home-user-Markov-chain-/420c290f-859c-5dc9-bf7e-f5ca9ed3f238/scratchpad/bic/timebudget/:\n- scripts: extract.py, common.py, solve_timing.py, ctxgrowth.py, ctxcost.py, vllm_rates.py, sim.py, sweep.py, oracle2.py, refine.py, fork_only.py\n- outputs: runs.jsonl, sweep_out.txt, sweep_out.jsonl, refine_out.txt (k=4 at thinking 1024 not finished; the sweep table covers it), fork_out.txt"
+ },
+ {
+  "area": "Implementability in a declarative bundle: lead LlmAgent -> AgentTool -> ParallelAgent of k attempt branches, each isolated in a git worktree under /workspace/.attempts. Sources read: ADK 1.36.1, adk_submission 0.2.13, swegemma, vLLM 0.19.1. The shape was tested end to end through the real swegemma run_agent_sandbox with a new fake LLM.",
+  "headline": "The shape can be built from YAML alone. It compiled, and all 6 fake-LLM scenarios run through the real harness (subprocess sandbox) behaved as specified: pick a2 (flat and src layout), branch context overflow, shared budget exhausted, session timeout, stray relative-path edit, and a branch calling submit_patch. The harness forces four constraints:\n(1) No per-branch limit exists. Tool calls, turns and time are one shared budget. Gemma ignores soft caps, so the branches normally use up the shared budget and the lead often cannot run its selection commands.\n(2) If any branch's prompt plus max_tokens exceeds 32768, vLLM returns 400 and ADK's TaskGroup cancels all branches immediately, including another branch's in-flight request.\n(3) The model uses relative paths in 100% of file-tool calls, and those resolve against /workspace, not the worktree.\n(4) Python run from a worktree imports the /workspace copy unless PYTHONPATH is overridden.\nA trace-replay simulation (an estimate) finds that at the same mean agent time, 2 or 3 parallel v33t-style branches do worse than the single v33t agent, even with a perfect picker: 30.5% vs 34.8%.",
+  "numbers": [
+   {
+    "what": "End-to-end harness scenarios passing (real compile_submission + run_agent_sandbox, SubprocessManager, fake OpenAI endpoint)",
+    "value": "6/6 scenarios as specified; pick_a2 resolved on both flat and src-layout toy tasks",
+    "how": "bic/impl/partest/runsc.sh <scenario> drives fake_par.py + drive.py; patch applied to a clean snapshot copy with git apply and asserted. Outputs: partest/out/<scenario>-<task>/{drive.out,fake.jsonl,patch.diff,worker.log}"
+   },
+   {
+    "what": "Branch LLM requests overlap; tool calls serialize",
+    "value": "a1 and a2 requests in the same 1 s window. With two `sleep 5` tools, steps came about 11 s apart, not about 6 s",
+    "how": "fake.jsonl timestamps in out/pick_a2-* and out/timeout-*. Matches function_tool.py:231-238 (sync tool called on the event loop)"
+   },
+   {
+    "what": "Shared tool budget enforced across lead and branches",
+    "value": "max_tool_calls=20: tool_calls_used=20; the lead's run_command was refused (BudgetExceeded), but submit_patch still worked and returned a1's /workspace patch (resolved)",
+    "how": "out/budget-toy__toypkg-1; context.py:468-551, execution.py:76,119 (submit_patch and get_status are not counted)"
+   },
+   {
+    "what": "Turn budget not enforced inside AgentTool",
+    "value": "llm_calls_used=129 with max_turns=120",
+    "how": "out/budget-* drive.out. The inner Runner uses RunConfig() with max_llm_calls=500 (run_config.py:317, agent_tool.py:264-268); agent_runner checks turns only between outer runs (789-799, 947-957)"
+   },
+   {
+    "what": "Overflow in one branch kills the others",
+    "value": "a2 got HTTP 400 (ContextWindowExceededError, non-retryable). a1's in-flight request was cancelled, its edit never ran, and the final patch was empty",
+    "how": "out/a2_overflow-*; vLLM serving.py:748-773, retry_plugin.py:23, parallel_agent.py:71-85 (TaskGroup), ToolErrorPlugin agent_runner.py:261-281 turns it into an error dict for the lead"
+   },
+   {
+    "what": "Relative-path habit (worktree branches must break it on every call)",
+    "value": "3,518 of 3,518 read_file/edit_file/write_file calls use relative paths; 2 of 4,305 run_command calls start with cd; 238 recursive grep/find from cwd; 716 git grep",
+    "how": "Script over 318 split-A 31B trajectories (lab20a/b, lab21, lab22a/b)"
+   },
+   {
+    "what": "Wrong-tree import without a PYTHONPATH override",
+    "value": "a2 ran its /tmp reproducer from the worktree without the override and got add(2,3)=1 (the /workspace copy); with `export PYTHONPATH=$PWD/src:$PWD` it got 5 (the worktree copy)",
+    "how": "out/pick_a2-toy__toypkg-1 fake.jsonl; subprocess.py:485-489 sets PYTHONPATH=/workspace (docker mode: editable install of /workspace, container_setup.py:506-517, inferred, not tested)"
+   },
+   {
+    "what": "Eval tasks whose gold patch touches src/ (src layout needs PYTHONPATH=src)",
+    "value": "58 of 161",
+    "how": "Regex over evtasks/evalset/tasks.jsonl patches"
+   },
+   {
+    "what": "Soft per-branch caps are not obeyed",
+    "value": "v31a solver told 25 calls used the global 28 in 10/12 runs. After the first budget_warning, v29/v33t made a median of 10 (mean 8.8) more counted calls (n=187)",
+    "how": "outcomes.csv (lab19 v31a); bic/impl/warncomply.py over traces"
+   },
+   {
+    "what": "Single-agent runs that hit the tool cap",
+    "value": "v33t 40% at 28 (median 26 calls, n=87); v29 42%",
+    "how": "outcomes.csv, split A"
+   },
+   {
+    "what": "Prompt growth without compaction (AgentTool branches are never compacted)",
+    "value": "Median and p90 prompt tokens: 16.5k / 24.5k at LLM step 16; 19.4k / 28.3k at step 20; 22.1k / 30.7k at step 24. Share over 28,672 (the limit at max_output 4096): 2% / 8% / 20%. Share over 24,576 (limit at 8192): 10% / 24% / 35%",
+    "how": "bic/impl/ctxgrowth.py, 318 trajectories; compaction gaps filled with each run's mean step growth (estimate)"
+   },
+   {
+    "what": "Replay simulation at equal mean agent time (estimate)",
+    "value": "Single v33t-style, cap 28: mean 305 s, solve rate 34.8%, timeouts 15% (timepred gives 315 s). k=2, cap 40: mean 308 s; oracle 30.5%, practical pick 25.1%, overflow-crash 8.3%, lead has 2 or more calls left in 26%. k=3, cap 54: mean 318 s; oracle 30.2%. k=2 needs cap 56 (mean 366 s, timeouts 21%) for oracle 36.7%. Single at cap 20: 26.0%",
+    "how": "bic/impl/simpar.py sweep. Each branch replays a real run of the same task. vLLM processor sharing at the measured 37.2/28.6/25.9 tok/s; tools block the loop; no compaction in branches; shared cap; 480 s asyncio cap. A truncated run counts as solved only if its last edit came before the cut. Lead pre/post costs are estimated (10 s / 40 s)"
+   },
+   {
+    "what": "Event-loop stalls from long tools",
+    "value": "Mean tool time 17.3 s per run; 25 of 318 runs had a tool call over 60 s (max 241 s); p99 per call 9.5 s",
+    "how": "timepred.parse_trace tool_s over the 318 trajectories"
+   },
+   {
+    "what": "Worktree creation cost",
+    "value": "0.06 s for a toy repo; about 4 s per worktree for a 10k-file, 299 MB tree on local disk (estimate for the scorer)",
+    "how": "bic/impl/gitlab/mkwt.sh and the benchmark in gitlab/big"
+   },
+   {
+    "what": "Gitlink leak without the exclude",
+    "value": "Without `.attempts/` in .git/info/exclude, submit_patch's `git add -N . && git diff --binary _swegemma_baseline` emits 'new file mode 160000 / Subproject commit ...-dirty' sections, one per worktree. They survive strip_protected_files_from_patch and git apply accepts them (creating empty dirs). With the exclude the diff is clean; the timeout and pick scenarios had 0 gitlinks",
+    "how": "bic/impl/gitlab/gitexp.sh (noexclude vs exclude), harness runs"
+   },
+   {
+    "what": "Aggregate decode throughput available",
+    "value": "31B: 1.54x at k=2, 2.09x at k=3. E4B: 1.64x / 2.42x / 3.14x at k=2/3/4",
+    "how": "From the stated per-sequence rates (37.2/28.6/25.9 and 90.5/74/73/71 tok/s)"
+   }
+  ],
+  "design_implications": "HOW TO BUILD IT. A tested skeleton is in /tmp/claude-0/-home-user-Markov-chain-/420c290f-859c-5dc9-bf7e-f5ca9ed3f238/scratchpad/bic/impl/partest/bundle_par/ and compiles with the real compiler.\n\n1. YAML.\n- agent.yaml (LlmAgent root; agent_class can be left out):\n  tools: [{agent_tool: {config_path: sub_agents/attempts.yaml}}, run_command, read_file, get_status, submit_patch]\n  Add edit_file if the lead should repair after a crash.\n- The only AgentToolRef keys are config_path and skip_summarization (schema.py:84-137). Keep skip_summarization false: true ends the lead's turn when the tool returns and spends a nudge. include_plugins cannot be set and defaults to true (resolvers/tools.py:115-117, agent_tool.py:121-132), so branch LLM calls reach the harness counters.\n- sub_agents/attempts.yaml: agent_class: ParallelAgent, name, description, sub_agents: [{config_path: attempt_a1.yaml}, ...] (schema.py:338-347). Paths resolve relative to the including file's directory, falling back to the bundle root (context.py:98-124).\n- Each branch YAML is an LlmAgent with:\n  - a unique name. Duplicate names only log a warning (base_agent.py:571-605) but would merge branch histories.\n  - a unique output_key. It is saved only from a final text reply (llm_agent.py:842-871).\n  - disallow_transfer_to_parent and disallow_transfer_to_peers both true, which gives SingleFlow (llm_agent.py:718-726).\n  - tools: [run_command, read_file, edit_file, write_file]. No submit_patch, no graph tools.\n  - its own generate_content_config. Model and thinking are cloned per agent (resolvers/models.py:77-79, generation.py:359-448); verified: lead thinking_token_budget 1024, branches 2048.\n- Use temperature 1.0 with no seed. Identical seeds plus identical prompts would give identical branches.\n- The function the lead calls is named after the ParallelAgent (`attempts`) and takes one string arg `request` (agent_tool.py:143-181). The request becomes each branch's only user message; branches never see the harness task prompt.\n- Branch instructions must include {problem_description} (and {hints?}). The harness puts both in state (agent_runner.py:676-686) and AgentTool copies state into the inner session (agent_tool.py:251-260). Verified filled.\n- The lead reads branch reports through {report_aN?} in its own instruction, filled after the tool returns (agent_tool.py:270-272; verified). The tool's return value is only the last-finishing branch's text (agent_tool.py:262-284).\n- No `{identifier}` may appear in any prompt other than a state key, including bash `${VAR}` and Python f-strings: it raises KeyError (instructions_utils.py:122-124).\n- Put the shared text first and the branch-specific lines last, so vLLM's prefix cache is shared across branches.\n- eval_config: max_tool_calls is ONE counter for everyone (context.py:468-551; tools bound to one ctx at agent_runner.py:601,616-628). It is the only thing that stops branches, so size it for time: about 36-40 for k=2 at about 300 s. Set max_turns of 120 or more. Keep max_time_minutes at 8: one asyncio.timeout wraps the lead and the AgentTool inner runners (agent_runner.py:718-728,783).\n\n2. LAYOUT: use the asymmetric one, with a1 working in /workspace and a2..ak in /workspace/.attempts/aN.\n- Why: budget exhaustion is the usual stop, the timeout fallback diff is /workspace (agent_runner.py:1054-1078), an overflow freezes whatever is on disk, and the lead can submit at zero counted cost. All three cases then yield a1's patch (tested in the budget and timeout scenarios).\n- Path validation allows any path under /workspace (workspace.py:22-55); docker copy_from allows /workspace and /tmp targets (docker.py:540-563). Relative paths always resolve against /workspace, so worktree branches must use absolute '/workspace/.attempts/aN/...' paths.\n\n3. LEAD COMMANDS (tested).\n- Setup, as the first run_command:\n  cd /workspace && B=$(git rev-parse -q --verify _swegemma_baseline || git rev-parse HEAD) && (grep -qxF '.attempts/' .git/info/exclude || echo '.attempts/' >> .git/info/exclude) && git worktree add -q --detach .attempts/a2 $B && (git ls-files -z -o -i --exclude-standard | grep -zvE '(^|/)(__pycache__|\\.pytest_cache|\\.attempts)(/|$)|\\.pyc$' | tar --null -T - -cf - 2>/dev/null | tar -C .attempts/a2 -xf -) ; git worktree list\n  The tar step copies gitignored but needed files (_version.py, .so, egg-info) that a checkout of the baseline commit lacks. Optionally also exclude .tox, .venv and node_modules.\n- Call attempts(request=\"start\") once.\n- Immediately call submit_patch. It is uncounted and snapshots a1 as insurance.\n- Inspect (1 counted call):\n  cd /workspace && git add -N . && git diff --stat _swegemma_baseline; cd .attempts/a2 && git add -N . && git diff --stat _swegemma_baseline\n- Switch to a2, only if get_status shows a call left:\n  cd /workspace && (cd .attempts/a2 && git add -N . && git diff --binary $(git rev-parse -q --verify _swegemma_baseline || echo HEAD)) > .attempts/a2.patch && git reset -q --hard $(git rev-parse -q --verify _swegemma_baseline || echo HEAD) && git clean -fdq && git apply --whitespace=nowarn .attempts/a2.patch && git status --short\n  Then submit_patch again and reply with one line.\n- Use reset --hard, not `git checkout -- .`: after a submit_patch, checkout leaves intent-to-add new files behind (tested).\n- Verify: `git status` should show only the chosen attempt's files, and submit_patch's files_changed should match.\n- Cleanup is optional because the directory is excluded: git worktree remove --force .attempts/a2; git worktree prune; rm -rf .attempts.\n\n4. BRANCH PROMPT RULES.\n- Every file path starts with the worktree prefix.\n- Every run_command starts with: cd /workspace/.attempts/aN && export PYTHONPATH=$PWD/src:$PWD &&\n- Scratch files go in /tmp/aN_* (/tmp is shared between branches).\n- Run python and pytest under `timeout 60`: a sync tool freezes every branch.\n- a1 uses git grep, which skips the untracked .attempts copies.\n- On BudgetExceeded or TimeoutExceeded, reply with the report immediately.\n- Branch sampling: max_output_tokens 4096, thinking_budget 2048, which allows a prompt of up to 28.7k tokens.\n\n5. TESTABILITY.\n- official/fake_llm.py cannot test this shape. It only recognizes the v24 and v31a prompt strings, and it reports 900 prompt tokens, so nothing compacts or overflows.\n- The new fake_par.py (ROLE= markers, an http400 action, 6 scenarios), drive.py and make_data.py do test it. Use them as a regression suite before any GPU run.\n\n6. STRATEGY.\n- The replay says that splitting the same time across full-style branches loses: most solves come late (median last edit at LLM call 15 of 26).\n- Parallelism needs branches that use about half as many calls each. One option is fork-after-localization: the lead localizes, passes a summary in `request`, and each branch makes at most about 10 calls, which also removes most overflow risk.\n- E4B scales better (3.1x aggregate at k=4) and its runs end naturally (4-8% at cap), but its split-A solve rate is about 1/57, so best-of-k there needs a better base first.",
+  "blockers": "1. No hard per-branch limit exists in the declarative surface: no per-agent tool cap, turn cap or time cap. The inner runner uses RunConfig() with max_llm_calls=500; callbacks are ignored; run_skill_script is also counted through check_budget (adk_eval_core/sandbox/base.py:176-190). Combined with Gemma ignoring soft caps, the shared tool budget is the de facto stop, and the lead usually cannot run counted selection commands afterwards (26-41% of simulated k=2 runs have 2 or more calls left).\n2. Branch context overflow cannot be caught inside the bundle. Prompt + max_tokens > 32768 gives a 400 that is not retried, and ADK's TaskGroup cancels every branch. Mitigation is only prompt- and budget-level; the simulation estimates crash rates of 8-16% at caps 40-44 with max_output 4096.\n3. Everything about solve rate and time for this shape is a replay estimate. There is no GPU run. Next step: a paired lab run of k=2 against v33t on split A at concurrency 1, using a fork-after-localization variant.\n4. The local test used subprocess mode, where the harness sets PYTHONPATH=/workspace. Docker-mode behavior (editable install pointing at /workspace) is inferred from code, not tested. swegemma's config comment says 'subprocess' for Kaggle notebooks (config.py:98), while labworker.py treats the scorer as a docker container. The recipe covers both.\n5. Test environment only: this venv's litellm 1.106.4 needs a newer mcp package. drive.py stubs two litellm MCP modules before import. This does not affect the scorer."
+ },
+ {
+  "area": "E4B with parallel attempts (k=4-6 plus an agreement selector) for the small-model prize",
+  "headline": "No. A k=4-6 parallel E4B design with an agreement vote does not plausibly reach the leader level of 0.23 on our set (about 20/87). With the best E4B bundles, E4B solves about 0.34x as many tasks as 31B, which is about 10/87 for one attempt on split A. The estimated k=6 vote gets about 14-17.5/87 before any vLLM hang losses. It needs E4B's rate to be at least 0.40x of 31B's (bootstrap P about 0.30) just to touch 20/87, even under the favourable model. The vLLM 0.19.1 tool-parser hang scales with k: at the point estimate the k=6 design keeps only about 0.19 of its score, against 0.67 for a single agent. So parallel E4B probably scores below a single E4B unless the hang rate is under about 1 in 10,000 calls. Bundle quality matters far more: our s1/s2 bundles, which reuse the 31B v29 prompt, scored 0 of 45 runs where about 3.5 solves were expected (p=0.03).",
+  "numbers": [
+   {
+    "what": "E4B solves with our bundles, split A",
+    "value": "1 of 57 runs (1.8%): s1 0/22, s2 0/23, s3 1/12 (tweag fawltydeps-492). 31B solves 0.209 of runs on these same 23 tasks, against 0.355 across all 87, so this subset is hard.",
+    "how": "Measured: lab23 results.jsonl rows with llm_calls>0 and lab28s results.jsonl, joined with outcomes.csv 31B rows from split-A labs 20a/20b/21/22a/22b (bic/e4b/cmp31.py)"
+   },
+   {
+    "what": "Relative rate r = E4B solves / solves expected if each run succeeded at 31B's per-task rate",
+    "value": "s1+s2: 0 of 10.2 expected (P(0 solves | r=0.34)=0.03); s3: 1 of 3.1 = 0.32; public vanductan E4B bundle: 7 of 20.6 = 0.34. Pooled for the good bundles: r=0.337, bootstrap 90% CI 0.157-0.554.",
+    "how": "Measured. 31B per-task rates come from our runs (split A, plus dev labs 17-19) and Idris's 31B runs (r1026/idris/runs.jsonl, up to 12 runs per task). Bootstrap resamples tasks (bic/e4b/rbundle.py)."
+   },
+   {
+    "what": "E4B pass@1 on split A (87 tasks), good bundle",
+    "value": "0.12 (10.4/87), 90% CI 0.053-0.195 (4.6-17/87). At the 31B board/eval ratio of 0.43 this is about 0.05 on the board, which matches the best public E4B score of 0.05 (satwiksps) and the board median of 0.03-0.05.",
+    "how": "Estimate: r times 31B's mean per-task rate on split A (0.355)"
+   },
+   {
+    "what": "Public E4B runs with two seeds (vanductan, 40 dev tasks, 5 min, 40 calls)",
+    "value": "3/40 and 4/40. Tasks solved by either seed: 6/40 (pass@2 0.15); by both seeds: 1/40 (rich_3006).",
+    "how": "Measured: e4bres/vanductan_*_out/run_e4b_5m_40c_s{1,2}.jsonl"
+   },
+   {
+    "what": "How E4B solves spread across tasks",
+    "value": "Model 'p = 0.34 x 31B rate, attempts independent': predicts 6.00 tasks with at least one solve and 1.00 with two (observed 6 and 1). Model 'solves concentrated on 20-40% of tasks': predicts 2.6-4.5 and 2.4-2.5. So fresh E4B attempts behave like independent draws, the case where sampling pays most.",
+    "how": "Measured fit on the 29 public tasks that have both seeds and 31B rates"
+   },
+   {
+    "what": "Upper bound on pass@k with a perfect picker (split A, r=0.337, independent model)",
+    "value": "pass@3 23.1/87, pass@4 26.4/87, pass@6 31.2/87. Under the concentrated model only 14.3-15.4/87. At the low CI end (r=0.157): pass@6 20.7/87.",
+    "how": "Estimate: Monte Carlo over the 87 per-task 31B rates, including a measured 12% empty-patch rate (bic/e4b/selsim3.py)"
+   },
+   {
+    "what": "Patch agreement between two runs of the same task",
+    "value": "31B, both correct: 71% share at least half their changed lines (42% identical after normalising). 31B, both wrong: 19% (6% identical). E4B, both wrong: 7-8% (4-5% identical), n=64 pairs. E4B, both correct: 1 pair ever, and it was identical (rich_3006).",
+    "how": "Measured: changed-line Jaccard and normalised-diff equality over all same-task pairs (bic/e4b/agree31.py, bic/e4b/agree.py)"
+   },
+   {
+    "what": "Agreement-vote result on split A (falls back to the first non-empty patch when no two agree)",
+    "value": "r=0.337: k=3 12.9, k=4 14.4, k=6 17.5/87 (Jaccard matcher). With a shell-feasible exact-diff matcher: 12.5/13.3/15.7. Concentrated model: 12.9/13.3/13.9. 20/87 at k=6 needs r of at least about 0.40 (bootstrap P(r>=0.40)=0.30, P(r>=0.45)=0.18). The vote recovers only about 30% of the perfect-picker gain, because it needs at least 2 correct patches.",
+    "how": "Estimate: Monte Carlo using the measured agreement rates; the E4B correct-correct agreement rate is assumed equal to 31B's 0.71"
+   },
+   {
+    "what": "vLLM 0.19.1 tool-parser hang rate for E4B",
+    "value": "1 hang in about 1,700 E4B model calls (lab23 563, lab28s 132 with the guard on and 0 would-be hangs, vanductan about 1,008). Plausible range roughly 1 in 300 to 1 in 70,000. 31B: 0 hangs in about 10k calls. Malformed-call rates: s1 0.4%, s2 5.1%, s3 0/122, public 2.5% (21/827, mostly edit_file or write_file content with brackets).",
+    "how": "Measured counts from outcomes.csv malformed_calls and the public traces using collect.py's malformed() check; the hang rate is a 1-event estimate"
+   },
+   {
+    "what": "Fraction of the run's score kept after a hang (assumes a per-task cap of at most 5.5 min, so a hung server cannot push the run past 12 h; about 12 calls per attempt)",
+    "value": "At 1 in 1,700: k=1 0.67, k=4 0.28, k=6 0.19. At 1 in 5,000: 0.87 / 0.59 / 0.47. At 1 in 20,000: 0.96 / 0.87 / 0.81. With an 8-min cap, a hang before about task 50 pushes the run past 12 h (likely a zero).",
+    "how": "Estimate: geometric time-to-first-hang over 120 tasks"
+   },
+   {
+    "what": "Time per E4B attempt and wall time for k parallel attempts",
+    "value": "One attempt: median 102 s real (p90 172); model time about 73 s; tools median 2.4 s, mean 16.7 s (18% of the total). k parallel (tools serialised on the event loop, decode at measured per-stream speeds): k=4 mean 168-207 s (p90 206-302); k=6 mean 194-263 s (p90 314-399).",
+    "how": "Measured per-run fields (real_agent_seconds, vc_tool_seconds, vc_completion_tokens) plus E4B costs of 11.7 ms/token and 10.4 s/compaction; parallel walls are bootstrap estimates (optimistic vs fully serialised tools)"
+   },
+   {
+    "what": "E4B failure modes (57 split-A runs, plus 80 public runs)",
+    "value": "edit_file failures: 24% / 42% / 49% (s1/s2/s3) and 35-37% public, against 8-11% for 31B v33t. Last edit failed in 9/57 runs; no edit succeeded in 4/57. Tool calls used: median 8-11.5 of 28-40. Real time: median 102 s of 300-480 s. 44/57 runs submitted with at least half their calls left. Self-checks: 48/57 ran existing pytest and 2/57 ran a check script of their own (31B v33t: 78/87). 50/57 patches non-empty, 49 of them wrong. Of those 50, 76% edit a gold source file and 46% land within 10 lines of a gold hunk. Grader errors on the 49 wrong patches: 30 assertion or plain test failures, 10 Type/Attribute/Import errors, 2 syntax or indentation errors.",
+    "how": "Measured from ATIF traces (bic/e4b/fail.py, fail_valid.py) and the gold patches in tasks.jsonl (bic/e4b/errcat.py)"
+   },
+   {
+    "what": "Small-model board luck",
+    "value": "262 teams: 3 at 0.10 (6/58), 21 at 0.08, 62 at 0.06, 71 at 0.05. One draw at a true rate of 0.05 reaches 6/58 with P=0.07; at 0.08, P=0.32. The leader's 0.10 is most likely a lucky draw by a team whose true board rate is about 0.05-0.07.",
+    "how": "Measured: smlb2/leaderboard.csv; binomial tail"
+   }
+  ],
+  "design_implications": "1. Don't build k=4-6 parallel E4B now. Its estimated ceiling is about 14-17.5/87 (0.16-0.20 on our set, about 0.07-0.09 on the board) before hang losses. Under every hang rate except the most optimistic, the expected score after hang losses is at or below a single good E4B agent (about 10/87 times 0.67-0.96 kept). A gain of +4-7 tasks/87 is also only 1.2-2 times the 3.3-task standard error of an 87-task paired lab, so even a real gain would barely show.\n2. If multi-attempt E4B is tried at all, use k=3 sequential fresh attempts, not k=6 parallel. One AgentTool per attempt gives a fresh context and no compaction. Each attempt uses the native edit tools in /workspace, saves `git diff` to /tmp/c_i.diff, then runs `git checkout -- .`. The lead runs one fixed shell pipeline that picks the majority by whitespace-normalised diff hash, falling back to the first non-empty patch. Three attempts of about 100 s fit the roughly 355 s per-task budget with max_time_minutes 5.5, which also makes a hang non-fatal. Estimated gain: about +2-2.5/87 (12.5-12.9 vs 10.4). That is cheap, but not a prize-winning lever.\n3. Bundle family is the biggest proven lever. The 31B v29 prompt with 9 tools on E4B scored 0/45, while the short fixed recipe (s3) and vanductan's minimal prompt both sit near r=0.33. Keep s3-style: 5-6 tools, no graph tools, no write_file, edits of 1-3 lines. s3 also had 0/122 malformed calls, which is the main hang defence.\n4. The single change most likely to raise E4B pass@1 (an inference, not measured) targets wrong logic and early quitting together, not edit mismatches. Wrong logic is the dominant failure: 49 of 50 non-empty patches fail although 76% are in the right file. E4B's done-signal is \"existing pytest passes\" (48/57 runs), and that cannot see the hidden FAIL_TO_PASS tests, so it submits after about 100 s with at least half its calls left. The change: require a one-line `python3 -c` check built from the issue's own example or stated names, messages and return values; if the check does not match, revert and start a fresh attempt in the unused budget. Because fresh attempts are near-independent, a check that catches even 30-50% of wrong patches gives a plausible +2-5/87 (estimate). Fixing edit mismatches alone is capped at about +1 point of pass@1, because only 9/57 runs ended with their last edit failed and E4B's applied edits are 98% wrong anyway. Its real value is fewer malformed calls, which means fewer hangs.\n5. Measure before building. Run lab27 (s3/s4) with LABGUARD on to count would-be hangs. Proving a hang rate below 1 in 5,000 at zero events needs about 15k calls, so treat any LABGUARD event as a stop for multi-attempt designs. Also get one 87-task split-A run of the best E4B bundle to replace r (now resting on 70 good-bundle runs, 8 solves, mostly public dev repos) with a split-A number.\nScripts: /tmp/claude-0/-home-user-Markov-chain-/420c290f-859c-5dc9-bf7e-f5ca9ed3f238/scratchpad/bic/e4b/ (cmp31.py, rbundle.py, passk.py, selsim3.py, selsim2.py, agree31.py, agree.py, fail.py, fail_valid.py, errcat.py, vand.py, vand_idris.py, patchlib.py).",
+  "blockers": "1. vLLM 0.19.1 tool-parser hang. The scorer pins this version and a bundle cannot patch it. The point estimate is 1 hang per about 1,700 E4B calls, and k attempts multiply exposure by k. With the 8-minute cap, a hang before about task 50 pushes the run past 12 h. A max_time_minutes of at most 5.5 caps the damage but cuts into k=6's p90 wall time of 314-399 s.\n2. read_file, edit_file and write_file only accept paths inside /workspace. So in a parallel design, k-1 workers must edit through run_command in git worktrees (and override PYTHONPATH, which run_command pins to /workspace). E4B made 0 shell edits in 137 runs, so this skill is untested, and code inside run_command arguments is exactly what triggers the parser hang.\n3. A plain ParallelAgent crashes when history compaction runs (ADK issue #7324), so it must be wrapped in an AgentTool. The inner runners have no compaction, so each worker must stay under 32k tokens. The tool-call counter is shared, so max_tool_calls must rise to about 15 times k. Inner model calls count toward max_turns.\n4. The tools are synchronous, so their execution serialises across branches. Tools are about 18% of an E4B attempt's time, rising to about 30% of wall time at k=6 by estimate.\n5. Selector. The lead is E4B, so selection must be a fixed shell pipeline. A Jaccard comparator would need a script written through a tool call, which puts code in arguments. The feasible exact-hash vote loses about 2 tasks/87 against Jaccard.\n6. Thin data. There are 8 E4B solves in 70 good-bundle runs; most of those runs are public fastapi/rich tasks, and the split-A good-bundle evidence is 1/12. Only one correct-correct E4B pair has ever been seen, so E4B's agreement among correct patches is assumed equal to 31B's. Lab23's E4B tasks are a hard subset (31B rate 0.21 vs 0.355).\n7. GPU quota resets 10-31. A split-A gate of 87 tasks run k-wide costs about k times one E4B run, and still cannot resolve +4 tasks."
+ },
+ {
+  "area": "Evidence on parallel sampling and selection for SWE agents (pass@k vs selected@k, selection signals without hidden tests, failure modes), translated into recommendations for a 31B agent with about 330 s per task",
+  "headline": "Parallel attempts are not worth it at equal wall time. On split A the perfect-picker best-of-2 gain is only +6.0 points (+5.2 of 87 tasks). Practical pickers capture 40-65% of it, and almost all of that comes from \"prefer a non-empty patch\". Among non-empty patches, cheap signals are close to chance, except \"fewer tool calls\" and \"ran tests after its last edit\" (within-task AUC about 0.65-0.7). One v33t attempt already spends about 320 s per task, 93-95% of it decoding, so 2-4 branches each get only 0.66-0.77x of the tokens. My simulation gives -2 to +1.8 eval points against one full attempt; even a perfect picker gives only +2 to +5. Sampling and selection cannot approach 0.50 on the board: 53-57% of tasks are never solved in 4-8 runs.",
+  "numbers": [
+   {
+    "what": "Split-A 31B task mix (87 tasks, 318 runs from v29/v30/v32/v33t)",
+    "value": "23 always solved, 48 never solved, 16 mixed (18%)",
+    "how": "bic/selection/build_runs.py joins results.jsonl, traces and outcomes.csv (labs 20a/20b/21/22a/22b); select_eval.py"
+   },
+   {
+    "what": "Split A: pass@1 vs perfect-picker pass@k",
+    "value": "k=2: 0.355 -> 0.415 (+6.0 pts, +5.2 tasks/87); k=3: 0.364 -> 0.446 (+8.2, 60 tasks); k=4: 0.364 -> 0.463 (+9.9, 60 tasks)",
+    "how": "unbiased pass@k per task, averaged over tasks (select_eval.py)"
+   },
+   {
+    "what": "zysbnd1 dev (31B, T 0.2, 8 runs x 90 tasks): pass@k curve",
+    "value": "pass@1 0.306, @2 0.350, @4 0.393, @8 0.433; 51/90 never solved; train: 0.352 -> @2 0.391 -> @4 0.422",
+    "how": "zys_passk.py on writeups/ds/zysbnd1.../task_outcomes.jsonl"
+   },
+   {
+    "what": "Share of the oracle gap recovered by the non-empty filter alone",
+    "value": "ours 47% / 39% / 36% (k=2/3/4); zysbnd1 dev 39% / 34% / 31% / 24% (k=2/3/4/8), train 45% / 35% / 29%; Idris 52% / 44% / 39%",
+    "how": "exact expectation over all k-subsets: pick uniformly among non-empty candidates (select_eval.py, zys_passk.py, idris_sel.py)"
+   },
+   {
+    "what": "Best cheap selector: non-empty, then fewest tool calls",
+    "value": "recovers ours 63% / 50% / 40% (k=2/3/4); Idris (46 public tasks, 8 configs) 70% / 66% / 64%",
+    "how": "select_eval.py, idris_sel.py"
+   },
+   {
+    "what": "Patch-agreement voting (Jaccard medoid over normalized source +/- lines)",
+    "value": "no gain at k=2 (same as non-empty); at k=4 it recovers 51% vs 36% for non-empty (+1.5 pts); within-task AUC among non-empty 0.575",
+    "how": "select_eval.py"
+   },
+   {
+    "what": "Within-task AUC among non-empty candidates (resolved vs failed runs of the same task)",
+    "value": "fewer calls: ours 0.65 [90% CI 0.49-0.80, n=10], Idris 0.71 [0.56-0.84, n=18], zysbnd1 0.80-0.88 (n=10/4); ran pytest after last edit: 0.64 [0.52-0.78]; last pytest passed: 0.52; any self-check ok: 0.51; smaller patch: 0.50; hedged final message: 0.45",
+    "how": "calls_auc.py plus inline bootstrap over tasks; only 10 mixed tasks in our data, so the CIs are wide"
+   },
+   {
+    "what": "Task-difficulty confound in self-check signals",
+    "value": "'any self-check ok after last edit': pooled AUC 0.70 but within-task 0.51; it is true for 84% of solved and 44% of non-empty failed patches (44% false positives)",
+    "how": "inline script over runs.jsonl; trace-parsed pytest/python results after the last successful edit"
+   },
+   {
+    "what": "Same-context resampling has little diversity (published)",
+    "value": "three forced commits from the same context agree in 90% of 451 cells; wrong-patch contexts on never-solved tasks 0/45 at any fork",
+    "how": "zysbnd1 notebook output (writeups/nbtxt/zysbnd1...txt), not recomputed"
+   },
+   {
+    "what": "v33t split-A time split",
+    "value": "virtual mean 316-321 s/task; LLM 293-304 s (93-95%); tools 17-22 s; 1.2-1.5 compactions/task",
+    "how": "results.jsonl vc_* fields, lab22a/b"
+   },
+   {
+    "what": "Solves kept if each branch is cut at N counted calls",
+    "value": "N=18: 62%, 20: 73%, 22: 80%, 24: 87%, 28: 97% of solved runs had made their last successful repo edit by call N",
+    "how": "trunc.py (trace-derived; pessimistic because it assumes no adaptation to a smaller budget)"
+   },
+   {
+    "what": "Simulated best-of-K at equal wall time vs one full-budget run (pts, split A)",
+    "value": "K=2 at 0.77x: oracle +2.1..+3.3, non-empty pick -0.9..+1.0, first finisher -0.5..+0.6; K=2 at 0.85x: non-empty +0.3..+1.8; K=3 at 0.70x: non-empty -1.2..+1.5, oracle +4.5..+5.1; K=4 at 0.66x: -2.0..+0.9",
+    "how": "budget_sim2.py truncation model (pessimistic q=0.6 .. optimistic q=1.0); estimate"
+   },
+   {
+    "what": "Per-branch retention needed for best-of-2 to break even",
+    "value": "0.93 with a picker that recovers 47% of the gap; 0.86 with a perfect picker; the measured per-stream token share at 2 streams is 0.77 (28.6/37.2 tok/s)",
+    "how": "analytic: r = p1 / (p1 + s*G), with p1 0.355, G 0.060; estimate"
+   },
+   {
+    "what": "Diversity bonus to the ceiling",
+    "value": "oracle gain +4.2 pts for same-config pairs (v29 x v29) vs +5.5 for cross-config pairs on the same 60 tasks; difference +1.3 [90% CI -1.4, +4.1]",
+    "how": "pairs.py plus inline paired bootstrap"
+   },
+   {
+    "what": "Hard ceiling from resampling",
+    "value": "32/60 tasks with >=4 runs never solved (53%); 12/24 with 5 runs; zysbnd1 51/90 with 8 runs (57%)",
+    "how": "runs.jsonl; zys_passk.py"
+   },
+   {
+    "what": "Our earlier cross-execution picker (v24 pick_patch: hard filters, then pass count on pooled repro scripts)",
+    "value": "replay: best-of-2 0.536 vs single 0.458 (87% of the oracle gain); v25 (2 sequential attempts + pick) lab 24/48 vs 20/48, but board 0.08 vs v22 0.10",
+    "how": "STATUS.md:306 and 360-370; old era (public fastapi/rich tasks, lenient replica grader, thinking off), not recomputed"
+   },
+   {
+    "what": "Held-out pairs available for testing an LLM judge offline",
+    "value": "17 tasks / 46 right-vs-wrong (non-empty) pairs: split A 10/28 + public dev labs 17-19 7/18",
+    "how": "inline count over results.jsonl"
+   },
+   {
+    "what": "E4B selection headroom",
+    "value": "57 valid split-A runs: 1 solved, 46 wrong non-empty, 5 empty, 5 timeout, so neither the non-empty filter nor any picker has anything to work with",
+    "how": "runs.jsonl (lab23 runs with llm_calls>0, lab28s)"
+   },
+   {
+    "what": "Published parallel/selection gains (recalled from memory, not re-checked: no network)",
+    "value": "Claude 3.7 Sonnet 62.3 -> 70.3, Sonnet 4 72.7 -> 80.2, Opus 4 72.5 -> 79.4, Sonnet 4.5 77.2 -> 82.0 (parallel attempts, drop patches that break visible regression tests, internal scoring model); Kimi K2 65.8 -> 71.6; SWE-Gym 32B verifier 20.6 -> 32.0 best@16 (Verified); R2E-Gym 34.4 -> 51.0 best@26 with a hybrid verifier (each verifier alone about 42-43); DeepSWE 42.2 -> 59.0 best@16; CodeMonkeys 57.4 Verified (ensemble pick over top submissions 66.2); Large Language Monkeys: SWE-bench Lite coverage 15.9% -> 56% at 250 samples while voting and reward-model pickers plateau; CodeT HumanEval 47.0 -> 65.8 via dual execution agreement; SWE-Search about +23% relative",
+    "how": "my recollection of the papers and blogs; exact pass@k denominators are mostly not remembered, so the 'fraction recovered' figures derived from them are estimates"
+   }
+  ],
+  "design_implications": "KNOWN FROM PUBLISHED WORK (recalled from memory; confidence noted):\n- Practical selectors recover about 40-60% of the pass@k-pass@1 gap only when they combine execution signals with a TRAINED verifier (SWE-Gym, R2E-Gym hybrid, DeepSWE, OpenHands critic). Untrained majority voting, regression filtering and self-generated tests recover less (my estimate: about 20-45%).\n- Large Language Monkeys and Stroebl et al. (\"Inference Scaling fLaws\") show the cause: selection plateaus far below coverage, and imperfect verifiers' false positives grow with k. Weak models gain least from resampling.\n- The big frontier gains (+5 to +8 points: Claude, Kimi) happen at pass@1 of 60-77%. There the correct patch is often the plurality, so voting works. At our board pass@1 of about 0.15, the correct patch is usually a singleton.\n- Agentless order of signals: (1) drop patches that fail existing tests that passed before; (2) rank by generated reproduction tests; (3) majority vote over normalized patches. CodeT, Kimi-Dev, CodeMonkeys and R2E-Gym add cross-execution: every candidate is run against tests written by OTHER samples.\n- R2E-Gym's warning: execution-based verifiers lose distinguishability when all candidates pass or all fail the generated test, and execution-free judges are biased by surface features. Use both, never a judge alone.\n- \"When To Solve, When To Verify\" (math): at small compute, spending on more solutions beats spending on verification.\n\nMEASURED HERE (split A, zysbnd1, Idris):\n- The gap is small and concentrated: 16 of 87 tasks are mixed.\n- About half of what a practical picker gains is only \"prefer a non-empty patch\".\n- Among non-empty patches, self-verification is at chance within a task (AUC 0.51-0.52), even though it looks predictive pooled across tasks (0.70). This is a task-difficulty confound, so the agent's own repro or test passing is not a picker.\n- The only consistent secondary signals are \"fewer counted tool calls\" (AUC 0.65 / 0.71 / 0.80-0.88 across 3 datasets) and \"ran pytest after its last edit\" (0.64).\n- Voting needs at least 3 non-empty candidates, and then adds only about +1.5 points.\n- Time is decode-bound (93-95% LLM). With 2/3/4 branches each gets 0.77/0.70/0.66x the tokens of one run. The equal-time simulation gives -2 to +1.8 eval points (about -1 to +1 on the board at 0.43x); a perfect picker gives +2 to +5.\n\nRECOMMENDATIONS for 31B at about 330 s per task:\n1. Do not make symmetric best-of-K the main bet; at equal time its expected value is about zero. In particular, do not run 3 or more full-size branches.\n2. Get the non-empty half of the best-of-2 gain inside the single trajectory:\n   - Guarantee a compiling, non-test source diff in /workspace well before the call budget runs out (best edit by counted call about 18; keep the best-so-far patch in place).\n   - Basis: zysbnd1 found 44/53 empty runs had their edits refused after the spent 28-call budget, and forced commits rescue about 40% of empties on boundary tasks. Estimate: +1 to +2.5 tasks per 87, at no 2x cost.\n3. If a parallel variant is built anyway:\n   - Use K=2 only, with each branch at 0.85x or more of v33t's tokens. That needs lean branches; the per-stream share is 0.77, so about 10% of each branch's tokens must be cut.\n   - Make the branches diverse (different prompt or temperature): cross-config pairs added +1.3 points to the ceiling (not significant).\n   - Branch A edits /workspace so a timeout still yields a patch; branch B works in a git worktree and sets PYTHONPATH itself.\n   - Do the selection in DETERMINISTIC CODE, not model judgment, in this order:\n     a. Hard filters: non-test .py change, applies to a clean base, compiles, changed modules import.\n     b. Cross-execute pooled reproduction scripts: each branch's repro that FAILS on base is run against every candidate, ranked by pass count. Never trust a candidate's own test alone. Our v24 pick_patch replay kept 87% of the oracle gain, but on old public tasks.\n     c. \"Ran tests after its last edit\", then fewer counted calls.\n     d. Agreement voting only when there are 3 or more non-empty candidates.\n     e. Ties go to branch A.\n   - Never prefer the larger patch.\n   - Selection cost (K x K repro runs, serialized tools) must stay under about 20-30 s.\n4. Use an LLM judge (Gemma 31B pairwise) only after an offline pre-test on the 46 held-out pairs:\n   - Run both orders; adopt it only if order-consistent with AUC >= 0.7.\n   - My prior for an untrained self-judge is AUC 0.55-0.65 (estimate).\n5. Small-model track: selection is moot (1/57 runs solved; failures are wrong non-empty patches). E4B's cheap parallelism (about 0.8x per stream at 3-4 streams) has nothing to select from until single-run capability rises.\n\nFAILURE MODES TO AVOID:\n- Self-written tests as the verifier (sslasme: 14/30 self-passing patches failed the hidden tests; ours: 44% false positives).\n- Resampling from a shared context (90% of forced commits agree; wrong patches are sealed).\n- Voting with k=2, or on un-normalized diffs.\n- Judge position and length bias.\n- Hard filters that discard the only correct patch: 'touches tests' and 'adds new files' showed no signal.\n- Plain ParallelAgent under compaction (crashes).\n- AgentTool branches without compaction growing toward 32k.\n- Waiting for the slowest branch, which breaks the 12 h limit.\n- Selection overhead plus apply failures leaving /workspace empty at the timeout.\n- Gating a parallel bundle on the lab virtual clock, which understates parallel cost by about 30%.\n\nAMBITION CHECK: pass@8 is only 1.4x pass@1 (zysbnd1), and 53-57% of tasks are never solved in 4-8 runs. Even perfect selection over unlimited samples tops out near 0.45-0.5 on our eval, about 0.2-0.22 on the board (estimate). Reaching 0.50 would need a higher single-run capability, not selection.",
+  "blockers": "- **Cross-execution untested.** No task environments are available locally, so I could not test the cross-execution repro selector or regression filtering on split A. That needs a lab kernel with the sandboxes.\n- **Small samples.** Only 10 split-A tasks have both a resolved and a non-empty failed run (17 tasks with the public dev labs), so every within-task AUC has a wide CI.\n- **zysbnd1 probes.** Their probe features are not released, so I can't tell whether the within-task AUC of 0.78 at the final call comes from empty vs non-empty.\n- **Literature numbers from memory.** They were not re-checked because network access was not allowed, and their pass@k denominators are mostly unknown. The \"fraction recovered\" values for papers are estimates.\n- **Throughput sources disagree.** The task's measured per-stream decode at 2 streams (28.6 vs 37.2 tok/s = 0.77) disagrees with research_1018/throughput.md (31 vs 34.5 = 0.86-0.87). This changes the K=2 result from about -1 to about +1.5 points.\n- **Time figures disagree.** The predicted_seconds column in outcomes.csv (v33t mean about 506 s on split A) does not match the about 320 s virtual time and the 12 h projections. Another area should reconcile this before any K>1 time gate.\n- **Truncation model.** The simulation assumes that cutting a branch's budget acts like truncating a logged run. The true adaptation lies between the pessimistic and optimistic variants.\n- **Files.** Scripts and data are in /tmp/claude-0/-home-user-Markov-chain-/420c290f-859c-5dc9-bf7e-f5ca9ed3f238/scratchpad/bic/selection/: build_runs.py, runs.jsonl, select_eval.py, zys_passk.py, idris_sel.py, calls_auc.py, pairs.py, trunc.py, budget_sim.py, budget_sim2.py."
+ }
+]

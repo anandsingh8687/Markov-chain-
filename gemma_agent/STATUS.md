@@ -1,0 +1,750 @@
+# Gemma 4 Developer Agent: status report (2026-09-28)
+
+## How the competition is scored
+
+- We submit a declarative Google ADK agent bundle (`submission.zip`), not code. The host runs it on
+  `gemma-4-31b-it-qat-w4a16-ct` (vLLM, 4x L4, 32k context) against hidden SWE-style tasks
+  (real issues from Python repos such as fastapi, rich, requests).
+- Per task: Phase 1 runs our agent in a sandbox (our `eval_config.yaml` caps it at 5 minutes);
+  Phase 2 applies the resulting git diff, adds the maintainers' hidden tests and runs pytest.
+  A task counts as resolved only if pytest exits 0.
+- Score = resolved tasks / all tasks in the split (the resolution rate, 0.0 to 1.0).
+- The public leaderboard uses part of the hidden tasks (about 58). The final ranking uses the
+  private part, scored with the 2 submissions we select. We only ever see one number per
+  submission; per-task logs of scored submissions are not available.
+- Constraints: 1 submission per day; tasks run one after another and the whole run must finish
+  in 12 hours (v1, v2d and v2e failed on this), so each task gets at most about 5 minutes.
+
+## Leaderboard history
+
+| Date | Bundle | Public score |
+| --- | --- | --- |
+| 09-24 to 09-26 | v1, v2d, v2e | error: exceeded the 12 h runtime |
+| 09-27 | v3: single lean agent | 0.05 |
+| 09-28 | v7: fixer + scout sub-agent + swe-tools skill | 0.08 |
+| 09-29 (planned) | v11: single-argument tools only, backtick-free prompts | pending |
+
+Leader: about 0.15. Top 10: about 0.13.
+
+## How we test
+
+| Test bed | What it is | Strength | Weakness |
+| --- | --- | --- | --- |
+| Leaderboard submission | host runs the bundle on the hidden tasks | the real score | 1 per day, one number only, no logs |
+| RunPod GPU replica (`gpu/runpod_lab.py`) | one rented 48 GB GPU serving the exact Kaggle stack (vLLM 0.19.1, the Kaggle weights, gemma4 parsers); localeval with LLM_BACKEND=vllm | same serving stack as the scorer, no queue, about $1 per 32-task run of one bundle | 6 tasks at a time (KV cache ~131k tokens); local grader, not the hidden tasks |
+| Kaggle GPU lab (`lab/make_lab.py`) | private notebook running the official harness and the exact model on 4x L4 | real harness, full traces, free | Kaggle GPU queue can take hours; one run of 2 bundles x 16 tasks takes about 2.5 h |
+| OpenRouter replica (`localeval/`) | our copy of the harness; Gemma 4 31B served by OpenRouter hosts | fast (16 tasks in about 20 min), full traces | paid; different hosts and tool-call parser than the real vLLM |
+
+Task sets: 16 "lab" tasks (8 fastapi, 6 rich, 2 requests) and 16 random held-out tasks from the
+same public task file, so improvements are checked on tasks we did not tune on.
+
+## Results so far (16 lab tasks unless noted)
+
+| Bundle | Real harness (Kaggle lab) | OpenRouter replica (thinking off) |
+| --- | --- | --- |
+| v3 | 5/16 | - |
+| v5 | 6/16 | - |
+| v6 | 5/16 | 5/16 |
+| v7 | queued (Lab 4) | 5/16; held-out 5/16 |
+| v8 | - | 5/16 |
+| v9 | - | 6/16 |
+| v11 | queued (Lab 4) | - (OpenRouter credit used up) |
+
+## RunPod GPU replica results (2026-09-28, 16 lab + 16 held-out tasks)
+
+| Bundle | Lab 16 | Held-out 16 | Total |
+| --- | --- | --- | --- |
+| v7 | 5 | 7 | 12/32 |
+| v11 | 6 | 5 | 11/32 |
+| v12 | 6 | 4 | 10/32 |
+
+14 of 32 tasks are solved by at least one bundle. No tool-call corruption appeared on the replica
+for any bundle; v11/v12 lose tasks to context overflow (6 each) from reading many lines. The
+replica still overestimates the public score (v7: 37% here vs 0.08 public), so the hidden tasks are
+harder than ours. GPU spend: $3.20 of $10.
+
+
+### v13 (2026-09-28 evening), clean GPU-replica runs
+
+| Set | v13 | v7 | v11 | v12 |
+| --- | --- | --- | --- | --- |
+| 32 analysed tasks | 10 | 12 | 11 | 10 |
+| 16 fresh tasks (never used for design) | 7 | 5 | - | - |
+| total 48 | 17 | 17 | - | - |
+
+v13 = fixes for every failure cause found in 96 traced runs (edit guards, run.py loop breaker, repro
+memory, same-code sweep, public-API repro, evidence-based scout). It solves tasks no earlier version
+solved (rich_3480, fastapi_14873, fastapi_14349) but loses others; the net is a tie. Single runs of 32-48
+tasks cannot resolve differences of 2-3 tasks, so bigger evaluations (all 125 valid tasks) are needed to
+measure real progress. RunPod spend so far: $6.86 of $10 (including ~$2 lost to proxy/host problems).
+
+
+### v14 (2026-09-29): public-baseline settings, GPU replica
+
+v14 = the settings shared by the public 0.10-0.12 notebooks (temperature 0.2 / top_k 40, native
+read_file/edit_file/write_file, short low-temperature scout, 50 tool calls) plus our checks.
+Result: 8/48 (v7 17/48, v13 17/48). Two causes:
+- Measurement: read_file contexts tripled prompt tokens per task (394k vs 135k), so with 6 tasks
+  sharing one GPU each call took 9.4 s and 11 tasks hit the 15-minute wall clock after only 20-40
+  calls (on Kaggle one task runs alone at ~2.5 s/call). The replica's wall-clock cap is unfair to
+  context-heavy bundles; future runs should cap LLM turns and tool calls instead.
+- Real: at temperature 0.2 the model repeats itself exactly when stuck: 32 identical failing
+  edit_file calls (requests_7505), 48 identical git grep calls in the scout (rich_3067), the same
+  pattern that made us leave T=0.2 in v4b. The public 0.10-0.12 vs our 0.08 is 2-3 public tasks,
+  within noise; no public design explains 0.13-0.15.
+Not submitted.
+
+## What we learned
+
+1. **Runtime**: without a per-task time cap the hidden run exceeds 12 hours (3 failed submissions).
+2. **Tool-call corruption on the real harness (biggest finding)**: vLLM's Gemma 4 parser breaks
+   tool calls with several text arguments when the model closes a string with a backtick. Example
+   from Lab 3: `run_skill_script` received `file_path="scripts/install.py`,skill_name:"` and failed
+   105 times in one task; `edit_file` lost `old_string` 65 times in another. The model copies its
+   own broken call, so 7 of 16 v6 tasks ended with no patch at all. OpenRouter hosts do not show
+   this, which is why replica and leaderboard numbers disagree.
+3. **Edit failures in the replica**: 61 of 92 `edit_file` calls in v7 failed on escaping
+   (`\n`, quotes, backslashes). Line-number editing (`edit.py`) cut this to 1 failure in 42.
+4. **Unverified fixes**: the agent often "verified" by calling internals or an API it invented;
+   the maintainers' tests use the public API, so these patches failed.
+5. **Loops**: identical commands repeated 20-65 times (degenerate repetition, thinking off).
+6. **Replica bugs we fixed**: a hidden 4096-token thinking budget (the scorer runs with thinking
+   off) and a pytest import mode that made correct patches fail.
+7. **Out of reach**: about 2 of 16 lab tasks need names the issue never mentions or a 250-line
+   refactor.
+
+## The v11 design
+
+- Root agent `fixer`, tools: `run_command`, `get_status`, `submit_patch`, the `scout` sub-agent
+  (fresh context, read-only, returns requirements / locations / repro), and the `swe-tools` skill.
+- Only single-argument tools are used for real work. Reading and editing go through
+  `run_command` plus our skill scripts:
+  - `show.py FILE A B`: numbered lines
+  - `edit.py FILE A B <<'EOF' ... EOF`: replace a line range, with no text matching;
+    rejects broken heredocs, fixes off-by-a-few indentation, checks syntax
+  - `check.py --repro /tmp/repro.py`: runs the repro without and with the change, then the
+    related tests, and prints a VERDICT
+  - `locate.py`: ranks the code relevant to the issue
+- The prompts contain no backticks, reproduce first through the public API, and tell the model to
+  rewrite a malformed call instead of repeating it.
+
+## Expectations
+
+- v11 targets the failure that caused most no-patch tasks on the real harness. If it removes
+  most of them, we expect roughly 0.10-0.14 public. Crossing 0.15 is possible but not yet
+  supported by data: v11 has not run on the real harness yet.
+- 0.50 is far above what anyone reaches in this competition (the leader is at about 0.15 with
+  the same model). A realistic goal is the top 10 (about 0.13+).
+
+## Next steps
+
+1. Lab 4 (v11 vs v7, real harness) once Kaggle starts it; if it stays queued, the v11 submission
+   itself is the real-harness test.
+2. From Lab 4 / v11 traces: remaining loop and wrong-fix patterns, then v12.
+3. Keep 1 submission per day; select the best 2 for the final ranking.
+
+## Repository map
+
+```
+gemma_agent/
+  bundle_v3 ... bundle_v11/   agent bundles (v7 = last submitted, v11 = next)
+  skill_src/                  swe-tools skill sources and generator (make_skill.py)
+  localeval/                  replica harness: env, tools, runner, grader, OpenRouter client
+  lab/make_lab.py             Kaggle GPU lab kernel builder
+  build.py, official_check.py submission build and official compile check
+  README.md                   design notes and submission log
+```
+
+## 09-29 late: v15/v16 paired result, v17 built
+
+- Paired GPU replica (holdout + fresh):
+  - v16 9/30 vs v13 9/30 on the same tasks (won fastapi_5077, lost rich_4077).
+  - v15 8/28 vs v13 8/28.
+  - Both are ties, so neither is submitted.
+- The diagnosis of the v15/v16 traces found:
+  - The planner mostly hurts: wrong fixes, and empty replies when its thinking hit the token cap.
+  - The maps describe the newest commits, so they mislead on older checkouts.
+  - Loops on repeated views persist.
+  - The "EOF%" junk made bash exit 1 after an applied edit.
+  - The slowness comes from LLM time, not tools.
+- v17 = v13 plus general fixes only:
+  - show.py refuses a third view of the same unchanged lines and shows the diff and repro result instead.
+  - edit.py ends with EDIT APPLIED and reruns the remembered repro.
+  - run.py writes and runs a heredoc script in one call and remembers repro*.py.
+  - New where.py lists definition, set/pass and read sites.
+  - locate.py adds case-insensitive and sub-token fallbacks.
+  - check.py's sibling sweep ignores the patch's own added lines, always adds tests by changed names, and fails an empty patch.
+  - Prompt:
+    - seed the repro from the closest existing test;
+    - check every value of settings and environment variables;
+    - never submit an empty patch.
+  - No maps, no planner.
+
+## 09-30 early: v17 result (38 of 42 so far) and v18
+
+- v17 on the GPU replica, counted by resolved_env:
+  - 18/38 solved, where v13 solved 15 of the same 38.
+  - Won 5 tasks v13 failed: rich_3676, fastapi_5077, rich_3777, rich_4075, rich_3718.
+  - Lost fastapi_14616 and fastapi_14349.
+- New failure class: 6 context overflows (32k tokens), where earlier versions had 1-2.
+  - One is a loop: an edit whose range also covered a needed line, `) -> Dict[str, Any]:`, was refused about 50 times in a row.
+  - The others are long explorations of 50-70 calls, most of them file views.
+- v18 = v17 plus two fixes:
+  - edit.py:
+    - when a refused edit compiles with a one-line range change, it names that exact command;
+    - if the same refused edit is sent again, it applies that correction and says so.
+  - The tools count how much text has entered the model's context (about 2.7 characters per token), warn at about 45k characters and demand check-and-submit at about 58k.
+
+## 09-30 00:50 UTC: v17 submitted
+
+- Final replica results on 42 tasks (resolved_env; v13 counted as best of its two runs):
+  - v17 19/42. Wins: rich_3676, fastapi_5077, rich_3777, rich_4075, rich_3718. Losses: rich_3130, fastapi_14616, fastapi_14349.
+  - v18 18/42, with only 3 task flips against v17.
+    - The context overflows fell from 6 to 2 and there were no time-budget endings; median time was 282 s against 396 s.
+    - The context warning fired in 23 of 42 tasks, which may be too early.
+- v17 was submitted under the pre-set rule: the higher total, and at least +2 over v13.
+- Spend: RunPod about $2.3 for this pod.
+
+## 09-30 02:40: v19 replica result
+
+- v19 = v18 plus:
+  - context warnings recalibrated (66k/80k characters, never "revert to empty");
+  - show.py accepts A-B, A:B and A,B and prints the next range;
+  - check.py flags a repro that imports private modules;
+  - prompt: submit only after check.py; keep existing behaviour; honour "breaking / postponed";
+  - install.py resets the guard state.
+- Result: 18/42 (v13 17 on the same tasks).
+  - Wins: rich_3676, requests_6592, rich_3718. Losses: rich_3480, fastapi_14349.
+  - Confounded: this pod was an A40, much slower than the L40S used for v17/v18.
+    - Median 741 s (v18: 282 s); 13 tasks ended on the time budget; 3 were lost to LLMError (14978, 14099, 14448).
+- Status: v17 19, v18 18 and v19 18 on 42 tasks are within noise of each other, all 1-2 above v13.
+  - The replica cannot separate them further. The v17 public score decides the direction.
+  - Spend on this pod: $0.83.
+
+## 09-30 midday: v17 public 0.08; where the gap comes from
+
+- Public scores: v7 0.08, v13 0.10, v17 0.08. With about 58 public tasks, 1 task = 0.017, so all three are within 1 task. The leaderboard cannot separate them.
+- Replica about 40% vs public about 10%:
+  - Not the task mix. The harness's own difficulty tiers put our 42 tasks at 18 Easy, 19 Medium and 5 Hard, similar to the public 129. Our solve rates are Easy about 75%, Medium about 25%, Hard 0%.
+  - Not agent speed. Kaggle's 4x L4 lab ran about 3.6 s per call, faster than our shared replica at about 12 s.
+- Official harness vs replica (the official harness now runs locally: gemma_agent/official/run_official.py):
+  1. Any model or ADK exception drops the patch: a context overflow 400, or an unknown tool name. The replica kept the diff.
+  2. On Kaggle the prompt advertises search_similar_code, get_code_neighbors and get_code_subgraph (graph data exists for every task). Our bundles did not declare them, so a call to one kills the session. The v5 lab run died on 'grep_search'.
+  3. Compaction: history is summarized by an extra LLM call above 14336 tokens (32768 in the README). The replica has none.
+  4. The replica grader is lenient (failures that are a subset of the gold's failures still pass). The official grader needs pytest exit 0.
+- Across 10 runs: 25 of 42 tasks were solved at least once and 17 never.
+  - Runs that never ran check.py resolve 6% (5/85). Half never edited, and most ended with an empty patch. The real bottleneck is deciding the change on Medium tasks.
+  - With the check it is 61-68%; an OK or FIX verdict barely predicts the result.
+- A best-of-N ceiling estimated from per-task solve rates gives about 22/42 at N=3 with a perfect pick. Reaching 30/42 needs the never-solved Medium tasks, not only reliability.
+- Running now:
+  - official-harness v17 vs v20 (v20 = v19 + all advertised tools declared);
+  - replica oracle diagnostics O1 (gold file and function given) and O2 (plus the hidden tests), to measure how much is lost at localization vs spec vs implementation.
+
+## 09-30 afternoon: oracle diagnostics and official-harness runs
+
+- Oracle diagnostics (replica, v17, 29 tasks: 17 never solved + 12 coin flips):
+  - O1 (gold file and function given): 1/17 never-solved, 6/12 coin flips.
+  - O2 (plus the hidden tests): 3/17, 9/12.
+  - Knowing where and what does not unlock the hard tasks. In O2, 8 of the 17 never ran a test and 6 overflowed.
+- Gold size vs solvability (42 tasks):
+  - 0-10 lines: 18 tasks, 15 ever solved.
+  - 11-30 lines: 14 tasks, 9 ever solved.
+  - 31-80 lines: 3 tasks, 1 ever solved.
+  - 81+ lines: 7 tasks, 0 ever solved.
+  - The realistic ceiling is about 32 tasks, so 30/42 means solving the small-fix tasks almost every time.
+- Official harness (gemma_agent/official/run_official.py, 15 min, pods A6000/A40, 6 jobs):
+  - v17 12/40 and v20 13/42. Replica v17 was 19/42.
+  - 17-20 timeouts: the pods are about 5x slower per call than Kaggle.
+  - Requests tasks fail on local environment differences.
+  - One v20 context overflow lost its patch.
+- Compaction is real in the official harness: at 14336 tokens it fired in 24/42 tasks, and the prompt dropped from about 14.5k to about 5.5k tokens. Whether the Kaggle scorer uses 14336 (host notebook) or 32768 (README) is unanswered.
+- Kaggle GPU lab 5 is running v17 vs v20 on 16 tasks with real 4x L4 timing, the official harness and compaction at 14336.
+- New tool: status.py (patch, repro result, last verdict, files viewed) to re-orient after compaction.
+
+## 09-30 evening: Kaggle lab 5, thinking test, v21
+
+- Kaggle lab 5 (real 4x L4, official harness, 5 min, compaction 14336; patches regraded locally):
+  - v17 11/16, including all 8 of the replica's always-solved tasks. The agent behaves on Kaggle as it does on the replica.
+  - v20 9/16. Its native read_file (multi-argument) came back corrupted by the real parser (`start_line\"`). The scout looped on it until the context overflowed, and the patch was dropped.
+  - Rule: never add multi-argument tools.
+- Thinking test (O2 oracle with thinking on, 2048 budget): 1/17 never-solved and 2/12 coin flips, against 3/17 and 9/12 with thinking off.
+  - 20/29 hit the time budget, with a median of 21 calls in 15 minutes.
+  - Thinking is too slow for a 5-minute budget: keep it off.
+- v21 = v17 + status.py, edit range repair, show.py range syntax, a private-import repro check, and the submit-after-check and keep-behaviour rules.
+  - Context warnings are disabled: under compaction the cumulative count is wrong.
+  - Kaggle lab 6 (v17 vs v21, 16 improvable tasks) is running.
+
+## 09-30 night: labs 6-8 (Kaggle 4x L4, official harness, regraded locally)
+
+| Bundle | Hard 16 (lab6 set) | Reliable 16 (lab5 set) | Total 32 |
+| --- | --- | --- | --- |
+| v17 | 3 | 11 | 14 |
+| v21 | 4 (lab6) / 4 (lab7a) | 11 | 15 |
+| v22 (no scout) | 3 | 13 (keeps all 11 of v17's) | 16 |
+| v22, 8-min cap | 2 | not run | not run |
+
+- The 8-minute cap does not help: 9/16 still time out and patches are empty more often. The hard tasks are capability-bound, not time-bound (consistent with the oracle tests). Keep 5 minutes.
+- No submission on 10-01: v22 is +2 over v17, below the +3 bar and far from the target.
+- Kaggle GPU used this week: about 12-15 of 30 h.
+
+## 10-01 slot: skipped
+
+- No bundle beat v17 by the required +3 on the 32 lab tasks: v22 16, v21 15, v17 14.
+- Kaggle GPU quota is exhausted until 10-03 00:00 UTC (a 4x L4 kernel bills about 2 quota-h per wall hour).
+- Built and committed: v23 solo-plus and the concurrent lab kernel (offline tests pass).
+- In progress: v24 duo (two parallel attempts plus pick_patch).
+
+## 10-01: v23 / v24 / concurrent lab kernel built and validated offline
+
+- v23 solo-plus (single agent, 5 min):
+  - check.py never stashes; it uses a base clone. This fixes 4 lost patches, 3 of which regrade as resolved.
+  - Session clock anchored on _swegemma_baseline; time caps; src PYTHONPATH.
+  - 15 s script timeouts with a hang hint; a state line first in every helper output, with output capped at 4500 chars.
+  - Anti-churn (STOP rewriting / EDIT NOW); 1536 output tokens.
+  - Offline suite 119/119 on fastapi, requests, rich and t17 replicas.
+- v24 duo: SequentialAgent[ParallelAgent[attempt A in /workspace, attempt B in a git clone --shared], finisher].
+  - pick_patch.py: hard filters, then pooled-repro pass count. Replay of 469 stored attempts: best-of-2 0.536 vs single 0.458 (87% of the oracle gain).
+  - Race on the check.py GATE; deadline pick at T+225; crash-safe writes into /workspace; tripwire for B's plain commands.
+  - Offline suite 164/164. Fake-LLM smoke through the real harness: 10 scenarios x 2 tasks pass.
+  - Residual risk: a stray early submit_patch plus a text reply submits A's tree.
+- Lab kernel: --concurrency N (one OS process per task-run), --replicates, and a branch-aware virtual clock that the helper tools also see.
+  - Refit constants: 0.164 s per call + 0.0221 s per token + tool seconds (R² 0.82).
+- Next: lab round K1/K2 (v22 vs v23 vs v24 on the broad48 set, concurrency 6, virtual clock) scheduled for 10-03 00:15 UTC, when the Kaggle quota resets.
+
+## 10-01 05:33 UTC: v22 submitted (user request)
+
+- Kaggle lab: 16/32, against v17 14/32.
+- Score check is scheduled for about 12 h later.
+
+## 10-01: v22 public result: ERROR
+
+- Kaggle reported: "Your notebook hit an unhandled error while rerunning your code". No score.
+- v17 to v22 diff analysed: every change is to sandbox-side helpers, the prompt, or removing the scout. The harness catches every per-task exception (evaluate.py / agent_runner.py); only ContainerSetupError (infrastructure) is re-raised.
+- v22 ran 48 official-harness lab tasks with 0 crashes, and its time per task equals v17.
+- Most likely a scorer or infrastructure failure. Resubmitting v22 is proposed to the user, pending their decision.
+
+## 10-02 00:04 UTC: v22 resubmitted unchanged (user request)
+
+## 10-02: v22 resubmission scored 0.10
+
+- The identical bundle scored 0.10, so the 10-01 "unhandled error" was transient (scorer side).
+- v22 ties v13 (0.10) and is above v17 (0.08). With about 58 public tasks, that is about 6 solved.
+
+## 10-03: lab 9 (Kaggle 4x L4, official harness, 6 concurrent, virtual clock; broad48), regraded locally
+
+| Bundle | Resolved /48 | Kaggle-env | Empty | Timeouts | Median virtual s |
+|---|---|---|---|---|---|
+| v22 | 20 | 15 | 4 | 10 | 136 |
+| v23 | 20 | 15 | 6 | 4 | 128 |
+| v24 duo | 21 | 14 | 8 | 0 | 115 |
+
+- v23 vs v22: +5 / -5 (a tie). The tool fixes cut timeouts (10 to 4) but did not add net solves.
+- v24: 7/48 tasks crashed with an empty patch: ExceptionGroup -> ValueError 'No function call event found for function responses ids' (google/adk/flows/llm_flows/contents.py _rearrange_events_for_latest_function_response) inside ParallelAgent.
+  - This is an ADK bug when the history of parallel branches is rebuilt (likely together with session-wide compaction). It cannot be caught from the bundle.
+  - 3 of v24's 4 losses are crash tasks. Without the crashes v24 could be around 23-24/48, but the crash rate (15%) makes it unsafe.
+- Lab infrastructure: on 10-03 Kaggle's default image moved to Python 3.13 and the cp312 wheelhouse failed to install. Fixed by pinning the hosts' image; the hosts' wheelhouse is now adk_submission 0.2.12.
+- Quota used: 6.7 of 30 h. No submission candidate (none beats v22 by +4).
+
+## 10-03: v25 seq built (one agent, two sequential attempts; no ParallelAgent)
+
+- Why: v24's ParallelAgent hits an ADK bug (7/48 crashes). v25 keeps v23's single-LlmAgent shape and runs the two attempts one after the other, orchestrated only by the helper tools (tools/_seq.py; make_skill.py --seq).
+- Flow (clock = _swegemma_baseline commit time, as in v23):
+  - Attempt 1 in /workspace. check.py GATE (source change, compiles/imports, repro FAILS before and passes after, no new test failure) -> FINAL at once. OK without a GATE -> "do not submit yet".
+  - T+150, first helper call: attempt 1 saved (cleaned diff via a private GIT_INDEX_FILE, repro, meta) to <TMP>/.swe/<hash>/att/1; /workspace reset to the baseline through the journaled _duo.promote (never touches .swetools); first line "ATTEMPT 2: ...". The tool itself is not run, except check.py up to T+180, which checks attempt 1 first and switches afterwards unless it passes the GATE.
+  - Attempt 2: its GATE -> FINAL at once; check.py OK -> pick now; T+265, first helper call -> pick. The pick reuses pick_patch's rank_key/_measure/_tests (pooled repros, one per attempt; hard filters) and writes the winner crash-safely; first line "FINAL PATCH IS IN /workspace: call submit_patch now". Empty attempt 2 -> attempt 1 restored.
+  - Publisher from T+240: while attempt 2 has no compiling source change and attempt 1 had one, attempt 1 goes back into /workspace (the floor for a harness timeout).
+  - Crash safety: seq.json "pending" (switch/pick) plus the promote journal; the next helper call finishes the reset or redoes the pick from the tagged snapshots.
+- Build: seq hooks in _ws.py/check.py sit between "# <seq>" and "# </seq>" lines, which the solo and duo builds strip; bundle_v23 and bundle_v24 rebuild byte-identical. Prompt: v23 plus a 4-line "Two attempts" section and 4 adjusted lines (submit only after FINAL; edit by T+90).
+- Offline: unit suite scratchpad/v25t/test_seq.py (fa, rq, ri, t17); fake-LLM smoke through the real harness (gate_first_try, switch_then_pick, timeout_in_attempt2) passes. Unit suite 160/160.
+
+## 10-03 night: lab 10, v25 seq (one agent, two sequential attempts + pick_patch)
+
+- v25: 24/48 resolved (Kaggle-env grading 18). Lab 9 on the same tasks and setup: v22 20 (15), v23 20 (15), v24 21 (14).
+- vs v22: +8 / -4 (gains include 4 Medium tasks: fastapi_14349, rich_3676, rich_3772, rich_4075). vs v23: +6 / -2.
+- Medium 11 vs 7 for v22.
+- 48/48 runs ended normally: 0 crashes, 0 timeouts, 2 empty patches. Median virtual time 139 s.
+- Meets the candidate bar (+4 over v22, no new crash class). Caveat: a single run; noise is about ±3 tasks.
+- Quota used: 9.2 of 30 h.
+
+## 10-03 23:36 UTC: v25 submitted (user approved)
+
+## 10-04: v25 public 0.08
+
+- v25 lab 24/48 vs v22 20/48, but public 0.08 vs v22 0.10. A one-task difference on about 58 public tasks.
+- The lab gain did not transfer, or noise (about +/-2 tasks on the public set) hides it.
+
+## 10-04: v26 / v26t built (generic, low temperature, short prose prompt)
+
+- Why: hidden tasks come from private repos (research_oct4.md). Public bundles at 0.12-0.15 use T 0.05-0.2, 1.5-3 KB prompts, prose commands, thinking off. v22 (T 1.0, 9 KB fastapi-shaped prompt) 0.10; v25 0.08.
+- bundle_v26 = v23 (solo fixer; same skill, install.py byte-identical; eval_config unchanged 5 min / 150 turns / 300 s) with:
+  - Sampling: temperature 0.2, top_p 0.95, top_k 40, max_output_tokens 1536, include_thoughts false (thinking off).
+  - prompts/system.md rewritten: 3.0 KB (v23 8.3 KB). Generic (no app/test-client, router/app or env-var matrix rules). One compact command table plus prose; exact syntax only for the edit heredoc. Keeps: public-API repro, smallest fix mirroring neighbours, check.py before submit, never touch tests, keep behaviour, state line, edit by T+120, "python3 .swetools/... is never a tool name".
+  - First skill call: exact plain-string values (skill_name swe-tools, file_path scripts/install.py); on failure, run python3 .swetools/install.py via run_command if present, else retry once.
+    - No robust run_command-only install exists: ADK materialises skill files in a TemporaryDirectory inside the sandbox code executor (google/adk/tools/skill_toolset.py _build_wrapper_code) and deletes it after the run, and the bundle directory is not mounted in the docker sandbox. So the installer is never on disk before the first successful call.
+  - Tools: run_command, get_status, submit_patch, the skill, plus search_similar_code, get_code_neighbors and get_code_subgraph as crash guards (the prompt says not to use them). swegemma create_tools registers all three on every task; their errors come back as tool responses, not exceptions.
+    - Control: bundle_v23 with a scripted search_similar_code call ends at once with "Tool 'search_similar_code' not found" and patch 0. bundle_v26 continues and submits.
+    - Residual risk: a large search_similar_code result could still overflow the context (the harness does not cap it).
+- bundle_v26t = v26 with thinking: include_thoughts true, thinking_budget 512, max_output_tokens 2048.
+  - adk_submission 0.2.12 (resolvers/generation.py apply_thinking_config_to_model):
+    - include_thoughts true (or a positive budget) sets extra_body.chat_template_kwargs.enable_thinking true.
+    - thinking_budget > 0 is sent as extra_body.thinking_token_budget, which vLLM enforces as a hard cap on reasoning tokens.
+    - include_thoughts false sets enable_thinking false and drops the budget, whatever the budget value is.
+    - When thinking_config has no budget, limits.py fills in the swegemma default (4096; allowed range 0-32768).
+    - 0.2.12 also mirrors reasoning_content into reasoning, so earlier thoughts stay in the history across tool calls.
+  - 0.2.11 sets only enable_thinking (no thinking_token_budget, so the budget is unenforced). Verified by compiling v26t under both versions.
+  - vLLM counts reasoning tokens inside max_tokens, so 2048 leaves at least 1536 for the visible reply.
+- Validation:
+  - official_check OK under 0.2.11 (scratchpad/wh/venv) and 0.2.12 (scratchpad/wh012/venv, a copy with only adk_submission swapped). build.py OK.
+  - v23 offline tool suite (scratchpad/v23t/runtests.py, fa/rq/ri/t17 replicas) against v26's install.py: 119/119 PASS.
+  - Fake-LLM smoke through the real harness (new solo_simple / solo_graph scenarios in official/fake_llm.py; rich_3063 + fastapi_14873): v26 on 0.2.11 and v26t on 0.2.12. Install -> repro -> edit -> check.py VERDICT OK -> submit_patch, status SUCCESS, patch kept; solo_graph calls all three graph tools, then submits normally.
+- New task sets (scratchpad): goldpass_ids.txt (73 tasks whose gold passes in the Kaggle env: rich 41, fastapi 31, requests 1).
+  - gp48_K1 / gp48_K2: 24 + 24, stratified by repo (fastapi 10/10, rich 13/14, requests 1/0).
+  - 29 of the 48 are fresh (never in v17_ids, lab5, lab6 or broad48), 15 in K1 and 14 in K2. All 29 fresh gold-pass tasks are used; the other 19 were each used in one earlier set.
+
+## 10-04 night: lab 11 (48 gold-passable tasks, 29 fresh; Kaggle 4x L4, 6 concurrent, virtual clock)
+
+| Bundle | Resolved /48 | Kaggle-env | Empty | Timeouts | Turn limit | Median virtual s |
+|---|---|---|---|---|---|---|
+| v22 | 18 | 18 | 10 | 11 | 1 | 101 |
+| v26 (T 0.2, 3 KB prompt) | 14 | 13 | 8 | 3 | 6 | 155 |
+| v26t (v26 + thinking budget 512) | 20 | 19 | 7 | 13 | 2 | 206 |
+
+- Temperature 0.2 with the short prompt is worse (-4): loops hit the 150-turn limit, the same finding as v14.
+- Thinking with the 0.2.12 hard budget recovers +6 over v26 and is +2 over v22 (noise level).
+- No candidate meets +4. Quota used: 21.6 of 30 h.
+
+## 10-05 18:50 UTC: v26t submitted (user request)
+
+## 10-06: v26t public 0.08
+
+- Thinking budget 512, T 0.2 and a 3 KB prompt: 0.08, with a slow run of about 15 h wall including validation.
+- Public scores: v22 0.10, v13 0.10, v26t 0.08, v25 0.08, v17 0.08, v7 0.08. All within about 1 task of each other on the 58-task public set.
+
+## 2026-10-15: research sweep, v27/v28, lab 12
+
+- Leaderboard: leaders 0.24 (14/58), ~20 teams at 0.22 (13/58). The 0.22 cluster is the public
+  "budget-aware coding agent v2" bundle: config identical to Budget-Fit (0.18) and to our v27, only the
+  prompt differs (structured call plan). No public 0.24 recipe; leader's method unknown.
+- Scorer now runs wheelhouse v31 (adk_submission 0.2.13, swegemma 0.2.11). include_thoughts no longer
+  disables thinking (budget 0 does); it only controls carrying earlier thoughts. Grader pytest uses a
+  fixed 300 s. Test-file edits are dropped from the patch since 10-08.
+- Measured tier steps (public): thinking on, native tools instead of skill scripts, max_output 8192,
+  8 min / 28 calls with "edit by call 12". Our skill-script agents (v13-v26t) sit at 0.08-0.10.
+- v27: minimal native-tool bundle, our 2.3 KB prompt. v28: same YAML, our own 7.2 KB structured prompt
+  (call plan, batched fixed-string search, sibling registration, parallel implementations, edit-recovery
+  ladder, capped checks, diff review). Both compile on 0.2.13 (enable_thinking true, budget 4096).
+- Lab 12 (running): v22 vs v27 on gold-passable 48 (K1/K2), virtual clock.
+- Full plan: gemma_agent/research_oct15.md.
+- 10-15 17:04 UTC: v28 submitted (ref 57238405, user-approved). bundle_v28t = v28 with include_thoughts
+  false (thinking stays on at 4096; earlier thoughts are not resent) for the next lab.
+- Lab 12 (gold-passable 48, virtual clock): v22 16/48, v27 19/48 local regrade (in-kernel 16 vs 20);
+  v27 solves a superset of v22. v27 empty patches 10 vs 19, mean 182 s/task vs 220 s.
+  v27 failure modes: first edit after call 12 in 21/46 tasks (resolved 5/21 vs 13/23 when edit <= call 8);
+  31/160 edit_file calls had parser-corrupted keys, ~all from triple quotes in old/new strings;
+  17/387 read_file calls lost start_line/end_line (silently returns file head); grep exit 1 shown as
+  CommandError 89 times. Thinking is on (short visible thoughts every step).
+- Lab 13 (same 48 tasks): v28 15/48, v28t 17/48 local regrade (in-kernel 15/16). v28 solves a strict
+  subset of v27 (v27-only: fastapi_9753, fastapi_9425, fastapi_5624, rich_3043, rich_3278). v28 cut
+  corrupted calls (7 vs 48) but edits later (first edit mean call 15.3 vs 13.1) and runs slower (233 s vs
+  182 s). 28/48 tasks unsolved by all four bundles. Lab 14 = v27 replicate (noise check).
+- Lab 14 (v27 replicate, same 48): 17/48 in-kernel vs 20 in lab 12; 5 flips (9753, 3278, 5624, 2725 lost;
+  14419 gained). Lab noise ~ +-3 tasks; v27 mean ~18.5. 3 of v28's 5 "losses" are coin-flip tasks.
+  Note fastapi_14851 passes in-kernel with an empty patch (true v27 count 19 in lab 12).
+- v29 (bundle_v29): v27 YAML + 3.5 KB prompt fixing measured mechanics (run_command stdout cut at 5000
+  chars silently, write_file refuses /tmp, bare grep exit 1 = CommandError, backslash-n in edit strings
+  corrupts calls 55/67). Lab 15a: v29 on the 48; lab 15b: v27 vs v29 on 25 holdout gold-passable tasks.
+- Lab 15: v29 21/48 in-kernel on the 48 (v27 runs: 20, 17); holdout 25 (never used for tuning):
+  v29 11/25, v27 11/25. v29 mean 185 s/task (v27 217 s on the holdout), corrupted calls 8 vs 48.
+  4 v29 tasks loop on submit_patch after the call budget is spent (harmless, refused calls).
+  dist/v29/submission.zip built (4 files) and compile-checked from the zip.
+- 10-16 05:21 UTC: v29 submission (user-approved) refused with 400 while v28 is still pending (one
+  pending submission at a time); background retry every 15 min.
+- Lab 16 (running): v29 vs v29c36 (max_tool_calls 36, prompt limit text updated) paired on the 48;
+  v29c36 on the 25 holdout.
+- Lab 16: paired on the 48, v29c36 21/48 vs v29 19/48 (v29 lab 15: 21); holdout v29c36 13/25 vs
+  v29 11/25 and v27 11/25. Totals over 73 tasks: v29c36 34, v29 ~31, v27 ~29.5. Mean s/task: v29c36
+  221 (p90 444), v29 198 -> ~8.7 h projected for 120 tasks. v28 still pending at 10-16 08:05 UTC.
+- v28 RESULT: no score. "Your submission notebook exceeded the allowed runtime" (12 h). Lab mean was
+  233 s/task -> the scorer runs much slower than our virtual clock (scale >~1.4x). v27-like bundles
+  (~200 s lab, same caps as the public Budget-Fit that completes) bound the safe zone from above.
+  Implication: v29 (185-198 s lab) is near the edge; v29c36 (221 s) is too risky; do not submit it.
+- 10-16 20:11 UTC: v29 submitted (ref 57282040), per the user's earlier approval for this slot.
+- v29 public 0.18 (10-16 submission, scored by 10-17 23:10 UTC): new best, up from 0.10. Completed
+  inside the runtime limit. Leaderboard at that time: leaders 0.24, cluster 0.22.
+- 10-17 23:17 UTC: v29 resubmitted unchanged (ref 57328737, user-approved) to measure run-to-run variance.
+- v30 (bundle_v30, CPU-checked only): v29 + thinking_budget 2048 (-6.5..-8% tokens), short-thought rule,
+  batched per-string greps (head -10 each), trace-the-value rule, sibling-registration rule for
+  features, src-layout __file__ guard in the reproducer, budget_warning -> edit now, submit once then stop.
+  Kept 28 calls / 80 turns (32 calls pending timing calibration). Correction: post-budget submit_patch
+  calls are accepted, not refused (submit/get_status are not budget-gated); main edit corruption cause
+  is a backtick closing new_string (183 cases), not backslash-n (32). Design + reviews: research_v30.md.
+- Lab 17 (REAL clock, sequential like the scorer, 12 tasks): mean task seconds v28 343 (failed 12 h on
+  the scorer), v29 337/301 (two kernels; passed once), v29c36 361. Real = ~1.55x virtual. Projected
+  120 tasks: v28 11.4 h, v29 10.6 h, v29c36 12.0 h -> v29c36 is NOT viable; v29 has only a few % margin
+  (its second draw may time out). Per LLM step: ~4.1 s fixed + 29 ms per completion token; prompt
+  length has no measurable cost. Overhead outside the agent is 3-5 s except rich_3772 (~300 s, harness).
+  Conclusion: gains must come from better steps within ~28 calls and <= v29's tokens; cut tokens/calls
+  to build margin (v30: thinking 2048, terse thoughts, stop after one submit).
+- v29 second draw (identical zip): public 0.15. v29 mean over 2 draws ~0.165 (~9.5/58). The 0.22 public
+  bundle (same YAML, different prompt) and the 0.24 leaders are 3.5-4.5 tasks ahead.
+- 10-18: strategy reset. Incremental prompt A/B on the public-repo lab is below the lab's noise and does
+  not predict the private-repo LB. Launched a structural research pass (parallel throughput / ADK
+  architectures, private-repo-like eval set, LoRA feasibility, forum since 10-15, evidence review).
+- Lab 18 (paired gate, 73 tasks): v30 30/73 (17 + 13 holdout) vs v29 32/73 (18 + 14); v30 faster
+  (191 vs 210 s virtual, 8.3k vs 8.8k tokens). Gate FAILED on solves (noise-level -2); v30 not submitted.
+  The token savings from thinking 2048 + terse thoughts are real (-6%, -9% time).
+- 10-18 strategy research (research_strategy_1018.md, research_1018/): public recipes all average
+  ~9-10/58 over repeat identical draws (Budget-Fit 10.1, the "0.22" V10 bundle ~9.7); board 0.22/0.24
+  are best-of-many draws. v29 (mean 10) is at par. Real levers: time per task (14% harness waste:
+  compaction 30 s + post-submit 14 s), the empty-patch failure class, and unused GPU parallel capacity
+  (2 streams = 1.8x tokens). Plan: v31a (solver inside agent_tool: no compaction, lead's empty-diff
+  guard, output caps), unseen-repo eval set, then v31p (2 parallel attempts) only if the measured
+  best-of-2 ceiling on the eval set is >= 4 points. Never leave a daily slot empty.
+- 10-18 21:25 UTC: v29 third draw submitted (user-approved).
+- v31a (bundle_v31a): lead LlmAgent (thinking 512) -> agent_tool solver (v29 method, told 25 calls,
+  {problem_description} templated, ends with a report, output_key solver_report) -> submit_patch ->
+  if patch_size 0, one guarded edit from the solver's report, resubmit, DONE. The solver runs in
+  AgentTool's private runner (no compaction, no post-submit loop). Offline fake-LLM harness tests
+  (official/fake_llm.py scenarios at_edit, at_empty, at_budget, at_timeout) all pass: empty-patch guard
+  fires, over-budget solver returns without crashing, timeout fallback captures the edit. Verified in
+  swegemma 0.2.11 that any exception still grades the on-disk diff (evaluate.py:324).
+- Lab 19 (REAL clock, 12 lab17 tasks): v31a 353 s/task mean (median 327) vs v29 319 (median 292) on
+  the same tasks -> v31a FAILS the timing gate (G0b). Solves 4 vs v29 3/5, empty 2 vs 2. Cause: per-token
+  decode time is flat (30-32 ms) but without compaction the solver's context grows (mean 9.8k, max 24k)
+  and it writes more per step (380-490 completion tokens/step at 10-25k context vs 270-305 for v29), so
+  the compaction savings are more than eaten. The solver also ignored its 25-call cap (28/28 on 10 of 12
+  tasks), so the empty-patch guard rarely had calls left. Not submitted.
+- Eval set v1 ready (gemma_agent/evalset/, Kaggle kernel source anandsingh8687/evalset-v1-merge):
+  161 valid tasks / 128 repos (SWE-rebench family, 2025-02..2026-05, PR-style text, blank hints,
+  max async share 1.56%), split A 89 (tuning) / B 72 (sealed); 6 interface-dependent tasks flagged.
+  Lab tooling: make_lab --data-dir/--sandbox docker-like/--internet, timepred.py (within 0.8% of the
+  real-clock lab17 runs), stats.py (McNemar, bootstrap, mechanism dashboard), selftest.py.
+- Lab 20 (running): v29 vs v30 paired on 60 split-A eval tasks (ev20a/ev20b), corrected virtual clock.
+  Questions: calibration vs LB (~16%), failure breakdown on unfamiliar repos, v30 non-inferiority + time.
+- GPU kernels with the competition attached cannot enable internet ("Internet cannot be enabled for this
+  competition with the current accelerator"), so the docker-like sandbox gets python3.13 + image wheels
+  from a CPU kit kernel (anandsingh8687/py313kit, gemma_agent/lab/py313kit/kit.py) attached as a kernel
+  source; labworker.find_kit_dir() locates it. Lab 20 relaunched this way.
+- Lab 20a (eval split A, 30 tasks, unseen-style repos): v29 11/30, v30 12/30 (both 9, v29-only 2,
+  v30-only 3); v30 3% fewer tokens, predicted agent time 312 vs 323 s, 0 vs 2 timeouts. v29 solves 37%
+  here vs ~17% on the LB, so the eval set is easier than the hidden set (filter kept fixes of <= 3 .py
+  files, <= 150 lines). v29 failure breakdown (19): empty patch 6, fixed only SOME of the gold files 6,
+  all gold files touched but wrong logic 4, wrong files only 3. 16/30 tasks need 2-4 files.
+  Lab 20b (other 30 tasks) ran out of weekly GPU quota (0.23 h left at 04:50 UTC); likely lost.
+  GPU quota exhausted until 10-24 00:00 UTC.
+- CORRECTION to the lab 20a breakdown: counting gold SOURCE files only (changelog/docs excluded; hidden
+  tests never check them), 21/30 tasks need one source file and v29's 19 failures are: right files but
+  wrong logic 10, empty patch 6, wrong files 3 (v30: 9 / 7 / 1, +1 partial). Localisation is mostly fine;
+  the targets are semantic correctness once the file is found, and empty patches. v32 design workflow
+  (CPU only) running on the 21 failed eval tasks.
+- v32 (bundle_v32, CPU-checked; v30 YAML): prompt from the eval-set failure analysis (21 tasks, 6 judged
+  unfixable by prompt: info not in issue / env). Targets: empty patches (edit first when the change is
+  known; reproducer misuse errors dropped fast; after a compaction summary, git diff then continue) and
+  wrong logic (check each site the case reaches, issue's example verbatim, match the issue's wording then
+  stop, judge failing tests against the issue since hidden tests replace outdated ones, feature-sibling
+  rules), with all three reviewers' required edits merged (research_v32.md). Needs the eval-set gate after
+  the 10-24 quota reset: tokens/calls <= v30, solves >= v30 on split A.
+- Lab 20b: still RUNNING at 10-19 08:08 UTC (6.4 h) with an empty live log; probably hung or waiting
+  for an accelerator after the quota ran out (quota shows 32.5 h used of 30). The CLI cannot cancel it;
+  ask the user to stop it in the Kaggle UI (gemma-agent-lab20b). Its 30 tasks are treated as lost.
+- v29 third draw 0.15 -> v29 mean 0.16 over 3 draws (0.18, 0.15, 0.15).
+- Lab 20b completed after all: v29 10/30, v30 8/30. Pooled 60 eval tasks: v29 21, v30 20 (equal within
+  noise); v30 ~5% fewer completion tokens (8.7k vs 9.2k).
+- 10-20 22:17 UTC: v30 submitted (ref 57454588, user-approved).
+- Lab 21 (running, last ~2 GPU h of the week): v32 on 24 of lab20a's eval tasks, paired with lab20a
+  v29/v30 for tokens, calls, predicted time and solves. Submit v32 only if time <= v29 and solves hold.
+- Lab 21 (v32 on 24 lab20a eval tasks, paired with lab20a): v32 10/24 vs v29 9, v30 9; empty patches 3
+  vs 5/6; v32 +9% completion tokens (9.7k vs 8.9k), predicted scorer time 1.02x v29 (v30 0.975x),
+  4 vs 2/0 tasks at the 8-min cap. Mechanism (fewer empty patches) confirmed; gain within noise; time
+  margin thinner than v29 (v28 failed at ~1.075x).
+- v30 public 0.15 (single draw). LB draws so far for the native-tool family: v29 0.18/0.15/0.15, v30 0.15.
+- 10-24 07:55 UTC: v32 submitted (ref 57587262, user-approved). Slots 10-21..10-23 went unused (session idle).
+  GPU quota reset to 30 h on 10-24.
+- 10-26: the session container was recreated from an old checkout: the scratchpad (lab traces, eval
+  task copies, harness venv) and the Kaggle token file are gone. Branch fast-forwarded from origin; all
+  committed work is intact. Kaggle access needs the token as env var KAGGLE_API_TOKEN in the
+  environment settings. v32 (submitted 10-24 07:55 UTC) score not yet read.
+- v32 public 0.13 (single draw). Draws so far: v29 0.18/0.15/0.15, v30 0.15, v32 0.13 -> ~9-10/58,
+  differences within noise (SD ~1.4 tasks per draw).
+- 10-26 research: public "0.24 package" claims audited by others did not reproduce (budget-aware lineage
+  ~0.13 per draw); 4 teams at 0.24, 37 at 0.22. MUHAMMED IDRIS (0.24) published his bundles and ledger
+  (Kaggle dataset muhammedidris28/gemma4-agent-runs, Apache-2.0): v19 (T 0.2) 0.18 -> v24 0.24 with ONLY
+  sampling changed to temperature 1.0, top_p 0.95, top_k 64 (Google's recommended Gemma sampling).
+  Single draws; untested by us. Verified offline that top_k and thinking (enable_thinking, budget 4096)
+  both reach the vLLM request (top_k via extra_body, merged).
+- bundle_v33t = v29 with temperature 1.0 / top_k 64 (sampling only). Lab 22 (running): v29 vs v33t
+  paired on the 87 non-interface split-A eval tasks (ev22a/ev22b), corrected virtual clock.
+- Rules pages (kaggle competitions pages): Small Model Prize $10,000 for the best submission using
+  Gemma E2B or E4B (12B not eligible); must be one of the team's two final picks; small-model LB leader
+  0.06 on 10-20 (host notebook ryanholbrook/gemma-4-developer-agent-small-model-leaderboard). Paper track
+  $35,000 (deadline 11-12). Main track: $37k/$18k/$10k. Final submission deadline 12-02.
+- make_lab.py --model (default output unchanged). bundle_s1/bundle_s2: E4B, v29 prompt, T 1.0/top_k 64,
+  thinking 4096; s1 28 calls, s2 40 calls. To be lab-tested after lab 22 (2 GPU sessions max).
+- Lab 22 (paired, 87 split-A eval tasks): v33t (T 1.0, top_k 64) 34/87 vs v29 (T 0.2) 30/87;
+  v33t-only 7, v29-only 3 (McNemar p 0.34); loops ending at the 80-turn limit 0 vs 4; 8-min timeouts
+  12 vs 8; empty 18 vs 15; completion tokens 8.9k both; predicted scorer time +0.9% / +2.8% vs v29.
+  Direction agrees with Idris LB (+3 tasks) and Ayush local (+3/129). Candidate for the next slot.
+- 10-26 11:50 UTC: v33t submitted (user-approved).
+- bundle_v34 = v33t + thinking_budget 2048 + max_tool_calls 32 (prompt limit text updated): spend the
+  thinking-cap token savings on more calls. Lab 24 (running): v33t vs v34 paired on the 68 sealed
+  split-B tasks (interface tasks excluded). Lab 23 (E4B s1 vs s2, 43 tasks) still running.
+- Lab 23 (E4B, 43 split-A tasks): s1 0/43, s2 0/43 (31B v33t: 15/43). E4B runs away on generation:
+  ~6.5 model calls/task at ~120 s each (vLLM ~150 tok/s aggregate, i.e. ~8k-token outputs per call),
+  half the tasks hit the session timeout with no edit. Needs hard caps (max_output ~1024, small thinking
+  budget) before it can score; small-model track deprioritised behind the main track.
+- Lab 22 failure breakdown: v29 solved 30 / wrong 37 / empty 8 / timeout 8 / turn-limit loops 4;
+  v33t solved 34 / wrong 28 / empty 13 / timeout 12 / loops 0. T 1.0 mainly cuts wrong patches and loops.
+  All 12 v33t timeouts were also unsolved by v29 (hard tasks, 14-17k tokens, single steps up to ~4.9k).
+- Lab 24 (paired, 68 sealed split-B tasks): v34 (thinking 2048, 32 calls) 21/68 vs v33t 20/68 (6 vs 5
+  only, p 1.0); same tokens (9.1k), more timeouts (11 vs 7), fewer empties (8 vs 12). No gain; v33t stays
+  the base. Weekly GPU quota spent (28.6/30 h, resets 10-31).
+- 10-26 public paper-track companions (research_1026_paper_landscape.md): writeups themselves are private
+  until the deadline (API 403), but ~40 companion notebooks/10 datasets are public. Independent evidence:
+  LoRA fine-tunes lost or tied in all measured attempts (Idris, sslasme, earlco, shivashankar); oracle
+  localisation does not raise solves; prompt-rule effects are below noise; best-of-2 ceiling ~+4 points;
+  timeouts are worth 0; call cap 40 no gain. Paper prizes: Overall $15k, Best New Resource $10k, Best New
+  Application $10k. Closest resource rival: debmalya84 RepoGraph-Verified (221 tasks, competition format).
+- CPU check on v33t's 155 eval runs: 35 empty patches, 30 of them with no edit before the 28-call budget
+  ran out (20 tried to edit at call 29-31 and were refused); first edit median call 11 (solved) vs 19
+  (failed). Only 5 of those 30 tasks were ever solved by any other run -> forcing earlier edits is worth
+  ~1-2/155. No overflow problem (1.38 compactions/task), no site-packages shadowing. 7 of 54 solves
+  finished after 7 virtual minutes -> keep the 8-minute cap.
+- 10-26 E4B lab 23 re-read: the 0/43 is NOT runaway generation. vLLM hung at 12:33 (log stops, /metrics
+  times out, load1 ~1.0) and every task started after that made 0 model calls (22 of 43 per bundle).
+  On the 21 tasks that ran, E4B solved 0/42 runs (31B v29 4/22, v33t 6/22 on the same tasks), ~5-6k
+  completion tokens/task, i.e. no runaway. Cause found offline: vLLM 0.19.1 gemma4 tool parser
+  `_parse_gemma4_array` never advances on a top-level ']' in a bare value, so a malformed tool call
+  (code left outside the <|"|> string delimiters, e.g. `y = {"k": [f(a[i]) for i in r]}`) spins the API
+  server event loop forever. Repro: lab/parser_hang/repro.py (19/5000 random short inputs hang).
+  Malformed-call rates in traces: E4B s1 1.9%, s2 10.9%; 31B v29 1.0%, v33t 1.5-1.7% (31B: 0 hangs in
+  ~10k calls). Explains the E4B "Notebook Threw Exception" reports. Small-model prize: public leader
+  0.10, 12 teams at 0.08 (host notebook, 10-24). E4B bundle must minimise malformed calls.
+- 10-26 evening. vLLM parser loop: fixed upstream from vLLM 0.21.0 (0.20.2 still loops); the scorer pins
+  0.19.1. Public E4B evidence (research agent, scratchpad/e4bres): best public E4B configs score LB 0.05
+  (satwiksps) and 3-4/40 locally; E4B's failures are edit_file old_string mismatches (~45% of edits) and
+  quitting early, not localisation. bundle_s3 (E4B): 5 tools (no write_file, no graph tools: get_code_subgraph
+  is the only list-argument tool, i.e. the parser's array path), 378-word fixed recipe with exact command
+  templates and 1-3 line edits, T 1.0/top_k 64, thinking 2048, max_output 4096, 32 calls, 5 min. Compiles
+  with the official libraries. Planned as the 10-27 slot after v33t's draw.
+- Compaction finding (CPU, v33t's 155 eval runs): 141/155 runs compact at least once; the ADK summarizer
+  prompt keeps only "the essence", so the verbatim issue is lost. Runs whose first compaction came before
+  the first edit: 11/76 solved; first edit before compaction: 32/53 (confounded by difficulty, but half of
+  all runs edit without the verbatim issue). The harness puts the issue in session state as
+  problem_description, so bundle_v35 = v33t + `{problem_description}` appended to the system prompt
+  (issue median ~100 tokens, p90 ~500; templating verified with ADK incl. braces in the issue text).
+  Gate after the 10-31 GPU reset: v35 vs v33t paired on split A (87), predicted time <= 1.03x v33t.
+- Paper (gemma_agent/paper/): collect.py -> data/outcomes.csv (746 runs), analysis.py (all tables, stdlib),
+  writeup.md (~2,760 words). Release: private kernel anandsingh8687/sealedgate-161 (OSI-licensed snapshots,
+  de-duplicated wheels, graphs; no competition files) and private dataset anandsingh8687/sealedgate-161-runs
+  (outcomes, lb, 451 trajectories on licensed repos, 11 bundles, code). The evalset-v1-merge output and the
+  evalset-build-inputs dataset contain competition files (sandbox/setup.py, docker shims) and must never be
+  attached to the writeup or made public.
+- Context-growth finding (v33t traces): read_file is 67% of all tool-output chars (1,343 calls, ~8.7/run,
+  median 2.0k chars, p90 5.7k, cap 10k) although the prompt asks for 80-line cat|sed slices; after a
+  compaction the agent re-reads the same files (one run read the same file 6 times) and compacts again
+  within 5-10 steps. ADK token-threshold compaction folds everything but the last 5 events (incl. the
+  task message) into a rolling LLM summary. bundle_v36 = v35 without read_file and graph tools (reads only
+  via run_command, capped at 5,000 chars). bundle_s4 = s3 at T 0.3. make_lab --guard-gemma4-parser applies
+  the upstream 0.21 array-parser guard in lab kernels and logs LABGUARD per would-be hang (0/20,000 fuzz
+  hangs after the patch vs ~76 before). Lab kernels lab25a/b (v33t/v35/v36, split A), lab26, lab27 (E4B
+  s3/s4) generated in the scratchpad for the 10-31 reset.
+- 10-26 21:25 lab 28s (E4B s3 smoke, 12 split-A tasks, parser guard on, last 1.4 GPU h of the week): 1/12
+  solved (tweag fawltydeps-492), 12/12 non-empty patches, 0 LABGUARD events, 2 timeouts at the 5-min cap,
+  mean ~180 virtual s/task, 3-10k completion tokens. Same 12 tasks: s1 0, s2 0, v29 2, v33t 3.
+  s3 cleared for the 10-27 leaderboard slot.
+- 10-26 23:30 USER RULE: a new bundle (E4B or 31B) is uploaded only after it passes a lab gate. The user asked
+  for s3 to reach 5/12 on the 12 smoke tasks; across ALL runs (31B v29/v30/v32/v33t, E4B s1/s2/s3) only 4 of
+  those 12 tasks were ever solved (canvasapi-716, silx-4282, briefcase-2651, fawltydeps-492), so 5/12 is not
+  reachable on that set. Working gate for E4B: >= 2/12 on the smoke set AND >= 10/87 on split A before any
+  upload (31B v33t scores 34/87). Leader level: the small-model public leader's 0.10 corresponds to ~0.22 on
+  our set at the 31B ratio of 0.45, i.e. ~19/87 (the ratio is not yet measured for E4B). The
+  00:10 and 08:00 check-ins were changed: no s3 upload; 10-27 slot = v33t second draw (already gated).
+- 10-27 ~01:00 levers/paper workflow (36 agents): all 10 lever candidates refuted by both adversarial
+  verifiers (best corrected gain ~0.45 tasks/87; v29 run twice disagrees on 8% of tasks, SE of a paired
+  difference ~3.2-3.6 tasks/87). Lab 25 stays v33t/v35/v36; no new arm. Paper: fact-check found 20 errors,
+  all fixed with the merged reviewer plan (writeup ~2,956 words): corrected malformed-call rates (31B 1.0-1.7%,
+  E4B s1 0.4%, s2 5.1%, s3 0%), E4B 1 solve in 57 runs, exact McNemar power (87 -> 11 points), A/A gate,
+  zysbnd1 per-task agreement r = 0.95 on 27 shared tasks, toasterson verdict disagreement 18/105.
+  Release fixes: analysis.py --data, exact power, predicted_seconds column (timepred), wheels_pool +
+  wheels_manifest layout (matches labworker), companion diff against expected_tables.md; release kernel v3
+  pushed (v2 stuck >5 h). E4B lab clock: E4B decodes 90.5 tok/s single-stream vs 31B 37.2 -> make_lab
+  --vc-preset e4b (11.7 ms/token, 0.138 s/1k uncached, 10.4 s/compaction); lab27 regenerated with it. The s3
+  smoke lab ran on 31B constants, so its 5-minute cap was ~2.4x too strict.
+- 10-27 E4B LoRA feasibility workflow (research_1027_e4b_lora.md): full distillation is a no-go (P(prize via
+  LoRA) ~1%: beating 0.10 needs E4B to recover ~60% of the 31B teacher vs 25-35% in published 7B SFT; 0 paired
+  wins in ~12 LoRA/SFT attempts in this competition; no E4B adapter has ever scored; usable data 195
+  trajectories on 74 tasks, 46% fastapi/rich). Allowed only: a 0.3-0.5 quota-h serving canary and a <=5 quota-h
+  pilot with written stop rules. Decision: deferred entirely; base-E4B work (lab27) takes the quota first.
+- 10-27 02:00 release kernel anandsingh8687/sealedgate-161 v3 COMPLETE: 161 tasks, 136 snapshots (OSI
+  licences), 272 graph/embedding files, 1,273 de-duplicated cp313 wheels (wheels_pool + wheels_manifest),
+  8.1 GB, README + LICENSES. Companion notebook anandsingh8687/sealedgate-161-companion v1 pushed (private;
+  attaches sealedgate-161-runs + sealedgate-161; diffs analysis output against expected_tables.md).
+- 10-27 06:20 companion notebook anandsingh8687/sealedgate-161-companion v2 COMPLETE (47 s runtime; the hours
+  of RUNNING were queue/mount): "ALL TABLES MATCH THE PAPER", 461 trajectories found, zysbnd1 r = 0.95 on 27
+  tasks, parser hang reproduced on the vLLM 0.19.1 wheel. Paper §6 overlap corrected (62 toasterson candidates,
+  52 kept by both). Paper release is complete apart from the pending v33t draw and the v35 gate.
+- 10-27 12:50 v33t (ref 57665127) public 0.17 (10/58), finished inside the 12-hour limit (~25 h from
+  submission to score). Native-tool family draws: v29 0.18/0.15/0.15, v30 0.15, v32 0.13, v33t 0.17.
+  LB/eval ratio over six draws 0.44 (v33t 0.49). Submitted v33t second draw (identical zip, ref 57701574) as
+  the 10-27 slot. Public board 10-27: 3,916 teams, five at 0.24, our best 0.18 at rank 546 (547 teams at 0.18).
+- 10-28 16:12 v33t second draw (ref 57701574, identical zip) public 0.13. v33t draws 0.17, 0.13 (mean 0.15)
+  vs v29 0.18, 0.15, 0.15 (mean 0.16): the board does not show the lab's +4/87 for temperature 1.0 (both
+  within draw noise, SD ~1.5 tasks). LB/eval ratio over seven draws 0.43. Submitted v33t third draw (ref
+  57742428) as the 10-28 slot for a better estimate of the likely final pick. Paper §3.3/§4.1 updated
+  (2,982 words; reserve cuts listed in the edit plan if the v35 result needs room).
+- 10-29 19:00 v33t third draw (ref 57742428) public 0.15. v33t 0.17/0.13/0.15 (mean 0.150) vs v29
+  0.18/0.15/0.15 (mean 0.160): on the board the two are indistinguishable; LB/eval ratio over 8 draws 0.43.
+  No more identical re-uploads (user rule). 10-29 design study (research_1029_best_in_class.md): no new 31B
+  architecture beats v33t detectably (parallel attempts at equal time: branches keep 0.65-0.76 of v33t;
+  perfect-picker k=2 ceiling +6 eval points; 48/87 tasks never solved). Next: lab25 (v33t/v35/v36) and lab27
+  (E4B s3/s4) at the 10-31 reset; upload only through the pre-registered gate.
+- 10-31 00:06 UTC GPU quota reset: pushed lab25a (43 tasks) and lab25b (44 tasks), arms v33t / v35 / v36 on
+  split A (ev22a/ev22b), parser guard on, 31B clock preset values, seed 25 (QUEUED at 00:07). Pre-registered
+  gate in research_1029_best_in_class.md §4 (76 scoreable tasks; solves >= pooled v33t - 1; predicted time
+  <= 1.02x; empties+timeouts <= v33t + 3; 0 LABGUARD; v36 read/cap-hit checks). Next: lab27 (E4B s3/s4).
+- 10-31 05:20 lab25a/b COMPLETE (261 runs, 0 LABGUARD, no harness errors beyond 8-min timeouts). Pre-registered
+  gate (research_1029_best_in_class.md §4), 76 scoreable tasks (the 11 excluded were never solved by anyone):
+  v33t lab22 34 / lab25 29 (A/A swing 5, discordant 8 vs 3) -> pooled 31.5. v35 28 (FAIL: < 30.5; agent time
+  1.03x v33t: FAIL). v36 34 (pass), time 1.00x (pass), empties+timeouts 19 vs 20 (pass), read calls 1.07x
+  (pass), 28-call cap hits 36 vs 31 on 76 (42 vs 32 on 87) > v33t+3 (FAIL criterion 5). Verdict: no candidate
+  passes; v33t stays the upload/final pick; nothing uploaded (user rule). v36 vs v33t same kernel +5 (p 0.27)
+  is inside the A/A swing. lab27 (E4B s3/s4, e4b clock, guard) pushed at 05:17. Paper §4.4/§3.1/§6 updated
+  with the result (2,992 words); analysis.py gates include lab 25; calibration/compaction tables pinned to the
+  pre-lab-25 analysis set. Release dataset re-versioned (1,019 runs, 668 trajectories).
+- 10-31 09:00 lab27 COMPLETE (E4B s3 vs s4, 87 split-A tasks, E4B clock, parser guard; 2.42 quota-h).
+  s3 6/87 (smoke 0/12), s4 5/87 (smoke 1/12); 0 LABGUARD in 174 runs (1,931 traced calls); 81/87 runs
+  patched for each arm, so the gap is fix quality, not time (mean 267 virtual s/task, ~9.0 h at 120).
+  v33t (lab 25) vs s3 on the same 87 tasks: 29 vs 6 (25 / 2 discordant, -23, CI -32..-14). USER E4B GATE
+  FAILS (needs >= 2/12 smoke AND >= 10/87): no E4B upload; final pick 2 is a main-family bundle. Small-model
+  prize: E4B at 6/87 x 0.43 ~ 0.03 on the board vs the small-model leader's 0.10 -> not reachable.
+  outcomes.csv now 1,193 runs / 14 bundles (lab27 added; analysis gate rows for v33t->s3 and s3->s4).
+  Paper: §4 table row 5 = v33t -> s3 on 87 tasks; §4.5/§4.6/abstract updated; 31B malformed range
+  corrected to 0-1.7% over 22,926 traced calls (v36 has 0/2202); 2,999 words. Release re-version waits for
+  lab 26 so the dataset changes once.
+- 10-31 09:12 lab26a/lab26b pushed (QUEUED): v29 / v33t / v36 on the 68 scoreable split-B tasks (34 + 34,
+  seed 26), same harness as lab 25. Pre-registered in research_1029_best_in_class.md §4.1 before any data:
+  Q1 pooled 155-task v29 -> v33t sampling test (paper §4.1, no decision); Q2 v36 replication gate (pooled
+  lab25+lab26 v36 >= v33t + 6, time <= 1.02x, empties+timeouts <= v33t + 3, 0 LABGUARD). Quota this week:
+  11.1 h used before lab 26; lab 26 ~6.5 h.
+- 10-31 13:31 lab26a/b COMPLETE (204 runs, 3.12 + 2.99 quota-h; 0 LABGUARD; 20 8-min timeouts, 2 turn
+  limits, no other errors). Pre-registered gate (research_1029_best_in_class.md §4.1, scratchpad gate26.py):
+  Q1 sampling, v29 -> v33t: split B 21 -> 17 (5 / 1 discordant, p 0.22); POOLED 155 paired tasks 51 vs 51
+  (8 / 8, delta 0, CI -8..+8). Split A's +4 did not replicate, and neither did the loop mechanism (turn
+  limits 1 vs 1 on B). Consistent with the board (v29 mean 0.160 vs v33t 0.150). A/A v33t on split B (lab 24
+  -> 26): 20 vs 17, 9 of 68 discordant. Q2 v36: split B 18 vs v33t 17; pooled +6 of 155 (8 / 14, p 0.29) ->
+  criterion 1 PASS (exactly +6); predicted time 1.049x v33t (lab26a 1.08x, lab26b 1.01x) -> criterion 2
+  FAIL; empties+timeouts 21 vs 20 PASS; guard/hangs/turn limits PASS. VERDICT: v36 FAILS; no upload.
+  FINAL PICKS (12-02): v33t and v29 (tied in the lab over 155 tasks; both finished every board draw inside
+  12 h). Quota this week ~17.2 h used. outcomes.csv 1,397 runs; analysis.py gate rows for lab 26 added.
+- 10-31 ~15:00 paper revised for lab 26 via a 10-agent workflow (3 drafts: minimal / lesson / rigor; 2
+  judges; synthesis; numbers / consistency / overclaim verifiers; fixer; all 13 issues applied). Winner: the
+  "lesson" framing. Abstract: "Our one adopted change did not replicate" (+4 of 87 tuning, -4 of 68 sealed,
+  51 vs 51 over 155, CI -8..+8; empties 16 -> 27). §3.1 Rule now says split-A evidence only earns a
+  pre-registered sealed-split run. §4 table: sampling split A / B / pooled rows + v36 pooled row. §4.1
+  three-column outcome table. §4.4 v36 replication (+1 on B, pooled +6, p 0.29, 1.049x time, not uploaded).
+  §6: v33t rerun on each split (13% / 13% flipped); split B now decided three questions in two labs.
+  Counts: 1,397 runs, 989 trajectories, 31B malformed 0.6-1.6% over 28,459 calls. All §4 rows checked
+  against analysis.py output. 3,000 words (alnum tokens). Runs dataset re-versioned; companion notebook v3
+  COMPLETE: "ALL TABLES MATCH THE PAPER", 989 trajectories, zysbnd1 r = 0.95, parser hang 19/5000.
+  Submit instructions and companion use the current title. Paper is ready for the user to paste (deadline
+  11-12 23:59 UTC). Remaining GPU quota this week ~12.8 h (resets 11-07); no further lab is pre-registered.

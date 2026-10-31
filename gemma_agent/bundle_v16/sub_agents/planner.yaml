@@ -1,0 +1,5 @@
+name: planner
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Thinks carefully and returns an exact change plan. Call it once, after the scout report and your first repro run, with a request that pastes the repro output and anything surprising you found.
+instruction: !include ../prompts/planner.md
+generate_content_config: !include ../configs/planner_sampling.yaml
