@@ -73,6 +73,11 @@ GATES = [  # (question, baseline arm, candidate arm)
     ("v35 without read_file / graph tools (v36) vs v33t, same kernel (lab 25)", {("lab25a", "v33t"), ("lab25b", "v33t")}, {("lab25a", "v36"), ("lab25b", "v36")}),
     ("31B -> E4B as deployed: v33t (lab 25) vs s3 (lab 27, E4B clock), split A", {("lab25a", "v33t"), ("lab25b", "v33t")}, {("lab27", "s3")}),
     ("E4B temperature 0.3 (s4) vs 1.0 (s3), same kernel (lab 27)", {("lab27", "s3")}, {("lab27", "s4")}),
+    ("T 1.0 (v33t) vs T 0.2 (v29), sealed split B, same kernel (lab 26)", {("lab26a", "v29"), ("lab26b", "v29")}, {("lab26a", "v33t"), ("lab26b", "v33t")}),
+    ("T 1.0 (v33t) vs T 0.2 (v29), pooled split A (lab 22) + split B (lab 26)", {("lab22a", "v29"), ("lab22b", "v29"), ("lab26a", "v29"), ("lab26b", "v29")}, {("lab22a", "v33t"), ("lab22b", "v33t"), ("lab26a", "v33t"), ("lab26b", "v33t")}),
+    ("A/A: v33t run twice on split B (lab 24 -> lab 26)", {("lab24", "v33t")}, {("lab26a", "v33t"), ("lab26b", "v33t")}),
+    ("v36 vs v33t, sealed split B, same kernel (lab 26)", {("lab26a", "v33t"), ("lab26b", "v33t")}, {("lab26a", "v36"), ("lab26b", "v36")}),
+    ("v36 vs v33t, pooled split A (lab 25) + split B (lab 26)", {("lab25a", "v33t"), ("lab25b", "v33t"), ("lab26a", "v33t"), ("lab26b", "v33t")}, {("lab25a", "v36"), ("lab25b", "v36"), ("lab26a", "v36"), ("lab26b", "v36")}),
 ]
 
 
@@ -95,7 +100,8 @@ def table_mix():
         if r["task_set"] != "evalset" or r["interface_task"] == "1" or r["outcome"] == "server_hang":
             continue
         g = (r["bundle"], {"lab20a": "A", "lab20b": "A", "lab21": "A", "lab22a": "A", "lab22b": "A",
-                           "lab23": "A", "lab24": "B", "lab28s": "A", "lab25a": "A", "lab25b": "A", "lab27": "A"}[r["lab"]], r["lab"][:5])
+                           "lab23": "A", "lab24": "B", "lab28s": "A", "lab25a": "A", "lab25b": "A", "lab27": "A",
+                           "lab26a": "B", "lab26b": "B"}[r["lab"]], r["lab"][:5])
         groups[g][r["outcome"]] += 1
         if r["completion_tokens"]:
             tok[g].append(float(r["completion_tokens"]))

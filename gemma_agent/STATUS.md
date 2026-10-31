@@ -726,3 +726,13 @@ gemma_agent/
   Q1 pooled 155-task v29 -> v33t sampling test (paper §4.1, no decision); Q2 v36 replication gate (pooled
   lab25+lab26 v36 >= v33t + 6, time <= 1.02x, empties+timeouts <= v33t + 3, 0 LABGUARD). Quota this week:
   11.1 h used before lab 26; lab 26 ~6.5 h.
+- 10-31 13:31 lab26a/b COMPLETE (204 runs, 3.12 + 2.99 quota-h; 0 LABGUARD; 20 8-min timeouts, 2 turn
+  limits, no other errors). Pre-registered gate (research_1029_best_in_class.md §4.1, scratchpad gate26.py):
+  Q1 sampling, v29 -> v33t: split B 21 -> 17 (5 / 1 discordant, p 0.22); POOLED 155 paired tasks 51 vs 51
+  (8 / 8, delta 0, CI -8..+8). Split A's +4 did not replicate, and neither did the loop mechanism (turn
+  limits 1 vs 1 on B). Consistent with the board (v29 mean 0.160 vs v33t 0.150). A/A v33t on split B (lab 24
+  -> 26): 20 vs 17, 9 of 68 discordant. Q2 v36: split B 18 vs v33t 17; pooled +6 of 155 (8 / 14, p 0.29) ->
+  criterion 1 PASS (exactly +6); predicted time 1.049x v33t (lab26a 1.08x, lab26b 1.01x) -> criterion 2
+  FAIL; empties+timeouts 21 vs 20 PASS; guard/hangs/turn limits PASS. VERDICT: v36 FAILS; no upload.
+  FINAL PICKS (12-02): v33t and v29 (tied in the lab over 155 tasks; both finished every board draw inside
+  12 h). Quota this week ~17.2 h used. outcomes.csv 1,397 runs; analysis.py gate rows for lab 26 added.

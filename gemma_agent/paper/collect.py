@@ -32,6 +32,7 @@ LABS = {  # lab -> (task set, clock)
     "lab22a": ("evalset", "virtual"), "lab22b": ("evalset", "virtual"),
     "lab23": ("evalset", "virtual"), "lab24": ("evalset", "virtual"), "lab28s": ("evalset", "virtual"),
     "lab25a": ("evalset", "virtual"), "lab25b": ("evalset", "virtual"), "lab27": ("evalset", "virtual"),
+    "lab26a": ("evalset", "virtual"), "lab26b": ("evalset", "virtual"),
 }
 MODEL = {"s1": "e4b", "s2": "e4b", "s3": "e4b", "s4": "e4b"}
 
